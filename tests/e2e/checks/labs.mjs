@@ -1238,8 +1238,8 @@ export const checks = {
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); planx.board.add(e.newItem('sticky', 500, 300, { id: 's', text: 'Привет' })); e.setSelection(['s']); })()`);
     await sleep(400);
-    // Each frame: whatever's showing and shifted from its place.
-    const watch = (sel) => p.ev(`(() => { window.slid = []; const t0 = performance.now(); const f = () => { for (const e of document.querySelectorAll('${sel}:not(.gone):not(.leaving)')) { const cs = getComputedStyle(e); if (+cs.opacity > 0 && cs.transform !== 'none') window.slid.push(cs.transform); } if (performance.now() - t0 < 600) requestAnimationFrame(f); }; requestAnimationFrame(f); })()`);
+    // Each frame: whatever's showing (more than the trace it's at coming in) and shifted from its place.
+    const watch = (sel) => p.ev(`(() => { window.slid = []; const t0 = performance.now(); const f = () => { for (const e of document.querySelectorAll('${sel}:not(.gone):not(.leaving)')) { const cs = getComputedStyle(e); if (+cs.opacity > 0.01 && cs.transform !== 'none') window.slid.push(cs.transform); } if (performance.now() - t0 < 600) requestAnimationFrame(f); }; requestAnimationFrame(f); })()`);
     await watch('.tfmt');
     await p.click(await p.at('.panel-over button[aria-label="Текст и шрифт"]'));
     await sleep(700);
