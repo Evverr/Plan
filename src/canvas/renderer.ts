@@ -539,7 +539,9 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       // A kanban («Канбан», src/labs): its stages and columns.
       if (it.kb) {
         const now = performance.now(), lit = (i: number) => { const t = dropTurns.get(`${it.id}:${i}`); return t ? dotLit(t, now, DROP_FADE) : 0; };
-        drawKanban(ctx, it, s.get, theme, s.hotPlus?.startsWith(`kb:${it.id}:`) ? s.hotPlus.slice(`kb:${it.id}:`.length) : null, lit);
+        // (Its fill as a frame's: its own colour, how opaque, or none.)
+        const fill = it.color === 'none' ? null : it.color ? shade(it.color.startsWith('#') ? it.color : FILLS[it.color] ?? theme.surface, theme.dim) : theme.surface;
+        drawKanban(ctx, it, s.get, { ...theme, fill, alpha: it.color || it.fo !== undefined ? fillOpacity(it) : 1 }, s.hotPlus?.startsWith(`kb:${it.id}:`) ? s.hotPlus.slice(`kb:${it.id}:`.length) : null, lit);
         break;
       }
       if (it.fold) { drawFolded(ctx, it, s, editing); break; }

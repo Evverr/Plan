@@ -217,7 +217,8 @@ export function deleteStage(board: Board, f: Item, i: number): void {
 /** Where a stage's pill stands, on the board (for its menu to open under). */
 export const stageAt = (f: Item, i: number) => ({ x: columns(f)[i]?.x ?? f.x, y: f.y + PILL_Y + PILL_H / 2 });
 
-interface Look { surface: string; bg: string; line: string; ink: string; muted: string }
+/** (`fill`: its own, as a frame's, none if null; `alpha`, how opaque.) */
+interface Look { surface: string; bg: string; line: string; ink: string; muted: string; fill?: string | null; alpha?: number }
 
 /** Draws it: the card, each stage's pill (its colour, its name) and how many are in it, a column under
  *  each (the cells), and the «+». */
@@ -226,8 +227,12 @@ export function drawKanban(ctx: CanvasRenderingContext2D, f: Item, get: (id: str
   ctx.save();
   ctx.beginPath();
   ctx.roundRect(f.x, f.y, f.w, f.h, KANBAN_RAD);
-  ctx.fillStyle = look.surface;
-  ctx.fill();
+  if (look.fill !== null) {
+    ctx.globalAlpha = look.alpha ?? 1;
+    ctx.fillStyle = look.fill ?? look.surface;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   ctx.lineWidth = 1;
   ctx.strokeStyle = look.line;
   ctx.stroke();

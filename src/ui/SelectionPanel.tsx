@@ -165,7 +165,8 @@ function OpacitySlider({ editor, value, onChange }: { editor: Editor; value: num
 function ItemColors({ editor, items }: { editor: Editor; items: Item[] }) {
   const [paint, pick] = usePaint();
   const colorable = items.filter(fillable), icons = items.filter((i) => i.type === 'icon');
-  const strokable = items.filter(canStroke);
+  // (A kanban, «Канбан», src/labs: its fill and how opaque only.)
+  const strokable = items.filter((i) => canStroke(i) && !i.kb), texted = !colorable.every((i) => i.kb);
   // Mind map nodes but central topics (all the selected) get a fill and an edge of their own.
   const deepMind = colorable.length > 0 && colorable.every((i) => i.type === 'mind' && mindDepth(i, (id) => editor.board.get(id)) >= 1);
   if (deepMind) return <MindColors editor={editor} nodes={colorable} />;
@@ -173,7 +174,7 @@ function ItemColors({ editor, items }: { editor: Editor; items: Item[] }) {
   // Outlines are set only while shapes or tasks are among the selected; with both picked, colour and
   // opacity go to both, the outline taking the fill's colour itself.
   const text = same(colorable.map((i) => i.tc ?? 'ink'));
-  const shown = paint.filter((p) => p !== 'stroke' || strokable.length), targets: Paint[] = shown.length ? shown : ['fill'];
+  const shown = paint.filter((p) => (p !== 'stroke' || strokable.length) && (p !== 'text' || texted)), targets: Paint[] = shown.length ? shown : ['fill'];
   const target = targets.includes('fill') ? 'fill' : targets.includes('stroke') ? 'stroke' : 'text', both = targets.length > 1;
   const setColor = (c: string) => {
     editor.beginChange();
@@ -198,7 +199,7 @@ function ItemColors({ editor, items }: { editor: Editor; items: Item[] }) {
   return (
     <Palette label="Цвет">
       {colorable.length > 0 && <>
-        <PaintSwitch paint={targets} pick={pick} fill={fill} stroke={strokable.length ? stroke : undefined} fillLabel="Заливка" strokeLabel="Обводка" text={text} />
+        <PaintSwitch paint={targets} pick={pick} fill={fill} stroke={strokable.length ? stroke : undefined} fillLabel="Заливка" strokeLabel="Обводка" text={texted ? text : undefined} />
         <Swatches editor={editor} swatches={swatches} current={target === 'fill' ? fill : target === 'stroke' ? stroke : text} onPick={setColor}
           label={target === 'fill' ? 'Цвет' : target === 'stroke' ? 'Цвет обводки' : 'Цвет текста'} noneLabel={target === 'fill' ? 'Без заливки' : 'Без обводки'} />
         <OpacitySlider editor={editor} value={opacity} onChange={(v) => targets.forEach((t) => t !== 'down' && editor.setOpacity(t, v))} />
