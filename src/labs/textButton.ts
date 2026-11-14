@@ -92,11 +92,9 @@ function grow(a: HTMLElement | null, r: DOMRect, to: 'tfmt' | 'panel', swap: () 
         b.style.transition = '';
         b.style.opacity = '';
         delete b.dataset.morph;
-        // The body goes a couple of frames after the panel's own is back (its blur under the glass may
-        // take a frame to be drawn): never a frame with neither. Its shadow at once, the panel's is there.
-        shell.style.transition = 'none';
-        shell.style.boxShadow = 'none';
-        requestAnimationFrame(() => requestAnimationFrame(done));
+        // (The body goes as the panel's own is back, the same frame: both there at once, their 89% glass
+        // over one another, would flash lighter on a dark board.)
+        done();
       };
       const reveal = () => {
         // What's on it fades in; then it's itself again. (Its own coming in, a slide up, never played: off
