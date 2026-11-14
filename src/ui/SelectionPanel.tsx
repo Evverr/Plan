@@ -432,7 +432,7 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
   if (!items.length && (over || !linkCount)) return null;
   const tables = items.filter((i) => i.type === 'table'), links = editor.selectedLinks();
   // (Shapes, not blocks of code: «Без текста».)
-  const group = items.length === 1 && items[0].type === 'frame' && !items[0].tl && !items[0].inst ? items[0] : null;
+  const group = items.length === 1 && items[0].type === 'frame' && !items[0].tl && !items[0].kb && !items[0].inst ? items[0] : null;
   const shapes = items.filter((i) => (i.type === 'rect' || i.type === 'ellipse' || i.type === 'polygon') && !i.code), noText = shapes.length > 0 && shapes.every((s) => s.nt);
   // An instance picked alone, or something in one (not of a built-in component: those aren't changed).
   const inOne = items.length === 1 ? (items[0].host ? editor.board.get(items[0].host) : items[0]) : undefined;
@@ -514,7 +514,7 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
         back: items.length > 0 ? btn('to-back', 'На слой ниже', () => editor.shiftZ(-1)) : undefined,
         duplicate: items.length > 0 ? btn('duplicate', 'Дублировать (Ctrl+D)', () => editor.duplicate()) : undefined,
         // Features on trial (src/labs), while they're switched on.
-        // A group (a frame, not a timeline, nor a component's copy): an arrow folding it into a bar, or
+        // A group (a frame, not a timeline, a kanban, nor a component's copy): an arrow folding it into a bar, or
         // unfolding it.
         fold: group ? <button className="ib" title={group.fold ? 'Развернуть фрейм' : 'Свернуть фрейм'} aria-label={group.fold ? 'Развернуть фрейм' : 'Свернуть фрейм'}
           onClick={() => editor.setFolded(group.id, !group.fold)}><PanelIcon name={group.fold ? 'arrow-right' : 'arrow-left'} /></button> : undefined,

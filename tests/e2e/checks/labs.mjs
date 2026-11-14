@@ -37,6 +37,21 @@ export const checks = {
     expect(await p.ev(`window.clip?.split('\\n').length`), 'all of it copied').toBe(14);
   },
 
+  async '"Код": typed in, a press on its text goes on typing; one off it (under its lines, past a line\'s end) picks the block'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('rect', 200, 150, { id: 'c', code: 'js', text: 'let a = 1;\\nlet b = 2;', w: 420, h: 260, fs: 14, ff: 'mono', rad: 16 })); e.setSelection(['c']); e.startEditing('c', null); })()`);
+    await sleep(300);
+    const box = await p.rect('.text-edit.code');
+    await p.click([box.l + 20, box.t + 8]);
+    expect(await p.ev('planx.editor.editingId'), 'on its text: typing').toBe('c');
+    await p.click([box.l + 300, box.t + 8]);
+    expect(await p.ev('[planx.editor.editingId, [...planx.editor.selection].join()].join()'), 'past the line\'s end: the block picked').toBe(',c');
+    await p.ev(`planx.editor.startEditing('c', null)`);
+    await sleep(200);
+    await p.click([box.l + 20, box.t + 120]);
+    expect(await p.ev('[planx.editor.editingId, [...planx.editor.selection].join()].join()'), 'under its lines: the block picked').toBe(',c');
+  },
+
   async '"Код": an empty block clicked is typed in at once, to paste into; Backspace there takes it away'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
       planx.board.add(e.newItem('rect', 300, 300, { id: 'c', code: 'js', text: '', w: 480, h: 120, fs: 14, ff: 'mono', rad: 16 })); e.setSelection([]); })()`);

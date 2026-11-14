@@ -150,6 +150,19 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
         const stop = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', stop); };
         window.addEventListener('pointermove', move);
         window.addEventListener('pointerup', stop);
+      } : code ? (e) => {
+        // A block of code ("Код", src/labs) pressed off its text (under its last line, or past a line's end):
+        // done typing, the block picked.
+        const el = e.currentTarget, cs = getComputedStyle(el), r = el.getBoundingClientRect();
+        if (!el.value) return;
+        const x = (e.clientX - r.left) / z + el.scrollLeft, y = (e.clientY - r.top) / z + el.scrollTop;
+        const lines = el.value.split('\n'), row = Math.floor(y / (fs * CODE_LINE));
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        if (row < lines.length && x <= ctx.measureText(lines[row].replace(/\t/g, ' '.repeat(+cs.tabSize || 8))).width + fs) return;
+        e.preventDefault();
+        editor.stopEditing();
+        editor.setSelection([id]);
       } : undefined}
       onInput={(e) => {
         if (code) { setLiveCode(id, e.currentTarget.value); editor.previewText(id, e.currentTarget.value); editor.requestRender(); return; }

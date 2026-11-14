@@ -522,8 +522,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         }
         // A frame folds on a double click, and unfolds (a component too, not an instance); on its title
         // over it, that opens for typing.
-        // (A timeline neither folds nor has a title.)
-        if (it?.tl) { /* nothing */ }
+        // (A timeline neither folds nor has a title; nor a kanban, «Канбан», src/labs.)
+        if (it?.tl || it?.kb) { /* nothing */ }
         else if (it?.type === 'frame' && !it.inst && (it.fold || toLocal(it, g.start).y >= it.y)) ed.setFolded(it.id, !it.fold);
         // A task's header (but its title, ring and arrow) goes on to the next of its views.
         else if (it?.type === 'task' && taskPartAt(it, g.start) === 'head') nextView(board, it, taskOpen());
