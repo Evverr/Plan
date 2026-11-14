@@ -754,6 +754,32 @@ export const checks = {
     expect((await at('t2')).y, 'the gap closed').toBe(k.y + 58 + 16);
   },
 
+  async '"Копия стрелками": Alt+arrow a copy that way, past what\'s there; a kanban card\'s in its column under it (the kanban growing) or in the next one'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged();
+      b.add(e.newItem('sticky', 100, 100, { id: 's', w: 160, h: 160 })); b.add(e.newItem('sticky', 468, 100, { id: 'o', w: 160, h: 160 })); e.setSelection(['s']); })()`);
+    await sleep(200);
+    const alt = (key, vk) => p.key(key, key, vk, 1);
+    const picked = () => p.ev(`(() => { const t = planx.board.get([...planx.editor.selection][0]); return t.id === 's' ? 'the same' : t.x + ',' + t.y; })()`);
+    await alt('ArrowRight', 39);
+    expect(await picked(), 'right of it, 24 off, picked').toBe('284,100');
+    await alt('ArrowRight', 39);
+    expect(await picked(), 'past the one there').toBe('652,100');
+    await alt('ArrowDown', 40);
+    expect(await picked(), 'under it').toBe('652,284');
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; b.replaceAll([], []); e.addKanban({ x: 1200, y: 1200 }); })()`);
+    await sleep(100);
+    const k = await p.ev(`(() => { const f = planx.board.list().find((i) => i.kb); return { id: f.id, h: f.h }; })()`);
+    await p.ev(`(() => { const e = planx.editor, b = planx.board, f = b.get('${k.id}'); b.add(e.newItem('task', f.x + 40, f.y + 100, { id: 't', text: 'Задача' })); b.update(f.id, { members: ['t'] }); e.setSelection(['t']); })()`);
+    await sleep(200);
+    for (let i = 0; i < 4; i++) await alt('ArrowDown', 40);
+    await sleep(300);
+    const col = await p.ev(`(() => { const f = planx.board.get('${k.id}'); return f.members.map((id) => planx.board.get(id)).filter((c) => c.x === planx.board.get('t').x).length + ' ' + (f.h > ${k.h}); })()`);
+    expect(col, 'five in its column, the kanban taller').toBe('5 true');
+    await alt('ArrowRight', 39);
+    await sleep(300);
+    expect(await p.ev(`(() => { const f = planx.board.get('${k.id}'), t = planx.board.get([...planx.editor.selection][0]); return f.members.includes(t.id) && t.x > planx.board.get('t').x; })()`), 'one in the next column').toBe(true);
+  },
+
   async '"Канбан в объектах": its «+» adds a stage; a stage\'s pill opens its menu: renamed, recoloured, moved'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.8 }; e.camChanged(); e.addKanban({ x: 700, y: 400 }); e.setSelection([]); })()`);
     await sleep(200);

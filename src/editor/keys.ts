@@ -83,9 +83,11 @@ export function onKeyDown(ed: Editor, e: KeyboardEvent): void {
   if (e.key === '-' || e.key === '_') { ed.zoomCenter(1 / 1.2); return; }
   if (e.key.startsWith('Arrow') && ed.selection.size) {
     e.preventDefault();
-    const s = e.shiftKey ? 10 : 1;
+    const s = e.altKey && labOn('arrowCopy') ? 1 : e.shiftKey ? 10 : 1;
     const dx = e.key === 'ArrowLeft' ? -s : e.key === 'ArrowRight' ? s : 0;
     const dy = e.key === 'ArrowUp' ? -s : e.key === 'ArrowDown' ? s : 0;
+    // «Копия стрелками» (src/labs): with Alt, a copy that way instead.
+    if (e.altKey && labOn('arrowCopy')) { ed.duplicateArrow(dx, dy); return; }
     ed.board.transact(() => ed.selectedItems().filter((it) => !heldInPlace(it, ed.board.list())).forEach((it) => ed.board.update(it.id, { x: it.x + dx, y: it.y + dy })));
     return;
   }

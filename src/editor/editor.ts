@@ -27,6 +27,7 @@ import { press } from './press';
 import { formatCells, pickCell, restOn, setTableLines } from './tables';
 import { DEFAULT_PENS, isPoly, MIND_TOPIC, PENS_KEY, readPens, type InkStyle, type Pens, type PenTool, type Tool } from './tools';
 import { pushedBelow } from '../labs/textPush';
+import { arrowCopyAt } from '../labs/arrowCopy';
 import { holdZoomBox } from '../labs/zoomBox';
 import { rejoined } from '../labs/linkJoint';
 import { croppingId } from '../labs/imageCrop';
@@ -1516,6 +1517,17 @@ export class Editor {
     const d = towardOffset(one, side, this.shown());
     if (!d) return;
     const at = { x: b.x + b.w / 2 + d.x, y: b.y + b.h / 2 + d.y };
+    this.clipboard = data;
+    this.paste(0, at);
+    this.clipboard = keep;
+  }
+
+  /** «Копия стрелками» (src/labs): Alt+arrow, a copy of what's picked that way (see arrowCopyAt), picked. */
+  duplicateArrow(dx: number, dy: number): void {
+    const keep = this.clipboard, data = this.copyData();
+    if (!data) return;
+    const at = arrowCopyAt(this.board.list(), (JSON.parse(data) as { items: Item[] }).items, this.selectedItems().filter((i) => !i.host), dx, dy);
+    if (!at) return;
     this.clipboard = data;
     this.paste(0, at);
     this.clipboard = keep;
