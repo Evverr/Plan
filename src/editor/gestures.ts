@@ -245,7 +245,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         const dl = !sx ? 0 : e.altKey ? (w0 - nw) / 2 : sx < 0 ? w0 - nw : 0;
         const dt = !sy ? 0 : e.altKey ? (h0 - nh) / 2 : sy < 0 ? h0 - nh : 0;
         const at = resizedFrom(g.orig, nw, nh, dl, dt);
-        board.update(g.id, { ...size, x: Math.round(at.x), y: Math.round(at.y) });
+        // (A kanban's height set so by hand stays so, see kanbanLayout.)
+        board.update(g.id, { ...size, x: Math.round(at.x), y: Math.round(at.y), ...(it.kb && sy ? { kbH: true } : {}) });
         moves.forEach((pt, k) => board.update(k, pt));
       });
       // A kanban («Канбан», src/labs): its columns and cards stretched with it as it goes.

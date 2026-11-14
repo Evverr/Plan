@@ -34,6 +34,22 @@ describe('«Канбан»', () => {
     expect(b.get('k')!.h).toBe(kanbanSize(3, 400 + 12 + 52).h);
   });
 
+  it('stretched taller by hand stays so; its cards needing more, it\'s as tall as they need again, shrinking with them', () => {
+    const { b } = make();
+    tidyKanbans(b);
+    const auto = b.get('k')!.h;
+    b.update('k', { h: auto + 300, kbH: true });
+    tidyKanbans(b);
+    expect(b.get('k')!.h, 'kept as stretched').toBe(auto + 300);
+    b.update('t2', { h: 600 });
+    tidyKanbans(b);
+    expect(b.get('k')!.h, 'pushed by its cards').toBe(kanbanSize(3, 600 + 12 + 52).h);
+    expect(b.get('k')!.kbH).toBeUndefined();
+    b.update('t2', { h: 52 });
+    tidyKanbans(b);
+    expect(b.get('k')!.h, 'back down with them').toBe(auto);
+  });
+
   it('closes the gap of one taken out, and leaves what\'s being dragged where it is', () => {
     const { b, col } = make();
     tidyKanbans(b);

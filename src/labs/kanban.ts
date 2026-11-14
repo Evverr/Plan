@@ -72,7 +72,8 @@ export function cardsByColumn(board: Board, f: Item, items: Item[] = board.list(
 
 /** Where its cards go: each in the column its middle is over, in the order they stand there, one under
  *  another, as wide as the column. The frame no smaller than they and its columns need (stretched
- *  bigger, it stays so). */
+ *  wider, it stays so); as tall as they need, but stretched taller by hand, it stays so till they need
+ *  more (then it's as tall as they need again). */
 export function kanbanLayout(board: Board, f: Item, items: Item[]): Map<string, Partial<Item>> {
   const out = new Map<string, Partial<Item>>(), cols = columns(f), lane = kanbanLane(f);
   if (!cols.length) return out;
@@ -87,8 +88,10 @@ export function kanbanLayout(board: Board, f: Item, items: Item[]): Map<string, 
     }
     tall = Math.max(tall, y - CARD_GAP - cols[i].y - IN);
   });
-  const least = kanbanSize(cols.length, tall, KB.MIN_COL), size = { w: Math.max(f.w, least.w), h: Math.max(f.h, least.h) };
-  if (size.h !== f.h || size.w !== f.w) out.set(f.id, size);
+  const least = kanbanSize(cols.length, tall, KB.MIN_COL), kept = f.kbH && f.h >= least.h;
+  const size: Partial<Item> = { w: Math.max(f.w, least.w), h: kept ? f.h : least.h };
+  if (f.kbH && !kept) size.kbH = undefined;
+  if (size.h !== f.h || size.w !== f.w || 'kbH' in size) out.set(f.id, size);
   return out;
 }
 
