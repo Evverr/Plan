@@ -324,6 +324,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       // (Not a timeline: a line led over one goes to what's on it, or stays where it's let go. Nor the kanban
       // it's led out of a card of: its own.)
       g.target = t && t.id !== g.from && !t.tl && !ownKanban(t, g.from) ? t.id : null;
+      // (The panel over what it's led out of fading out meanwhile, as when it's dragged.)
+      ed.setPicking(true);
       ed.requestRender();
       return;
     }
