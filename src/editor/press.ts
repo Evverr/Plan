@@ -147,6 +147,7 @@ export function press(ed: Editor, e: PointerEvent): void {
     case 'form':
     case 'poll':
     case 'kanban':
+    case 'header':
     case 'page':
       ed.gesture = { type: 'place', at: w, tool: ed.tool };
       return;

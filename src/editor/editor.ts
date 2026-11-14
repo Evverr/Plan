@@ -14,7 +14,8 @@ import { readJSON, writeJSON } from '../storage';
 import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoomedAt } from './camera';
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
-import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
+import { around, contents, copyId, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
+import { HEADER_GAP, HEADER_H, HEADER_LIB, HEADER_W, headerIcon, headerParts, headerTitle } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -620,7 +621,11 @@ export class Editor {
   addTimeline(c: Point): void {
     const now = new Date(), start = new Date(now.getFullYear(), now.getMonth(), 1), size = timelineSize(start);
     const it = this.newItem('frame', Math.round(c.x - size.w / 2), Math.round(c.y - size.h / 2), { ...size, tl: dayKey(start), text: 'Таймлайн', members: [] });
+    this.board.beginGesture();
     this.addItem(it);
+    // A header over it («Заголовок в объектах», src/labs).
+    if (labOn('headerObject')) this.addHeader(c, { item: it, title: 'Таймлайн', icon: 'timeline', color: 'green' });
+    this.board.endGesture();
     this.setTool('select');
     this.setSelection([it.id]);
   }
@@ -643,13 +648,47 @@ export class Editor {
     this.setSelection([it.id]);
   }
 
-  /** «Канбан» (src/labs/kanban.ts), centred on `c`, with its first stages, picked. */
+  /** «Канбан» (src/labs/kanban.ts), centred on `c`, with its first stages, picked; a header over it
+   *  («Заголовок в объектах»). */
   addKanban(c: Point): void {
     const size = kanbanSize(FIRST_STAGES.length);
     const it = this.newItem('frame', Math.round(c.x - size.w / 2), Math.round(c.y - size.h / 2), { ...size, kb: FIRST_STAGES.map((s) => ({ ...s })), text: 'Канбан', members: [] });
+    this.board.beginGesture();
     this.addItem(it);
+    if (labOn('headerObject')) this.addHeader(c, { item: it, title: 'Канбан', icon: 'kanban', color: 'blue' });
+    this.board.endGesture();
     this.setTool('select');
     this.setSelection([it.id]);
+  }
+
+  /** «Заголовок в объектах» (src/labs/header.ts): an instance of the board's header (its component put on
+   *  it the first time), centred on `c`, picked; or, `over` given, over its left, its title and icon
+   *  theirs (as Женя's over a timeline or kanban), what's picked left as it is. */
+  addHeader(c: Point, over?: { item: Item; title: string; icon: string; color: string }): void {
+    let comp = this.board.list().find((i) => i.comp && i.lib === HEADER_LIB);
+    this.board.beginGesture();
+    if (!comp) {
+      const parts = headerParts((type, x, y, extra) => this.newItem(type, Math.round(x), Math.round(y), extra), c.x - HEADER_W / 2, c.y - HEADER_H / 2);
+      this.board.transact(() => parts.forEach((p) => this.board.add(p)));
+      comp = parts[0];
+    }
+    const x = over ? over.item.x : Math.round(c.x - HEADER_W / 2), y = over ? over.item.y - HEADER_GAP - HEADER_H : Math.round(c.y - HEADER_H / 2);
+    const inst = this.newItem('frame', x, y, { w: comp.w, h: comp.h, inst: comp.id, text: comp.text, members: [], born: Date.now() });
+    this.board.add(inst);
+    if (over) {
+      // Its copies made now, to be given the title and icon.
+      this.syncNow();
+      const parts = (comp.members ?? []).map((id) => this.board.get(id)).filter((i): i is Item => !!i);
+      const title = headerTitle(parts), icon = headerIcon(parts);
+      this.board.transact(() => {
+        if (title) this.board.update(copyId(inst.id, title.id), { text: over.title });
+        if (icon) this.board.update(copyId(inst.id, icon.id), { icon: over.icon, color: over.color });
+      });
+    }
+    this.board.endGesture();
+    if (over) return;
+    this.setTool('select');
+    this.setSelection([inst.id]);
   }
 
   requestRender(): void {
@@ -872,6 +911,9 @@ export class Editor {
   setTool(tool: Tool): void {
     // A figure being drawn with "Перо" is done as a line, another tool taken.
     if (tool !== 'nib' && nibPoints()) finishNib(this);
+    // «Фрейм вокруг выделенного» (src/labs): the frame tool (its button, F) with something picked, a frame
+    // round that at once, it in it.
+    if (tool === 'frame' && labOn('frameAround') && !this.editingId && this.selectedItems().length && this.frameSelection()) return;
     this.tool = tool;
     if (this.canvas) this.canvas.dataset.tool = tool;
     this.emit();
@@ -1189,6 +1231,7 @@ export class Editor {
     if (tool === 'form') { this.addForm(this.toWorld(at.x, at.y)); return; }
     if (tool === 'poll') { this.addPoll(this.toWorld(at.x, at.y)); return; }
     if (tool === 'kanban') { this.addKanban(this.toWorld(at.x, at.y)); return; }
+    if (tool === 'header') { this.addHeader(this.toWorld(at.x, at.y)); return; }
     const type = (isPoly(tool) ? 'polygon' : tool) as ItemType;
     if (!DEFAULTS[type]) return;
     const extra: Partial<Item> = isPoly(tool) ? { shape: tool, ...(tool === 'triangle' && { va: 'bottom' as const }) } : tool === 'table' ? freshTable() : tool === 'mind' ? { text: MIND_TOPIC } : {};
@@ -1224,6 +1267,12 @@ export class Editor {
     this.setSelection([it.id]);
     this.startEditing(it.id);
     return true;
+  }
+
+  /** «Скрыть объект» (src/labs): what's picked out of sight (still picked, its frame showing it), or back. */
+  setHidden(on: boolean): void {
+    this.board.transact(() => this.selectedItems().forEach((it) => this.board.update(it.id, { hid: on || undefined })));
+    this.requestRender();
   }
 
   /** Makes a component of what's selected: a frame picked on its own becomes one; anything else gets a

@@ -242,6 +242,10 @@ export function ContextMenu({ editor, onToast }: { editor: Editor; onToast: (tex
         {editInst && row('edit-l', 'Редактировать компонент', run(() => editor.editComponentAt(editInst)))}
         {toObjects && row('package', 'Добавить в объекты', run(() => editor.askObject(toObjects.id)))}
         {tidy && row('apps', 'Авторасположение', run(() => { if (tidyMind) editor.tidyMind(tidyMind); else startTidy(editor); editor.requestRender(); }))}
+        {/* «Скрыть объект» (src/labs): out of sight, or (all of them hidden) in sight again. */}
+        {labOn('hideItem') && editor.selectedItems().length > 0 && (editor.selectedItems().every((i) => i.hid)
+          ? row('crossed-eye', 'Показать объект', run(() => editor.setHidden(false)))
+          : row('crossed-eye', 'Скрыть объект', run(() => editor.setHidden(true))))}
         <div className="menu-line" />
         {row('trashcan', 'Удалить', run(() => editor.deleteSelection()))}
       </>}

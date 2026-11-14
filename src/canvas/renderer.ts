@@ -1440,6 +1440,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
   for (const it of s.items) {
     const b = it.inst ? instanceBounds(it, s.items) : boxOf(it), box = it.type === 'frame' ? { x: b.x - 40, y: b.y - 40, w: b.w + 80, h: b.h + 80 } : b;
     if (lifted?.has(it.id)) continue;
+    // Hidden («Скрыть объект», src/labs), or in an instance hidden: not drawn (its frame shows it, picked).
+    if (it.hid || (it.host && s.get(it.host)?.hid)) continue;
     if (rectsIntersect(box, view)) {
       // («Канбан»: a card gliding to its place in a column, drawn on its way there.)
       const glide = s.live ? glideOffset(it.id, now0) : null;

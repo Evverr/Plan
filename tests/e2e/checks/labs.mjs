@@ -777,6 +777,41 @@ export const checks = {
     expect((await at('t2')).y, 'the gap closed').toBe(k.y + 58 + 16);
   },
 
+  async '"Заголовок в объектах": an icon, a title and a description, one component for the board; one over a new kanban, its title and icon; its icon double clicked, another to take'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('header', { x: 400, y: 200 }); })()`);
+    await sleep(300);
+    const headers = () => p.ev(`planx.board.list().filter((i) => i.inst && planx.board.get(i.inst)?.lib === 'planx:header').map((h) => planx.board.list().filter((c) => c.host === h.id).map((c) => c.type === 'icon' ? c.icon : c.text.split(',')[0]).join(' / '))`);
+    expect((await headers()).join(), 'its parts').toBe('kanban / Заголовок / Здесь идет описание заголовка');
+    await p.ev(`(() => { planx.editor.setSelection([]); planx.editor.addKanban({ x: 1200, y: 900 }); })()`);
+    await sleep(300);
+    expect((await headers())[1], 'over the kanban').toBe('kanban / Канбан / Здесь идет описание заголовка');
+    expect(await p.ev(`(() => { const l = planx.board.list(), k = l.find((i) => i.kb), h = l.filter((i) => i.inst)[1]; return [l.filter((i) => i.comp).length, h.x === k.x, k.y - h.y - h.h, planx.editor.selection.has(k.id)].join(); })()`), 'one component; over its left, 24 off; the kanban picked').toBe('1,true,24,true');
+    await p.ev(`(() => { planx.editor.setSelection([]); window.swapped = []; addEventListener('planx:swap', (e) => swapped.push(e.detail)); })()`);
+    const ic = await p.ev(`(() => { const l = planx.board.list(), h = l.find((i) => i.inst), ic = l.find((i) => i.host === h.id && i.type === 'icon'), s = planx.editor.toScreen({ x: ic.x + 18, y: ic.y + 18 }); return [s.x, s.y]; })()`);
+    for (const n of [1, 2]) {
+      await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: ic[0], y: ic[1], button: 'left', clickCount: n });
+      await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: ic[0], y: ic[1], button: 'left', clickCount: n });
+      await sleep(60);
+    }
+    await sleep(300);
+    expect(await p.ev(`swapped.length === 1 && planx.board.get(swapped[0])?.type`), 'its icon to swap').toBe('icon');
+  },
+
+  async '"Скрыть объект" and "Фрейм вокруг выделенного": hidden, not drawn but picked by a click or a box there; the frame tool with something picked, a frame round it'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); planx.board.add(e.newItem('sticky', 300, 200, { id: 'h', w: 160, h: 160 })); e.setSelection(['h']); e.setHidden(true); e.setSelection([]); })()`);
+    await sleep(200);
+    expect(await p.ev(`(() => { const d = document.querySelector('canvas').getContext('2d').getImageData(380 * devicePixelRatio, 280 * devicePixelRatio, 1, 1).data; return d[2] > 200; })()`), 'not drawn: the board there').toBe(true);
+    await p.click([380, 280]);
+    expect(await p.ev(`[...planx.editor.selection].join()`), 'clicked there: picked').toBe('h');
+    await p.ev(`planx.editor.setSelection([])`);
+    await p.drag([250, 150], [500, 420]);
+    expect(await p.ev(`[...planx.editor.selection].join()`), 'boxed: picked').toBe('h');
+    await p.ev(`planx.editor.setHidden(false)`);
+    expect(await p.ev(`planx.board.get('h').hid`), 'shown again').toBe(undefined);
+    await p.ev(`planx.editor.setTool('frame')`);
+    expect(await p.ev(`(() => { const f = planx.board.list().find((i) => i.type === 'frame'); return !!f && f.members.includes('h') && planx.editor.tool; })()`), 'a frame round it').toBe('select');
+  },
+
   async '"Копия стрелками": Alt+arrow a copy that way, past what\'s there; a kanban card\'s in its column under it (the kanban growing) or in the next one'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged();
       b.add(e.newItem('sticky', 100, 100, { id: 's', w: 160, h: 160 })); b.add(e.newItem('sticky', 468, 100, { id: 'o', w: 160, h: 160 })); e.setSelection(['s']); })()`);
@@ -2029,7 +2064,7 @@ export const checks = {
     const c = await p.ev(`planx.board.get('${comp.id}')`);
     expect(`${c.text} ${c.obj} ${!!c.stowed} ${await p.ev(`planx.board.list().filter((i) => i.inst === '${comp.id}').length`)}`, 'named, an object, an instance in its place').toBe('Карточка true true 1');
     await p.click(await p.at('.tools [data-key="objects"]'));
-    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'the menu').toBe('Таймлайн | Форма | Голосование | Канбан | Мои объекты');
+    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'the menu').toBe('Таймлайн | Форма | Голосование | Канбан | Заголовок | Мои объекты');
     const mineRow = await p.ev(`(() => { const r = [...document.querySelectorAll('.objects-menu .menu-row')].find((b) => b.textContent === 'Мои объекты').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
     await p.mouse('mouseMoved', ...mineRow);
     await sleep(150);
@@ -2091,7 +2126,7 @@ export const checks = {
     await p.click(await p.at('.objects-mine .menu-take'));
     await sleep(150);
     expect(await p.ev(`JSON.parse(localStorage.getItem('planx-my-objects')).map((o) => o.name).join()`), 'kept').toBe('Карточка,Чужой');
-    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'no longer the board\'s own only').toBe('Таймлайн | Форма | Голосование | Канбан | Мои объекты');
+    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'no longer the board\'s own only').toBe('Таймлайн | Форма | Голосование | Канбан | Заголовок | Мои объекты');
     await p.ev(`localStorage.removeItem('planx-my-objects')`);
   },
 

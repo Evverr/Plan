@@ -113,6 +113,8 @@ export interface Item {
   tdu?: boolean;
   /** A task's «Отмена» and «Завершить» shown at its foot («Показать кнопки» in its menu). */
   tbtn?: boolean;
+  /** Hidden («Скрыть объект», src/labs): not drawn, but picked as ever (its frame shows it then). */
+  hid?: boolean;
   /** A task without its «ЗАДАЧА» pill at the right of its top edge («Тег» unticked in its menu). */
   ntag?: boolean;
   /** A task kept open («Не сворачивать»): not closed by Esc, Cmd+Enter or a click elsewhere. */
