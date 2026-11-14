@@ -36,6 +36,8 @@ export function press(ed: Editor, e: PointerEvent): void {
   const keepTyping = typingIn?.type === 'table' && e.button === 0 && !!grabbableLine(ed, at, hitItem(ed.shown(), at, ed.cam.z), e.pointerType);
   if (keepTyping) e.preventDefault();
   else ed.stopEditing();
+  // (Moved by the arrow keys till now: a press, and it's as picked again, see Editor.nudged.)
+  ed.setNudged(false);
   // Same as in newItem: once someone works on the board, leave the camera to them.
   ed.needsFit = false;
   const sp = ed.local(e);

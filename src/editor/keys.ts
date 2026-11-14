@@ -88,6 +88,8 @@ export function onKeyDown(ed: Editor, e: KeyboardEvent): void {
     const dy = e.key === 'ArrowUp' ? -s : e.key === 'ArrowDown' ? s : 0;
     // «Копия стрелками» (src/labs): with Alt, a copy that way instead.
     if (e.altKey && labOn('arrowCopy')) { ed.duplicateArrow(dx, dy); return; }
+    // (No panel then, its frame faint, as dragged: see Editor.nudged.)
+    ed.setNudged(true);
     ed.board.transact(() => ed.selectedItems().filter((it) => !heldInPlace(it, ed.board.list())).forEach((it) => ed.board.update(it.id, { x: it.x + dx, y: it.y + dy })));
     return;
   }

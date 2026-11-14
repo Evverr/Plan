@@ -325,7 +325,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       // it's led out of a card of: its own.)
       g.target = t && t.id !== g.from && !t.tl && !ownKanban(t, g.from) ? t.id : null;
       // (The panel over what it's led out of fading out meanwhile, as when it's dragged.)
-      ed.setPicking(true);
+      ed.setLinking(true);
       ed.requestRender();
       return;
     }
@@ -696,6 +696,7 @@ export function cancelGesture(ed: Editor): void {
   ed.gesture = null;
   ed.setMoving(false);
   ed.setPicking(false);
+  ed.setLinking(false);
   ed.requestRender();
 }
 

@@ -223,7 +223,8 @@ export function App({ boardId }: { boardId: string }) {
   // it's by the new one at once, see below.)
   const lastPicked = useRef<string[]>([]), before = lastPicked.current.map((id) => board.get(id)).filter((i) => !!i);
   const rebuilds = labOn('panelOver') && labOn('panelGlide');
-  const selItems = !ui.picking ? picked : rebuilds && before.length && picked.length ? before : [];
+  // (None while a line's led out of what's picked, or it's moved by the arrow keys: see UIState.away.)
+  const selItems = ui.away ? [] : !ui.picking ? picked : rebuilds && before.length && picked.length ? before : [];
   useEffect(() => { if (!ui.picking) lastPicked.current = ui.selection; });
   const linkCount = ui.picking ? 0 : ui.selection.filter((id) => board.getLink(id)).length;
   const editing = ui.editingId ? board.get(ui.editingId) : undefined;

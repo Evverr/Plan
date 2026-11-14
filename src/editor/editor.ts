@@ -83,6 +83,9 @@ export interface UIState {
   moving: boolean;
   /** What's picked is still being picked: a box being drawn, or something just pressed, not let go yet. */
   picking: boolean;
+  /** What's picked shown without its panel: a line being led out of it, or it moved by the arrow keys
+   *  (see setNudged). */
+  away: boolean;
   cam: Camera;
   pens: Pens;
   /** Cells picked in the one selected table (by index, row by row). */
@@ -131,6 +134,10 @@ export class Editor {
   editingCell: number | null = null;
   moving = false;
   picking = false;
+  /** A line being led out of something (see UIState.away). */
+  linking = false;
+  /** What's picked moved by the arrow keys: no panel, its frame faint as dragged, till a press or another pick. */
+  nudged = false;
   pens: Pens = readPens();
   /** Whether the text overlay opens with all the text picked (to type over it) or the caret at its end. */
   editCaret: 'all' | 'end' = 'all';
@@ -277,7 +284,7 @@ export class Editor {
   };
 
   private snapshot(): UIState {
-    return { tool: this.tool, selection: [...this.selection], editingId: this.editingId, editingCell: this.editingCell, moving: this.moving, picking: this.picking, cam: { ...this.cam }, pens: this.pens,
+    return { tool: this.tool, selection: [...this.selection], editingId: this.editingId, editingCell: this.editingCell, moving: this.moving, picking: this.picking, away: this.linking || this.nudged, cam: { ...this.cam }, pens: this.pens,
       cells: this.cells, canUndo: this.board.undoManager.undoStack.length > 0 || this.outside.length > 0, canRedo: this.board.undoManager.redoStack.length > 0 };
   }
 
@@ -286,6 +293,21 @@ export class Editor {
     if (this.picking === picking) return;
     this.picking = picking;
     this.emit();
+  }
+
+  /** A line being led out of what's picked, or no longer (its panel away meanwhile). */
+  setLinking(on: boolean): void {
+    if (this.linking === on) return;
+    this.linking = on;
+    this.emit();
+  }
+
+  /** What's picked moved by the arrow keys, or no longer (see `nudged`). */
+  setNudged(on: boolean): void {
+    if (this.nudged === on) return;
+    this.nudged = on;
+    this.emit();
+    this.requestRender();
   }
 
   /** Shared: items are being moved or resized by hand, or no longer. */
@@ -728,8 +750,9 @@ export class Editor {
       underPicks: this.underlays.size ? (c) => this.underlays.forEach((d) => { c.save(); d(c); c.restore(); }) : undefined,
       guides: g?.type === 'drag' ? g.guides ?? [] : [],
       // (Only what this press picked: what was picked already keeps its frame and handle as it's moved.)
-      dragging: g?.type === 'drag' && !!g.fresh,
-      dragMoved: g?.type === 'drag' && !!g.fresh && g.moved,
+      // (Moved by the arrow keys, as dragged.)
+      dragging: (g?.type === 'drag' && !!g.fresh) || this.nudged,
+      dragMoved: (g?.type === 'drag' && !!g.fresh && g.moved) || this.nudged,
       kanbanDrop: drop,
       // («Канбан»: a card taken up over one, or out of one, a little tilted, see-through.)
       lifted: g?.type === 'drag' && g.moved && (drop || (labOn('kanban') && kanbanOf(this.board.list(), g.id)))
@@ -910,6 +933,8 @@ export class Editor {
     if (groups && labOn('groups')) {
       this.selection = withGroups(this.board.list(), this.selection);
     }
+    // (Something else picked: moved by the arrow keys no longer, see `nudged`.)
+    if (this.nudged && (was.length !== this.selection.size || was.some((id) => !this.selection.has(id)))) this.nudged = false;
     // The component being changed here is the last one worked in; someone else's stays theirs.
     const here = this.pickedComponent(this.board.list().filter((c) => c.comp && !c.stowed));
     if (here) this.compHere = here.id;
@@ -1970,6 +1995,7 @@ export class Editor {
       this.setMoving(false);
       endGesture(this, g, e);
       this.setPicking(false);
+      this.setLinking(false);
       // («Канбан»: what was let go in one, or out of one, in its place.)
       if (labOn('kanban')) tidyKanbans(this.board);
     }
