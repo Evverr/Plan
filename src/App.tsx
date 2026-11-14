@@ -312,6 +312,12 @@ export function App({ boardId }: { boardId: string }) {
     return () => clearTimeout(t);
   }, [panelOn]);
   const panelItem = panelNow ?? lastPanel.current;
+  // Opened by «T», it goes as it stood: where it stood and with its arrow back (else, as it fades out,
+  // it'd jump over what's picked and its buttons shift over).
+  const lastT = useRef<{ dock?: { cx: number; bottom: number } } | null>(null);
+  if (tMode) lastT.current = { dock: textMode?.dock };
+  else if (panelNow || !panelItem) lastT.current = null;
+  const tShape = tMode ? { dock: textMode?.dock } : lastT.current;
   // Asked to say yes (and, with `input`, a name first).
   // `only`: a note with just its button (no «Отмена»); `check`: a box under it, its state given to `ok`.
   const [ask, setAsk] = useState<{ text: string; action: string; ok: (value?: string, checked?: boolean) => void; input?: string; placeholder?: string; only?: boolean; check?: string; alt?: string; altRun?: () => void } | null>(null);
@@ -525,8 +531,8 @@ export function App({ boardId }: { boardId: string }) {
 
       {/* Typing in a table cell, the panel shows and sets that cell's own formatting. */}
       {/* A basic sticker's panel once its text is being typed, not on just picking it. */}
-      {panelItem && <TextPanel editor={editor} item={panelItem} leaving={!panelOn} after={performance.now() - overWent.current.at < PANEL_OUT} dock={tMode ? textMode?.dock : undefined}
-        onBack={tMode ? () => morphPanel('.tfmt', 'panel', () => setTextMode(null)) : undefined} />}
+      {panelItem && <TextPanel editor={editor} item={panelItem} leaving={!panelOn} after={performance.now() - overWent.current.at < PANEL_OUT} dock={tShape?.dock}
+        onBack={tShape ? () => { if (tMode) morphPanel('.tfmt', 'panel', () => setTextMode(null)); } : undefined} />}
 
       {/* Hidden while typing, but for a mind map node, which opens for typing on a single click, and a task
           but its description (its text panel there), so it doesn't come and go as its parts are typed in. */}

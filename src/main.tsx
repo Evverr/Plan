@@ -42,4 +42,7 @@ function Root() {
 keepMenusOnScreen();
 fadeOutPopups();
 keepLinksHere();
+// The panels' own font (Inter, its weights the panels use) fetched at once, not on a panel's first
+// showing: else its words change face as it comes in (the text panel's, say, at the end of «T»).
+for (const w of [500, 600, 700]) void document.fonts?.load(`${w} 1em Inter`, 'Аa');
 createRoot(document.getElementById('root')!).render(<Root />);
