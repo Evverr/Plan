@@ -83,8 +83,8 @@ export interface UIState {
   moving: boolean;
   /** What's picked is still being picked: a box being drawn, or something just pressed, not let go yet. */
   picking: boolean;
-  /** What's picked shown without its panel: a line being led out of it, or it moved by the arrow keys
-   *  (see setNudged). */
+  /** What's picked shown without its panel: a line being led out of it, it dragged, or moved by the arrow
+   *  keys (see setNudged). */
   away: boolean;
   cam: Camera;
   pens: Pens;
@@ -284,7 +284,7 @@ export class Editor {
   };
 
   private snapshot(): UIState {
-    return { tool: this.tool, selection: [...this.selection], editingId: this.editingId, editingCell: this.editingCell, moving: this.moving, picking: this.picking, away: this.linking || this.nudged, cam: { ...this.cam }, pens: this.pens,
+    return { tool: this.tool, selection: [...this.selection], editingId: this.editingId, editingCell: this.editingCell, moving: this.moving, picking: this.picking, away: this.linking || this.nudged || (this.moving && this.gesture?.type === 'drag'), cam: { ...this.cam }, pens: this.pens,
       cells: this.cells, canUndo: this.board.undoManager.undoStack.length > 0 || this.outside.length > 0, canRedo: this.board.undoManager.redoStack.length > 0 };
   }
 
@@ -750,9 +750,10 @@ export class Editor {
       underPicks: this.underlays.size ? (c) => this.underlays.forEach((d) => { c.save(); d(c); c.restore(); }) : undefined,
       guides: g?.type === 'drag' ? g.guides ?? [] : [],
       // (Only what this press picked: what was picked already keeps its frame and handle as it's moved.)
-      // (Moved by the arrow keys, as dragged.)
-      dragging: (g?.type === 'drag' && !!g.fresh) || this.nudged,
-      dragMoved: (g?.type === 'drag' && !!g.fresh && g.moved) || this.nudged,
+      // (Picked before and dragged: as one picked by the drag while it goes, its frame and handle back once
+      // let go. Moved by the arrow keys, as dragged too.)
+      dragging: (g?.type === 'drag' && (!!g.fresh || g.moved)) || this.nudged,
+      dragMoved: (g?.type === 'drag' && g.moved) || this.nudged,
       kanbanDrop: drop,
       // («Канбан»: a card taken up over one, or out of one, a little tilted, see-through.)
       lifted: g?.type === 'drag' && g.moved && (drop || (labOn('kanban') && kanbanOf(this.board.list(), g.id)))

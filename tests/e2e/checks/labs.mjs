@@ -1022,16 +1022,16 @@ export const checks = {
     expect((await p.rect('.panel-over .op-pop')).t > near.b, 'its palette below it').toBe(true);
     await p.click(await p.at('.panel-over button[aria-label="Цвет"]'));
     await sleep(100);
-    // Moved, it stays by it.
+    // Dragged, it's away; let go, it's by it again.
     await p.mouse('mouseMoved', 600, 80);
     await p.mouse('mousePressed', 600, 80);
     await p.mouse('mouseMoved', 640, 90);
     await p.mouse('mouseMoved', 660, 95);
     await sleep(100);
-    expect(!!(await p.rect('.panel-over:not(.gone)')), 'while it moves: there').toBe(true);
+    expect(!!(await p.rect('.panel-over:not(.gone)')), 'while it moves: away').toBe(false);
     await p.mouse('mouseReleased', 660, 95);
     await sleep(200);
-    expect(!!(await p.rect('.panel-over:not(.gone)')), 'let go: still there').toBe(true);
+    expect(!!(await p.rect('.panel-over:not(.gone)')), 'let go: there again').toBe(true);
     // The board moved: it stays, by the item.
     const was = await p.rect('.panel-over:not(.gone)');
     await p.ev(`(() => { const e = planx.editor; e.cam = { ...e.cam, x: e.cam.x + 20 }; e.camChanged(); })()`);

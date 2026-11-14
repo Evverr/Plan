@@ -140,7 +140,8 @@ export interface Scene {
   live?: boolean;
   /** What's picked by the press that's dragging it (or may): no handle or dots; no frame till it moves
    *  (`dragMoved`), then a faint one (DRAG_FRAME); unpicked once let go after a drag (see endGesture), a
-   *  click shows its frame at once. What was picked already keeps its frame and handle as it's moved. */
+   *  click shows its frame at once. What was picked already is shown so too once it moves, its frame and
+   *  handle back as it's let go (and so moved by the arrow keys, see Editor.nudged). */
   dragging?: boolean;
   dragMoved?: boolean;
   /** «Канбан»: the column a card being dragged would go into (lit as it's over it), and the line between
