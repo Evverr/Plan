@@ -101,7 +101,7 @@ function grow(a: HTMLElement | null, r: DOMRect, to: 'tfmt' | 'panel', swap: () 
         // for good on it, as it'd start again once it's no longer held back; its going away still plays,
         // see labs.css.)
         b.dataset.morphed = '';
-        b.style.opacity = '.004';
+        b.style.opacity = '0';
         delete root.dataset.morphIn;
         void b.offsetWidth;
         b.style.transition = `opacity ${IN}ms ease`;

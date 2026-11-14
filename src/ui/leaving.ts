@@ -28,9 +28,10 @@ export function fadeOutPopups(): void {
     for (const rec of records) {
       if (!rec.target.isConnected) continue;
       // (One taken off with what holds it, the panel it opens from, goes with it.)
-      // (Nor the panel over what's picked gone before it came in at all: never seen, see SelectionPanel.)
+      // (Nor the panel over what's picked gone before it came in at all: never seen, see SelectionPanel;
+      // nor one that's turned into another, «T»: what's on it faded out already, the body goes on.)
       for (const n of rec.removedNodes) {
-        if (n instanceof HTMLElement && !n.classList.contains('gone') && n.matches(POPUPS) && !(n.matches('.panel-over') && !('seen' in n.dataset))) fadeOut(n, rec.target, rec.nextSibling);
+        if (n instanceof HTMLElement && !n.classList.contains('gone') && n.matches(POPUPS) && !(n.matches('.panel-over') && !('seen' in n.dataset)) && !('morphOut' in n.dataset)) fadeOut(n, rec.target, rec.nextSibling);
       }
     }
   }).observe(document.body, { childList: true, subtree: true });

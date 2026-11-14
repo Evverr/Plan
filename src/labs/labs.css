@@ -315,10 +315,9 @@
 
 /* «Кнопка T» (textButton.ts): a panel turning into another shows only what's on it, over a body like
    theirs that takes the one's width and then the other's; the other comes in unseen, its coming in
-   done at once, till its buttons fade in. (Not quite unseen: the browser draws what's wholly unseen
-   only once it shows, and its icons, the first time, a frame late, a blink as they come in.) */
+   done at once, till its buttons fade in. */
 :root[data-morph-in="tfmt"] .tfmt:not(.gone), :root[data-morph-in="panel"] .bar.panel:not(.gone) {
-  opacity: .004 !important; animation-duration: 1ms !important; animation-delay: 0s !important; }
+  opacity: 0 !important; animation-duration: 1ms !important; animation-delay: 0s !important; }
 /* (Come in so, its own coming in never played after; its going away as ever.) */
 [data-morphed]:not(.leaving):not(.gone) { animation: none !important; }
 [data-morph] { background-color: transparent !important; box-shadow: none !important; border-color: transparent !important; }
