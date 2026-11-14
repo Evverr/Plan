@@ -8,7 +8,7 @@ import { coveredAt, hitItem, hitLink, instanceBounds, linkBox, linkHandles, link
 import { DOT_GAP, dotGap, HANDLE } from '../canvas/renderer';
 import { instanceGlyph, instancePlus } from '../model/components';
 import { taskButtonAt } from './tasks';
-import { onCodeCopy } from '../labs/codeBlock';
+import { CODE_BOTTOM, CODE_LEFT, CODE_PAD, CODE_TOP, onCodeCopy } from '../labs/codeBlock';
 import { onFormButton } from '../labs/formObject';
 import { pollHot } from '../labs/poll';
 import { kanbanHot } from '../labs/kanban';
@@ -254,7 +254,9 @@ export function clickTypes(it: Item | null | undefined, w: Point): boolean {
     const part = taskPartAt(it, w);
     return part === 'title' || part === 'desc';
   }
-  if (it.type === 'text' || (it.code && it.text)) return true;
+  if (it.type === 'text') return true;
+  // A block of code: where it's typed in (not its band with the language, its line numbers or its edges).
+  if (it.code) return !!it.text && w.x >= it.x + CODE_LEFT && w.x <= it.x + it.w - CODE_PAD && w.y >= it.y + CODE_TOP && w.y <= it.y + it.h - CODE_BOTTOM;
   if (!it.text?.trim() || it.rot) return false;
   // Its lines as laid out across it: down from its top, or in its middle.
   const pad = textPad(it), padY = textPadY(it), width = it.w - pad - textPadR(it);
