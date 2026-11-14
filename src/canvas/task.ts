@@ -182,7 +182,7 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
     const on = (cx: number, half: number) => Math.abs(q.x - cx) <= half + AROUND && Math.abs(q.y - MID) <= half + AROUND;
     if (on(15 + STATUS / 2, STATUS / 2)) return 'status';
     // Its right corner all opens or closes it: the arrow's column, and its «ЗАДАЧА» pill along the top edge.
-    if (q.x >= l.w - 47 || (q.y <= 10 && q.x >= l.w - 16 - PILL_W)) return 'arrow';
+    if (q.x >= l.w - 47 || (!it.ntag && q.y <= 10 && q.x >= l.w - 16 - PILL_W)) return 'arrow';
     const line = titleLine(it.text || 'Название задачи', l.title.w);
     return q.y >= l.title.y && q.y <= l.title.y + l.title.h && q.x >= l.title.x && q.x <= l.title.x + widthOf(line, TITLE_FS, 500) ? 'title' : 'head';
   }
@@ -449,21 +449,24 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
   ctx.lineWidth = 2;
   ctx.stroke();
   if (TITLE_FS * look.z < 2.5) return;
-  // At the right of its top edge, a pill saying what it is, of the edge's colour, in white.
-  ctx.font = font(9, 600, FAMILY);
-  ctx.letterSpacing = '0.5px';
-  // (Opening it on a click, as the arrow; a little stronger under the pointer.)
-  const tag = 'ЗАДАЧА', pw = ctx.measureText(tag).width + 12;
-  ctx.beginPath();
-  ctx.roundRect(x + l.w - 16 - pw, y + 1 - 7, pw, 14, 7);
-  ctx.fillStyle = mix(strong.startsWith('#') ? strong : '#003CFF', bg, 0.35 + 0.15 * litNow(`${it.id}:arrow`, hot === `task:${it.id}:arrow`));
-  ctx.fill();
-  ctx.fillStyle = '#FFFFFF';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  // (The letters' spacing comes after each, the last one's too: half of it back.)
-  ctx.fillText(tag, x + l.w - 16 - pw / 2 + 0.25, y + 1.5);
-  ctx.letterSpacing = '0px';
+  // At the right of its top edge, a pill saying what it is, of the edge's colour, in white (but «Тег»
+  // unticked in its menu).
+  if (!it.ntag) {
+    ctx.font = font(9, 600, FAMILY);
+    ctx.letterSpacing = '0.5px';
+    // (Opening it on a click, as the arrow; a little stronger under the pointer.)
+    const tag = 'ЗАДАЧА', pw = ctx.measureText(tag).width + 12;
+    ctx.beginPath();
+    ctx.roundRect(x + l.w - 16 - pw, y + 1 - 7, pw, 14, 7);
+    ctx.fillStyle = mix(strong.startsWith('#') ? strong : '#003CFF', bg, 0.35 + 0.15 * litNow(`${it.id}:arrow`, hot === `task:${it.id}:arrow`));
+    ctx.fill();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // (The letters' spacing comes after each, the last one's too: half of it back.)
+    ctx.fillText(tag, x + l.w - 16 - pw / 2 + 0.25, y + 1.5);
+    ctx.letterSpacing = '0px';
+  }
   const st = statusOf(it);
   // With subtasks, as far round as they're done (2 of 4, half); none yet, 5% (set, it's begun).
   const pr = progressOf(it);

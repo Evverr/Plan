@@ -130,6 +130,8 @@ export function TaskMenu({ editor }: { editor: Editor }) {
       {row('Блок с ответственными', people, () => set(people ? { tpp: undefined, boss: undefined, doer: undefined } : { tpp: true }))}
       {row('Дата завершения', due, () => set(due ? { tdu: undefined, due: undefined } : { tdu: true }))}
       {row('Кнопки', !!it.tbtn, () => set({ tbtn: it.tbtn ? undefined : true }))}
+      {/* Its «ЗАДАЧА» pill at the top right, or not. */}
+      {row('Тег', !it.ntag, () => set({ ntag: it.ntag ? undefined : true }))}
     </div>
   );
 }
