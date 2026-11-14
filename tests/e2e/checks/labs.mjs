@@ -2089,7 +2089,7 @@ export const checks = {
     await sleep(150);
     expect(await p.ev(`(localStorage.getItem('planx-my-objects') ?? '[]') + ' ' + !!planx.board.get('${comp.id}').obj + ' ' + planx.board.list().filter((i) => i.inst === '${comp.id}').length`), 'off the list, its instances there').toBe('[] true 3');
     await p.click(await p.at('.tools [data-key="objects"]'));
-    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'among the board\'s own now').toBe('Таймлайн | Форма | Голосование | Канбан | Объекты документа');
+    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'among the board\'s own now').toBe('Таймлайн | Форма | Голосование | Канбан | Заголовок | Объекты документа');
   },
 
   async '"Мои объекты" are kept in the browser: put on another board, a copy of the component comes along; another\'s object is kept with «+»'(p) {
@@ -2193,7 +2193,7 @@ export const checks = {
     await sleep(200);
     expect(await p.ev('[...planx.editor.selection].join()'), 'picked').toBe(a[2]);
     expect(await p.ev(`[...document.querySelectorAll('.context-menu .menu-row span')].map((s) => s.textContent).join(', ')`), 'its rows')
-      .toBe('Параметры, Комментарий, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Удалить');
+      .toBe('Параметры, Комментарий, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Скрыть объект, Удалить');
     await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.context-menu .menu-row')].find((b) => b.textContent === 'Удалить').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
     expect(await p.ev(`planx.board.get('${a[2]}') ?? null`), 'deleted').toBe(null);
     expect(await p.ev(`document.querySelectorAll('.context-menu').length`), 'and the menu gone').toBe(0);
@@ -2273,7 +2273,7 @@ export const checks = {
     await p.ev(`(() => { const e = planx.editor, { x, y } = e.toWorld(300, 300); planx.board.add(e.newItem('rect', x, y, { id: 'r', w: 200, h: 120, text: 'Фигура' })); })()`);
     const r = await p.ev(`(() => { const i = planx.board.get('r'), s = planx.editor.toScreen({ x: i.x + 30, y: i.y + 30 }); return [s.x, s.y]; })()`);
     await right(r);
-    expect(await rows(), 'parameters first').toBe('Параметры, Комментарий, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Удалить');
+    expect(await rows(), 'parameters first').toBe('Параметры, Комментарий, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Скрыть объект, Удалить');
     await pick('Параметры');
     expect(await p.ev(`!!document.querySelector('.params-pop .params-colors')`), 'the popup: colours').toBe(true);
     // In a small window what's in it scrolls inside: the popup itself stays, and its glass with it.

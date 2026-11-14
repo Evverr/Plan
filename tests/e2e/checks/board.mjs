@@ -224,6 +224,8 @@ export const checks = {
     await p.escape();
     await p.escape();
     await p.make('sticky', await screen(p, o.x + 400, o.y + 80));
+    // (Nothing picked: with the sticky picked, F would put a frame round it, «Фрейм вокруг выделенного».)
+    await p.ev('planx.editor.setSelection([])');
     await p.key('f', 'KeyF', 70);
     await p.drag(await screen(p, o.x + 40, o.y + 140), await screen(p, o.x + 300, o.y + 330));
     await p.escape();
@@ -693,6 +695,8 @@ export const checks = {
   },
 
   async 'a timeline is picked by a box drawn round it, or over its edge'(p) {
+    // (Without the header over it, «Заголовок в объектах», which a box round it takes in too.)
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('headerObject', false))()`);
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.addTimeline({ x: 1000, y: 800 }); e.setSelection([]); })()`);
     await sleep(200);
     const r = await p.ev(`(() => { const t = planx.board.list().find((i) => i.tl), a = planx.editor.toScreen({ x: t.x, y: t.y }), b = planx.editor.toScreen({ x: t.x + t.w, y: t.y + t.h }); return [a.x, a.y, b.x, b.y, t.w, t.h]; })()`);
@@ -1020,7 +1024,7 @@ export const checks = {
     expect([l.menu.x, l.pin, l.buttons].join(), 'its burger at its right, nothing else at its foot').toBe(`${l.w - 35},false,false`);
     await open();
     expect(await p.ev(`[...document.querySelectorAll('.task-pop .menu-row')].map((b) => b.textContent).join()`), 'its menu')
-      .toBe('Закрепить подробности,Описание,Подзадачи,Блок с ответственными,Дата завершения,Кнопки');
+      .toBe('Закрепить подробности,Описание,Подзадачи,Блок с ответственными,Дата завершения,Кнопки,Тег');
     await pick('Закрепить подробности');
     await open();
     await pick('Кнопки');
