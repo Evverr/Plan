@@ -324,6 +324,9 @@
 [data-morph]::before { opacity: 0 !important; }
 /* (Evenly, so it's at 30% as the body starts to take the other's size: SHIFT in textButton.ts.) */
 [data-morph-out] { opacity: 0 !important; transition: opacity .07s linear !important; }
+/* The two kept on a layer of their own: what's on one fading in isn't drawn anew once it's in (the
+   browser, doing so the first time, may show it a frame blank: a blink at the end). */
+:is(.tfmt, .bar.panel) { will-change: transform; }
 .panel-shell { position: fixed; z-index: 4; pointer-events: none; transition: left .2s ease-in-out, top .2s ease-in-out, width .2s ease-in-out, height .2s ease-in-out, box-shadow .2s ease; }
 :root[data-glass] .panel-shell { background-color: color-mix(in srgb, var(--panel-bg) 89%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 
