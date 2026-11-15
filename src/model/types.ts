@@ -116,6 +116,8 @@ export interface Item {
   /** A rectangle that's a header («Заголовок в объектах», src/labs/header.ts): its icon (`icon`, in its
    *  `color`), its title (its text) and its description (`desc`). */
   hd?: boolean;
+  /** A header stretched taller by hand: kept so, never shorter than what's in it takes. */
+  hdH?: boolean;
   /** Hidden («Скрыть объект», src/labs): not drawn, but picked as ever (its frame shows it then). */
   hid?: boolean;
   /** A task without its «ЗАДАЧА» pill at the right of its top edge («Тег» unticked in its menu). */

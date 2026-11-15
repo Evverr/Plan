@@ -241,8 +241,9 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       if (it.type === 'text' && !it.tb) nh = itemTextHeight(it, it.text, nw);
       // A task only wider or narrower, as tall as what's in it then (see canvas/task.ts).
       if (it.type === 'task') { nw = Math.max(it.tv ? 360 : TASK_MIN_W, nw); nh = taskSize(it, nw).h; }
-      // A header («Заголовок в объектах», src/labs) only wider or narrower, as tall as its title and description then.
-      if (it.hd) { nw = Math.max(HEADER_MIN_W, nw); nh = headerHeight(it, { w: nw }); }
+      // A header («Заголовок в объектах», src/labs): no shorter than its title and description take at its width
+      // (stretched taller, kept so: see headerFit).
+      if (it.hd) { nw = Math.max(HEADER_MIN_W, nw); nh = Math.max(sy ? nh : it.hdH ? it.h : 0, headerHeight(it, { w: nw })); }
       // Text wrapping onto more lines (or fewer) takes the text just under it along.
       const moves = pushedBelow(it, nh - it.h, board.list());
       board.transact(() => {
@@ -253,7 +254,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         const dt = !sy ? 0 : e.altKey ? (h0 - nh) / 2 : sy < 0 ? h0 - nh : 0;
         const at = resizedFrom(g.orig, nw, nh, dl, dt);
         // (A kanban's height set so by hand stays so, see kanbanLayout.)
-        board.update(g.id, { ...size, x: Math.round(at.x), y: Math.round(at.y), ...(it.kb && sy ? { kbH: true } : {}) });
+        board.update(g.id, { ...size, x: Math.round(at.x), y: Math.round(at.y), ...(it.kb && sy ? { kbH: true } : {}),
+          ...(it.hd && sy ? { hdH: nh > headerHeight(it, { w: nw }) || undefined } : {}) });
         moves.forEach((pt, k) => board.update(k, pt));
       });
       // A kanban («Канбан», src/labs): its columns and cards stretched with it as it goes.

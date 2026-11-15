@@ -34,6 +34,8 @@ export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect;
   return { icon: { x: 0, y: 0, w: ICON, h: ICON }, title: { x: TEXT_X, y: TITLE_Y, w, h: th }, desc: { x: TEXT_X, y: dy, w, h: dh }, h: Math.ceil(Math.max(ICON, dy + dh)) };
 }
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
+/** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
+export const headerFit = (it: Item, patch: Partial<Item> = {}): number => Math.max(headerHeight(it, patch), it.hdH ? it.h : 0);
 
 /** The part of it at board point `p`: its icon, title or description. */
 export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | null {

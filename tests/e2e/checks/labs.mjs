@@ -810,6 +810,16 @@ export const checks = {
     expect(taller > h.h + 25, 'two lines of title: its description pushed down').toBe(true);
     await p.ev(`(async () => { const l = await import('/src/labs/header.ts'), it = planx.board.get('${h.id}'); window.descY = l.headerLayout(it).desc.y; })()`);
     expect(await p.ev('descY') > 60, 'the description under the second line').toBe(true);
+    // Stretched taller by its corner: kept so; pulled up past what's in it, no shorter than that.
+    await p.ev(`planx.editor.setSelection(['${h.id}'])`);
+    await sleep(200);
+    const corner = async () => { const it = await p.ev(`(() => { const i = planx.board.get('${h.id}'), s = planx.editor.toScreen({ x: i.x + i.w, y: i.y + i.h }); return [s.x + 3, s.y + 3]; })()`); return it; };
+    let c = await corner();
+    await p.drag(c, [c[0], c[1] + 60]);
+    expect(await p.ev(`planx.board.get('${h.id}').h`), 'taller').toBe(taller + 120);
+    c = await corner();
+    await p.drag(c, [c[0], c[1] - 300]);
+    expect(await p.ev(`planx.board.get('${h.id}').h`), 'no shorter than what\'s in it').toBe(taller);
   },
 
   async '"Скрыть объект" and "Фрейм вокруг выделенного": hidden, not drawn but picked by a click or a box there; the frame tool with something picked, a frame round it'(p) {

@@ -15,7 +15,7 @@ import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoo
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
-import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerHeight, setHeaderTyping } from '../labs/header';
+import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, setHeaderTyping } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -1717,7 +1717,7 @@ export class Editor {
       if (it.hd) {
         // «Заголовок в объектах» (src/labs): its title or its description, as tall as they then take.
         setHeaderTyping(null);
-        const patch: Partial<Item> = cell === 0 ? { desc: value } : { text: value }, h = headerHeight(it, patch);
+        const patch: Partial<Item> = cell === 0 ? { desc: value } : { text: value }, h = headerFit(it, patch);
         if (value !== (cell === 0 ? it.desc ?? '' : it.text ?? '') || h !== it.h) this.board.update(id, { ...patch, h });
       } else if (it.type === 'task') {
         // Its title, its description or a subtask (see model/task.ts); as tall as it then takes.
@@ -1812,7 +1812,7 @@ export class Editor {
     // «Заголовок в объектах» (src/labs): as tall as what's typed takes, its description under its title.
     if (it?.hd) {
       setHeaderTyping(id, this.editingCell, text);
-      const h = headerHeight(it);
+      const h = headerFit(it);
       if (h !== it.h) this.board.update(id, { h });
       this.requestRender();
       return;
