@@ -108,10 +108,13 @@ export function titleLines(it: Item, w: number): string[] {
 }
 
 /** Its title on one line: cut off with "…" where it's wider than there's room for. */
-export function titleLine(text: string, w: number): string {
-  if (widthOf(text, TITLE_FS, 500) <= w) return text;
+export const titleLine = (text: string, w: number): string => oneLine(text, w, TITLE_FS, 500);
+
+/** Text on one line `w` wide at most: cut off with "…" where it's wider (a person's name, a date). */
+export function oneLine(text: string, w: number, fs: number, weight: number): string {
+  if (widthOf(text, fs, weight) <= w) return text;
   let n = text.length;
-  while (n > 0 && widthOf(text.slice(0, n).trimEnd() + '…', TITLE_FS, 500) > w) n--;
+  while (n > 0 && widthOf(text.slice(0, n).trimEnd() + '…', fs, weight) > w) n--;
   return text.slice(0, n).trimEnd() + '…';
 }
 
@@ -576,7 +579,8 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     ctx.font = font(TEXT_FS, 400, FAMILY);
     ctx.fillStyle = p ? look.ink : look.muted;
     ctx.globalAlpha = p ? 0.8 : 1;
-    ctx.fillText(p ? p.n : 'Не назначен', x + nx, y + row);
+    // (On one line, "…" past the card's edge.)
+    ctx.fillText(oneLine(p ? p.n : 'Не назначен', l.w - nx - PAD, TEXT_FS, 400), x + nx, y + row);
     ctx.globalAlpha = 1;
   };
   for (const { key, y: ry, under } of l.rows ?? []) {
@@ -590,7 +594,7 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
       ctx.font = font(TEXT_FS, 400, FAMILY);
       ctx.fillStyle = it.due ? look.ink : look.muted;
       ctx.globalAlpha = it.due ? 0.8 : 1;
-      ctx.fillText(it.due ? DATE(it.due) : 'Не задан', x + nx, y + vy);
+      ctx.fillText(oneLine(it.due ? DATE(it.due) : 'Не задан', l.w - nx - PAD, TEXT_FS, 400), x + nx, y + vy);
       ctx.globalAlpha = 1;
     }
   }

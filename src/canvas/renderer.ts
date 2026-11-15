@@ -258,6 +258,15 @@ function hiddenUnder(ctx: CanvasRenderingContext2D, it: Item, s: Scene, view: Re
   }
 }
 
+/** Text cut off with "…" to fit `max` wide at the context's font, on one line (a frame's or an instance's
+ *  name over it), not squeezed. */
+function fitText(ctx: CanvasRenderingContext2D, text: string, max: number): string {
+  if (ctx.measureText(text).width <= max) return text;
+  let n = text.length;
+  while (n > 0 && ctx.measureText(`${text.slice(0, n).trimEnd()}…`).width > max) n--;
+  return n ? `${text.slice(0, n).trimEnd()}…` : '';
+}
+
 /** Selection outlines and handles, the link dots and selected links. */
 const SELECT_COLOR = '#4DA3FF';
 
@@ -578,7 +587,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         const first = !!comp && firstInstance(comp, s.items)?.id === it.id;
         drawIcon(ctx, first || s.hotPlus === `glyph:${it.id}` ? 'component-solid' : 'component', b.x - 2, y - GLYPH + 1, GLYPH, COMPONENT_COLOR);
         // (Its name being typed in, «Переименовать»: the field over it instead.)
-        if (!editing) ctx.fillText(it.text ?? '', b.x + gap, y, Math.max(0, b.w - gap));
+        if (!editing) ctx.fillText(fitText(ctx, it.text ?? '', Math.max(0, b.w - gap)), b.x + gap, y);
         break;
       }
       const kin = it.comp;
@@ -613,7 +622,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         ctx.textBaseline = 'bottom';
         // A component's name after its icon, solid.
         if (kin) drawIcon(ctx, 'component-solid', it.x, it.y - 7 - GLYPH, GLYPH, COMPONENT_COLOR);
-        ctx.fillText(kin ? it.text ?? '' : it.text!, it.x + (kin ? GLYPH + 5 : 2), it.y - 8, it.w - (kin ? GLYPH + 3 : 0));
+        ctx.fillText(fitText(ctx, kin ? it.text ?? '' : it.text!, it.w - (kin ? GLYPH + 5 : 2)), it.x + (kin ? GLYPH + 5 : 2), it.y - 8);
       }
       break;
     }

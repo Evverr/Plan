@@ -28,6 +28,8 @@ const { PAD, LEFT, HEAD, IN, GAP: COL_GAP, ADD: ADD_W } = KB, CARD_GAP = 12, MIN
 /** A stage's pill: its middle's height in the header, how tall (its ends round), its text's size and the
  *  room round its text. */
 const PILL_Y = 28, PILL_H = 28, PILL_FS = 15, PILL_PAD = 12;
+/** Room kept right of a stage's pill for how many are in it. */
+const COUNT_W = 36;
 /** «Создать задачу»: as tall as a new task; its text's size. */
 const NEW_H = 52, NEW_FS = 16;
 
@@ -44,6 +46,15 @@ function pillW(name: string): number {
   if (!measure) return 100;
   measure.font = font(PILL_FS, 500);
   return measure.measureText(name).width + PILL_PAD * 2;
+}
+
+/** A stage's name as its pill shows it: cut off with "…" so the pill and its count keep to its column. */
+function pillName(f: Item, name: string): string {
+  const room = kanbanCol(f) - COUNT_W;
+  if (pillW(name) <= room) return name;
+  let n = name.length;
+  while (n > 1 && pillW(`${name.slice(0, n).trimEnd()}…`) > room) n--;
+  return `${name.slice(0, n).trimEnd()}…`;
 }
 export const KANBAN_RAD = 12;
 
@@ -205,7 +216,7 @@ export function headerAt(items: Item[], w: Point): { f: Item; part: { stage: num
     const a = addAt(f);
     if (Math.hypot(w.x - a.x, w.y - a.y) <= 16) return { f, part: 'add' };
     // On a stage's pill; elsewhere in the header, the header (the whole kanban's taken by it).
-    const py = f.y + PILL_Y, i = (f.kb ?? []).findIndex((s, n) => { const c = columns(f)[n]; return w.x >= c.x && w.x <= c.x + pillW(s.n) && Math.abs(w.y - py) <= PILL_H / 2 + 2; });
+    const py = f.y + PILL_Y, i = (f.kb ?? []).findIndex((s, n) => { const c = columns(f)[n]; return w.x >= c.x && w.x <= c.x + pillW(pillName(f, s.n)) && Math.abs(w.y - py) <= PILL_H / 2 + 2; });
     return { f, part: i >= 0 ? { stage: i } : 'head' };
   }
   return null;
@@ -317,7 +328,7 @@ export function drawKanban(ctx: CanvasRenderingContext2D, f: Item, get: (id: str
     // (The columns aren't drawn: all on the white, the stages over them show where they are.)
     const c = cols[i];
     // The stage: its pill, round at its ends, in its pastel colour, then how many.
-    const pw = pillW(s.n), py = f.y + PILL_Y;
+    const name = pillName(f, s.n), pw = pillW(name), py = f.y + PILL_Y;
     ctx.beginPath();
     ctx.roundRect(c.x, py - PILL_H / 2, pw, PILL_H, PILL_H / 2);
     ctx.fillStyle = STAGE_TINTS[s.c] ?? STAGE_TINTS.gray;
@@ -327,7 +338,7 @@ export function drawKanban(ctx: CanvasRenderingContext2D, f: Item, get: (id: str
     ctx.font = font(PILL_FS, 500);
     ctx.fillStyle = '#1C1F26';
     ctx.textAlign = 'left';
-    ctx.fillText(s.n, c.x + PILL_PAD, py);
+    ctx.fillText(name, c.x + PILL_PAD, py);
     ctx.font = font(PILL_FS, 400);
     ctx.fillStyle = look.muted;
     ctx.fillText(String(counts[i]), c.x + pw + 12, py);
