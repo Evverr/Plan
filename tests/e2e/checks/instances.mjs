@@ -176,15 +176,15 @@ export const checks = {
     expect(await selected(p), 'the child still picked').toBe('instance~a');
   },
 
-  async 'a picked instance is stretched by its corner, its contents keeping to their sides'(p) {
+  async 'a picked instance is stretched by its corner, its contents about half as wide growing in step'(p) {
     const at = await fixture(p);
     await p.click([390, 330]);
     // The contents run from (340, 290) to (590, 370) on screen; the handle is just past that corner.
     await p.drag([593, 373], [693, 433]);
     const r = await p.ev(`['instance~a', 'instance~b', 'a'].map((id) => { const i = planx.board.get(id); return [i.x, i.y, i.w, i.h]; })`);
-    // Both as tall as the contents: they stretch down with it.
-    expect(r[0].join(), 'the left one stays at the left, taller').toBe([at.x + 40, at.y + 40, 100, 140].join());
-    expect(r[1][0] - (at.x + 190), 'the right one goes right with the corner').toBeNear(100);
+    // Both as tall as the contents: they stretch down with it. Each two fifths as wide: wider in step (250 to 350).
+    expect(r[0].join(), 'the left one stays at the left, taller, wider in step').toBe([at.x + 40, at.y + 40, 140, 140].join());
+    expect(r[1][0] - (at.x + 190), 'the right one goes right in step').toBeNear(60);
     expect(r[1][3], 'and taller too').toBe(140);
     expect(r[2].join(), 'the component unchanged').toBe([at.x - 1460, at.y + 40, 100, 80].join());
     expect(await p.ev(`JSON.stringify(planx.board.get('instance').grow)`), 'how much it grew').toBe('{"w":100,"h":60}');

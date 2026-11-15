@@ -42,30 +42,45 @@ export const around = (rs: Item[]) => {
   return { x, y, w: Math.max(...rs.map((r) => r.x + r.w)) - x, h: Math.max(...rs.map((r) => r.y + r.h)) - y };
 };
 
+/** How big, of what a component holds, something about half its size is (to half): it grows in step. */
+const HALF_ISH = 0.4;
+
 /**
  * Where an item of a component goes in an instance stretched by `grow` beyond `box`, what the
  * component holds. One more than half as wide as that stretches across with it, keeping its distance
  * to both sides (text too, wrapping anew); more than half as tall, up and down (but text, tasks, tables
- * and mind maps, sized by what's in them). Otherwise it keeps its size and keeps to a side: text to
- * the one it's aligned to, anything else to the side or middle it's nearest to (by the thirds of the box).
+ * and mind maps, sized by what's in them). One about half as wide (or tall) grows in step with it, as
+ * far from the side in step too. Otherwise it keeps its size and keeps to a side: text to the one it's
+ * aligned to, anything else to the side or middle it's nearest to (by the thirds of the box). Text drawn
+ * as a box («Текст рамкой», src/labs) goes as a rectangle does.
  */
 export function stretched(it: Item, box: { x: number; y: number; w: number; h: number }, grow: { w: number; h: number }): Pick<Item, 'x' | 'y' | 'w' | 'h'> {
   // Text stretches across (wrapping anew), not down.
-  const fixed = it.type === 'task' || it.type === 'table' || it.type === 'mind', fixedDown = fixed || it.type === 'text';
+  const text = it.type === 'text' && !it.tb;
+  const fixed = it.type === 'task' || it.type === 'table' || it.type === 'mind', fixedDown = fixed || text;
   const along = (at: number, size: number, from: number, all: number, more: number) => {
     const c = at + size / 2 - from;
     return at + (c < all / 3 ? 0 : c > (all * 2) / 3 ? more : more / 2);
   };
+  // (About half: in step, where it is and how big.)
+  const inStep = (at: number, size: number, from: number, all: number, more: number) => {
+    const k = (all + more) / all;
+    return { at: Math.round(from + (at - from) * k), size: Math.max(10, Math.round(size * k)) };
+  };
   const across = (): { x: number; w: number } => {
     if (!fixed && it.w > box.w / 2) return { x: it.x, w: Math.max(10, it.w + grow.w) };
-    if (it.type === 'text') {
+    if (text) {
       const a = alignOf(it);
       return { x: it.x + (a === 'left' ? 0 : a === 'right' ? grow.w : grow.w / 2), w: it.w };
     }
+    if (!fixed && it.w >= box.w * HALF_ISH) { const s = inStep(it.x, it.w, box.x, box.w, grow.w); return { x: s.at, w: s.size }; }
     return { x: along(it.x, it.w, box.x, box.w, grow.w), w: it.w };
   };
-  const down = (): { y: number; h: number } =>
-    !fixedDown && it.h > box.h / 2 ? { y: it.y, h: Math.max(10, it.h + grow.h) } : { y: along(it.y, it.h, box.y, box.h, grow.h), h: it.h };
+  const down = (): { y: number; h: number } => {
+    if (!fixedDown && it.h > box.h / 2) return { y: it.y, h: Math.max(10, it.h + grow.h) };
+    if (!fixedDown && it.h >= box.h * HALF_ISH) { const s = inStep(it.y, it.h, box.y, box.h, grow.h); return { y: s.at, h: s.size }; }
+    return { y: along(it.y, it.h, box.y, box.h, grow.h), h: it.h };
+  };
   return { ...across(), ...down() };
 }
 

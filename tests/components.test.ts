@@ -144,6 +144,17 @@ describe('a stretched instance', () => {
     expect(at('tag')).toEqual([150, 90, 60, 20]);
   });
 
+  it('grows what is about half of it in step, text drawn as a box as a rectangle', () => {
+    // As wide as it all, a little under half as tall, at the top; a box of text the same at the bottom.
+    const top = item('top', 0, 0, { type: 'rect', w: 300, h: 90 }), low = item('low', 0, 110, { type: 'text', tb: true, w: 300, h: 90 });
+    const c = { ...comp, members: ['top', 'low'] };
+    const ops = syncOps([c, top, low, inst], [], (it) => it.h);
+    const at = (id: string) => { const x = ops.add.find((i) => i.id === `i~${id}`)!; return [x.x - 1000, x.y, x.w, x.h]; };
+    // 200 tall grown to 260: 1.3 times.
+    expect(at('top')).toEqual([0, 0, 400, 117]);
+    expect(at('low')).toEqual([0, 143, 400, 117]);
+  });
+
   it('text that wraps anew as the instance is stretched takes the text just under it along', () => {
     const head = item('head', 20, 20, { type: 'text', w: 220, h: 40 }), sub = item('sub', 20, 70, { type: 'text', w: 100, h: 20 });
     const far = item('far', 20, 150, { type: 'text', w: 100, h: 20 });
