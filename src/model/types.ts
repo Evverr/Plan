@@ -386,7 +386,8 @@ export const DEFAULTS: Record<ItemType, Partial<Item> & { w: number; h: number }
   table: { w: 360, h: 120, fs: 14 },
   audio: { w: 300, h: 64 },
   polygon: { w: 160, h: 150, color: 'purple', fs: 16, text: '' },
-  mind: { w: 200, h: 56, fs: 18, text: '' },
+  // (A new mind map with round ends, «Круглые края» on its central topic: switched off in its menu.)
+  mind: { w: 200, h: 56, fs: 18, text: '', mrd: true },
   // («Документ»: a sheet of A4, its text from the top.)
   page: { w: PAGE.W, h: PAGE.H, fs: 16, text: '', va: 'top' },
 };
