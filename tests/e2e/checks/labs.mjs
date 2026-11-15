@@ -780,12 +780,14 @@ export const checks = {
   async '"Титул в объектах": an icon, a title and a description, one item; one over a new kanban, its title and icon; its icon double clicked, another to take; its title typed longer or it narrower, its description pushed down'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('header', { x: 400, y: 200 }); })()`);
     await sleep(300);
-    const headers = () => p.ev(`planx.board.list().filter((i) => i.hd).map((h) => [h.icon, h.text, h.desc.split(',')[0]].join(' / '))`);
+    const headers = () => p.ev(`planx.board.list().filter((i) => i.hd).map((h) => [h.icon, h.text, (h.desc ?? '-').split(',')[0]].join(' / '))`);
     expect((await headers()).join(), 'its parts').toBe('kanban / Заголовок / Здесь идет описание заголовка');
     await p.ev(`(() => { planx.editor.setSelection([]); planx.editor.addKanban({ x: 1200, y: 900 }); })()`);
     await sleep(300);
-    expect((await headers())[1], 'over the kanban').toBe('kanban / Канбан / Здесь идет описание заголовка');
+    expect((await headers())[1], 'over the kanban').toBe('kanban / Канбан / -');
     expect(await p.ev(`(() => { const l = planx.board.list(), k = l.find((i) => i.kb), h = l.filter((i) => i.hd)[1]; return [h.x === k.x, k.y - h.y - h.h, planx.editor.selection.has(k.id)].join(); })()`), 'over its left, 24 off; the kanban picked').toBe('true,24,true');
+    // Tied to it: picked, moved, copied and deleted with it; a double click on it, it alone.
+    expect(await p.ev(`(() => { const e = planx.editor, l = planx.board.list(), k = l.find((i) => i.kb), h = l.filter((i) => i.hd)[1]; const r = [h.tie === k.id, e.selection.has(h.id), h.h <= 40]; e.setSelection([k.id], false); r.push(e.dragSet(planx.board.list()).has(h.id)); e.setSelection([k.id]); e.duplicate(); const l2 = planx.board.list(), k2 = l2.filter((i) => i.kb)[1], h2 = l2.filter((i) => i.hd)[2]; r.push(!!k2 && h2?.tie === k2.id); e.setSelection([h2.id]); e.deleteSelection(); r.push(!planx.board.get(k2.id)); return r.join(); })()`), 'tied').toBe('true,true,true,true,true,true');
     await p.ev(`(() => { planx.editor.setSelection([]); window.swapped = []; addEventListener('planx:swap', (e) => swapped.push(e.detail)); })()`);
     const h = await p.ev(`(() => { const h = planx.board.list().find((i) => i.hd); return { id: h.id, x: h.x, y: h.y, w: h.w, h: h.h }; })()`);
     const dbl = async (wx, wy) => {
@@ -2207,7 +2209,7 @@ export const checks = {
     expect(await p.ev(`planx.board.get('${tl.id}').members.includes('st')`), 'held by it').toBe(true);
     // Its left side moved two days on: it starts two days later, there, what's on it staying.
     const stX = await p.ev(`planx.board.get('st').x`);
-    await p.ev(`(() => { const e = planx.editor, t = planx.board.get('${tl.id}'); e.cam = { x: 200 - t.x * 0.5, y: 300 - t.y * 0.5, z: 0.5 }; e.camChanged(); e.setSelection(['${tl.id}']); })()`);
+    await p.ev(`(() => { const e = planx.editor, t = planx.board.get('${tl.id}'); e.cam = { x: 200 - t.x * 0.5, y: 300 - t.y * 0.5, z: 0.5 }; e.camChanged(); e.setSelection(['${tl.id}'], false); })()`);
     await sleep(100);
     const left = await p.ev(`(() => { const t = planx.board.get('${tl.id}'), s = planx.editor.toScreen({ x: t.x + 1, y: t.y + t.h / 4 }); return [s.x, s.y]; })()`);
     await p.mouse('mouseMoved', left[0], left[1]);

@@ -7,7 +7,8 @@ import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
  * rectangle with `hd`; its title its text, its description `desc`, its icon `icon` in its colour). As
  * wide as it's stretched, as tall as they take: the description stands right under the title, pushed
  * down as the title takes more lines. A double click on the icon takes another, on the title or the
- * description types in it. A new timeline or kanban has one over it, its title and icon theirs.
+ * description types in it. A new timeline or kanban has one over it, its title and icon theirs, no
+ * description, tied to it (`tie`): one with it, never apart.
  */
 export const HEADER_NAME = 'Заголовок';
 export const HEADER_DESC = 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.';
@@ -30,18 +31,27 @@ const descOf = (it: Item) => (typing?.id === it.id && typing.cell === 0 ? typing
 export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect; title: Rect; desc: Rect; h: number } {
   const a = { ...it, ...patch }, w = Math.max(40, a.w - TEXT_X);
   const th = textBlockHeight(titleOf(a) || ' ', w, TITLE_FS, { weight: 700 }), dy = TITLE_Y + th + DESC_GAP;
-  const dh = textBlockHeight(descOf(a) || ' ', w, DESC_FS);
-  return { icon: { x: 0, y: ICON_Y, w: ICON, h: ICON }, title: { x: TEXT_X, y: TITLE_Y, w, h: th }, desc: { x: TEXT_X, y: dy, w, h: dh }, h: Math.ceil(Math.max(ICON, dy + dh)) };
+  // (Tied to a kanban or timeline: no description.)
+  const dh = a.tie ? 0 : textBlockHeight(descOf(a) || ' ', w, DESC_FS);
+  return { icon: { x: 0, y: ICON_Y, w: ICON, h: ICON }, title: { x: TEXT_X, y: TITLE_Y, w, h: th }, desc: { x: TEXT_X, y: dy, w, h: dh }, h: Math.ceil(Math.max(ICON + ICON_Y, a.tie ? TITLE_Y + th : dy + dh)) };
 }
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
 /** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
 export const headerFit = (it: Item, patch: Partial<Item> = {}): number => Math.max(headerHeight(it, patch), it.hdH ? it.h : 0);
 
+/** These ids with what each is tied to (a header and its kanban or timeline, `tie`). */
+export function withTies(items: Item[], ids: Set<string>): Set<string> {
+  if (!items.some((i) => i.tie)) return ids;
+  const out = new Set(ids);
+  for (const i of items) if (i.tie && (ids.has(i.id) || ids.has(i.tie))) { out.add(i.id); out.add(i.tie); }
+  return out;
+}
+
 /** The part of it at board point `p`: its icon, title or description. */
 export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | null {
   const l = headerLayout(it), x = p.x - it.x, y = p.y - it.y;
   const on = (r: Rect) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
-  return on(l.icon) ? 'icon' : on(l.title) ? 'title' : y >= l.desc.y && x >= l.desc.x ? 'desc' : null;
+  return on(l.icon) ? 'icon' : on(l.title) ? 'title' : !it.tie && y >= l.desc.y && x >= l.desc.x ? 'desc' : null;
 }
 
 /** Where a part's typed in (null its title, 0 its description), for the text overlay. */
@@ -63,5 +73,5 @@ export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string,
     wrapText(text, r.w, (t) => ctx.measureText(t).width).forEach((line, i) => ctx.fillText(line, it.x + r.x, it.y + r.y + lh * i + lh / 2));
   };
   if (cell !== null) lines(it.text ?? '', l.title, TITLE_FS, 700);
-  if (cell !== 0) lines(it.desc ?? '', l.desc, DESC_FS, 400);
+  if (cell !== 0 && !it.tie) lines(it.desc ?? '', l.desc, DESC_FS, 400);
 }

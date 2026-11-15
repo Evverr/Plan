@@ -15,7 +15,7 @@ import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoo
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
-import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping } from '../labs/header';
+import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, withTies } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -664,7 +664,8 @@ export class Editor {
   /** «Титул в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its
    *  left, its title and icon theirs (as Женя's over a timeline or kanban), what's picked left as it is. */
   addHeader(c: Point, over?: { item: Item; title: string; icon: string; color: string }): void {
-    const look = { hd: true, text: over?.title ?? HEADER_NAME, desc: HEADER_DESC, icon: over?.icon ?? 'kanban', color: over?.color ?? 'blue', sc: 'none' };
+    // (Over one, tied to it, with no description.)
+    const look = { hd: true, text: over?.title ?? HEADER_NAME, ...(over ? { tie: over.item.id } : { desc: HEADER_DESC }), icon: over?.icon ?? 'kanban', color: over?.color ?? 'blue', sc: 'none' };
     const h = headerHeight({ id: '', type: 'rect', x: 0, y: 0, w: HEADER_W, h: 0, z: 0, ...look });
     const x = over ? over.item.x : Math.round(c.x - HEADER_W / 2), y = over ? over.item.y - HEADER_GAP - h : Math.round(c.y - h / 2);
     const it = this.newItem('rect', x, y, { ...look, w: HEADER_W, h });
@@ -959,6 +960,8 @@ export class Editor {
     if (groups && labOn('groups')) {
       this.selection = withGroups(this.board.list(), this.selection);
     }
+    // A header and the kanban or timeline it's tied to (src/labs/header.ts), as one (but a double click in).
+    if (groups) this.selection = withTies(this.board.list(), this.selection);
     // (Something else picked: moved by the arrow keys no longer, see `nudged`.)
     if (this.nudged && (was.length !== this.selection.size || was.some((id) => !this.selection.has(id)))) this.nudged = false;
     // The component being changed here is the last one worked in; someone else's stays theirs.
@@ -1070,7 +1073,8 @@ export class Editor {
 
   deleteSelection(sure = false): void {
     // Locked items stay (and stay selected), and what's in a locked frame; what's in an instance goes only with it.
-    const ids = new Set([...this.selection].filter((id) => !heldInPlace(this.board.get(id), this.board.list()) && !this.board.get(id)?.host));
+    // (A header and what it's tied to, src/labs/header.ts, only together.)
+    const ids = new Set([...withTies(this.board.list(), this.selection)].filter((id) => !heldInPlace(this.board.get(id), this.board.list()) && !this.board.get(id)?.host));
     if (!ids.size) return;
     // A component's last instance going takes the component with it, once that's been said yes to.
     const all = this.board.list();
@@ -1373,7 +1377,8 @@ export class Editor {
   /** «Титул в объектах» (src/labs/header.ts), «Отвязать от объекта»: each picked one its icon, title and
    *  description, each an item of its own where it was (the texts as boxes), picked. */
   detachHeaders(): void {
-    const heads = this.selectedItems().filter((i) => i.hd);
+    // (Not one tied to a kanban or timeline: that stays one with it.)
+    const heads = this.selectedItems().filter((i) => i.hd && !i.tie);
     if (!heads.length) return;
     const freed: Item[] = [];
     for (const it of heads) {
@@ -1491,7 +1496,8 @@ export class Editor {
 
   /** What's picked, with the links among them, as copied. */
   private copyData(): string | null {
-    const items = this.withCopies(this.selectedItems());
+    // (A header and what it's tied to, src/labs/header.ts, only together.)
+    const items = this.withCopies([...withTies(this.board.list(), this.selection)].map((id) => this.board.get(id)).filter((i): i is Item => !!i));
     if (!items.length) return null;
     const ids = new Set(items.map((i) => i.id));
     return JSON.stringify({ items, links: this.board.linkList().filter((l) => ids.has(l.from) && ids.has(l.to)) });
@@ -1948,7 +1954,9 @@ export class Editor {
   /** Shared: the selected items plus what the selected frames hold (but those locked in place). */
   dragSet(items: Item[]): Map<string, Point> {
     // What's in an instance moves only with it: one picked in it takes the whole instance along.
-    const sel = new Map(items.filter((i) => this.selection.has(i.id)).map((i) => i.host ? this.board.get(i.host) : i)
+    // (A header and what it's tied to, src/labs/header.ts, only together.)
+    const picked = withTies(items, this.selection);
+    const sel = new Map(items.filter((i) => picked.has(i.id)).map((i) => i.host ? this.board.get(i.host) : i)
       .filter((i): i is Item => !!i && !heldInPlace(i, items)).map((i) => [i.id, i]));
     return carried(this.board, [...sel.values()], items);
   }

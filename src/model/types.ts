@@ -118,6 +118,9 @@ export interface Item {
   hd?: boolean;
   /** A header stretched taller by hand: kept so, never shorter than what's in it takes. */
   hdH?: boolean;
+  /** A header over a kanban or timeline, its id: one with it, picked, moved, copied and deleted with
+   *  it, never apart; no description. */
+  tie?: string;
   /** Hidden («Скрыть объект», src/labs): not drawn, but picked as ever (its frame shows it then). */
   hid?: boolean;
   /** A task without its «ЗАДАЧА» pill at the right of its top edge («Тег» unticked in its menu). */

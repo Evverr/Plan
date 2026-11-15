@@ -525,6 +525,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         // "Замена двойным кликом": an emoji, an icon or a shape shows its neighbours, a shape opening for
         // typing too (unless that was the instance it's in being entered).
         // A header («Титул в объектах», src/labs): its icon another to take, its title or description typed in.
+        // A kanban or timeline picked with the header tied to it: it alone (to be stretched, set).
+        if (it && !it.hd && ed.selection.size === 2 && board.list().some((h) => h.tie === it.id && ed.selection.has(h.id))) { ed.setSelection([it.id], false); return; }
         if (it?.hd) {
           const part = headerPartAt(it, g.start);
           if (part === 'icon' && swapKind(it)) openSwap(g.id);

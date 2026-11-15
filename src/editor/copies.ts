@@ -31,6 +31,8 @@ export function copiesOf(src: Item[], srcLinks: Link[], offset: number, maxZ: nu
     if (whole) { it.inst = mapped(it.inst); it.from = mapped(it.from); }
     if (it.members) it.members = it.members.map((m) => map.get(m)).filter((m): m is string => !!m);
     if (it.gp) it.gp = groups(it.gp);
+    // (A header tied to what's copied with it, tied to its copy; without it, its own.)
+    if (it.tie) it.tie = map.get(it.tie);
     return it;
   });
   // A link copied with its instance is named as the instance's sync names it.
