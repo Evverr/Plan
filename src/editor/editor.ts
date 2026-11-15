@@ -47,7 +47,7 @@ import { zoomsWithKey } from '../labs/wheelZoom';
 import { codeFit, scrollCode } from '../labs/codeBlock';
 import { FORM_H, FORM_RAD, FORM_W } from '../labs/formObject';
 import { POLL_RAD, POLL_W, pollLayout } from '../labs/poll';
-import { FIRST_STAGES, dropTarget, kanbanSize, snaps, tidyKanbans } from '../labs/kanban';
+import { FIRST_STAGES, dropTarget, kanbanSize, newCardBox, snaps, tidyKanbans } from '../labs/kanban';
 import { closeTask, fitTask, freshTask, renewTasks, taskTextPatch } from '../model/task';
 import { setTaskRedraw } from '../canvas/task';
 import { outSide, setTabsRedraw, towardOffset, type TabAims } from '../labs/sideTabs';
@@ -659,6 +659,17 @@ export class Editor {
     this.board.endGesture();
     this.setTool('select');
     this.setSelection([it.id]);
+  }
+
+  /** «Канбан» (src/labs): a new task where its «Создать задачу» is, under the first stage's cards, typed in. */
+  addKanbanTask(f: Item): void {
+    const b = newCardBox(f, (id) => this.board.get(id));
+    if (!b) return;
+    const it = this.newItem('task', b.x, b.y, { w: b.w, h: b.h });
+    this.addItem(it);
+    this.setTool('select');
+    this.setSelection([it.id]);
+    this.startEditing(it.id);
   }
 
   /** «Титул в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its

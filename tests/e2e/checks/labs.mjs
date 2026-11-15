@@ -878,6 +878,21 @@ export const checks = {
     expect(await p.ev(`(() => { const f = planx.board.get('${k.id}'), t = planx.board.get([...planx.editor.selection][0]); return f.members.includes(t.id) && t.x > planx.board.get('t').x; })()`), 'one in the next column').toBe(true);
   },
 
+  async '"Канбан в объектах": «Создать задачу» under the first stage\'s cards: a click, a task there, typed in; it goes on under it'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.8 }; e.camChanged(); e.addKanban({ x: 700, y: 400 }); e.setSelection([]); })()`);
+    await sleep(200);
+    const box = async () => { const b = await p.ev(`(async () => { const k = await import('/src/labs/kanban.ts'), f = planx.board.list().find((i) => i.kb); return k.newCardBox(f, (id) => planx.board.get(id)); })()`); return b; };
+    const b = await box();
+    expect(b.h, 'as tall as a task').toBe(52);
+    await p.click([(b.x + b.w / 2) * 0.8, (b.y + b.h / 2) * 0.8]);
+    await sleep(200);
+    expect(await p.ev(`(() => { const e = planx.editor, t = planx.board.get(e.editingId), f = planx.board.list().find((i) => i.kb); return [t?.type, t?.x === ${b.x} && t?.y === ${b.y}, f.members.includes(t?.id), [...e.selection].join() === t?.id].join(); })()`), 'a task there, in it, typed in').toBe('task,true,true,true');
+    await p.ev(`(() => { const t = document.querySelector('.text-edit'); t.value = 'Первая'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await p.escape();
+    await sleep(300);
+    expect((await box()).y, 'it under the new one').toBe(b.y + 52 + 12);
+  },
+
   async '"Канбан в объектах": its «+» adds a stage; a stage\'s pill opens its menu: renamed, recoloured, moved'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.8 }; e.camChanged(); e.addKanban({ x: 700, y: 400 }); e.setSelection([]); })()`);
     await sleep(200);

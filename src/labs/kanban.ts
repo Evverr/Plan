@@ -12,7 +12,8 @@ import { labOn } from './labs';
  * among those there; each column's cards stand one under another, a gap between, so one opened (taller)
  * pushes those under it down, and one taken out closes the gap. Rectangles take the column's width. Laid
  * out again after each change made here (see tidyKanbans), not while something's being dragged; the
- * frame as tall as its longest column.
+ * frame as tall as its longest column. Under the first stage's cards, «Создать задачу»: a frame as big
+ * as a task, a click on it a new task there, typed in.
  */
 
 export interface Stage { n: string; c: string }
@@ -26,6 +27,8 @@ const { PAD, LEFT, HEAD, IN, GAP: COL_GAP, ADD: ADD_W } = KB, CARD_GAP = 12, MIN
 /** A stage's pill: its middle's height in the header, how tall (its ends round), its text's size and the
  *  room round its text. */
 const PILL_Y = 28, PILL_H = 28, PILL_FS = 15, PILL_PAD = 12;
+/** «Создать задачу»: as tall as a new task; its text's size. */
+const NEW_H = 52, NEW_FS = 16;
 
 /** The stages' colours: pastel, lighter than the board's fills (by their name there). */
 export const STAGE_TINTS: Record<string, string> = {
@@ -86,6 +89,8 @@ export function kanbanLayout(board: Board, f: Item, items: Item[]): Map<string, 
       if (at.x !== c.x || at.y !== c.y || at.w !== c.w || at.h !== c.h) out.set(c.id, at);
       y += h + CARD_GAP;
     }
+    // (Under the first stage's, «Создать задачу».)
+    if (i === 0) y += NEW_H + CARD_GAP;
     tall = Math.max(tall, y - CARD_GAP - cols[i].y - IN);
   });
   const least = kanbanSize(cols.length, tall, KB.MIN_COL), kept = f.kbH && f.h >= least.h;
@@ -143,6 +148,25 @@ export function dropTarget(items: Item[], it: Item | undefined, skip: Set<string
   return { id: f.id, col, x: c.x, w: c.w, y: last && next ? last.y + last.h + CARD_GAP / 2 : null };
 }
 
+/** «Создать задачу» under the first stage's cards (as they stand now: a card dragged off it, not under it). */
+export function newCardBox(f: Item, get: (id: string) => Item | undefined): { x: number; y: number; w: number; h: number } | null {
+  const c = columns(f)[0];
+  if (!c) return null;
+  let y = c.y + IN;
+  for (const id of f.members ?? []) { const it = get(id); if (it && snaps(it) && columnOf(f, it.x + it.w / 2) === 0) y = Math.max(y, it.y + it.h + CARD_GAP); }
+  return { x: Math.round(c.x), y, w: kanbanLane(f), h: NEW_H };
+}
+
+/** The kanban whose «Создать задачу» a point's on (the topmost). */
+export function newCardAt(items: Item[], w: Point): Item | null {
+  const get = (id: string) => items.find((i) => i.id === id);
+  for (let k = items.length - 1; k >= 0; k--) {
+    const f = items[k], b = f.kb ? newCardBox(f, get) : null;
+    if (b && w.x >= b.x && w.x <= b.x + b.w && w.y >= b.y && w.y <= b.y + b.h) return f;
+  }
+  return null;
+}
+
 /** Its «+» on the right of its header, for one more stage. */
 export const addAt = (f: Item): Point => ({ x: f.x + f.w - PAD - ADD_W / 2 + 8, y: f.y + PILL_Y });
 
@@ -165,7 +189,10 @@ export const columnAt = (f: Item, x: number): number => columnOf(f, x);
 
 /** A kanban's header part under the pointer, as the renderer lights it (`kb:<id>:stage:<i>`, `…:add`). */
 export function kanbanHot(items: Item[], w: Point): string | null {
-  const h = labOn('kanban') ? headerAt(items, w) : null;
+  if (!labOn('kanban')) return null;
+  const nc = newCardAt(items, w);
+  if (nc) return `kb:${nc.id}:new`;
+  const h = headerAt(items, w);
   return !h || h.part === 'head' ? null : `kb:${h.f.id}:${h.part === 'add' ? 'add' : `stage:${h.part.stage}`}`;
 }
 
@@ -278,6 +305,26 @@ export function drawKanban(ctx: CanvasRenderingContext2D, f: Item, get: (id: str
     ctx.fillStyle = look.muted;
     ctx.fillText(String(counts[i]), c.x + pw + 12, py);
   });
+  // «Создать задачу»: a frame as big as a task, a «+» and its words in the middle (under the pointer, darker).
+  const nb = newCardBox(f, get);
+  if (nb) {
+    ctx.beginPath();
+    ctx.roundRect(nb.x + 0.5, nb.y + 0.5, nb.w - 1, nb.h - 1, KANBAN_RAD);
+    if (hot === 'new') { ctx.fillStyle = 'rgba(0, 0, 0, .03)'; ctx.fill(); }
+    ctx.strokeStyle = hot === 'new' ? look.muted : look.line;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = font(NEW_FS, 400);
+    const label = 'Создать задачу', tw = ctx.measureText(label).width, x0 = nb.x + (nb.w - (12 + 8 + tw)) / 2, cy = nb.y + nb.h / 2;
+    ctx.strokeStyle = ctx.fillStyle = hot === 'new' ? look.ink : look.muted;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x0, cy); ctx.lineTo(x0 + 12, cy);
+    ctx.moveTo(x0 + 6, cy - 6); ctx.lineTo(x0 + 6, cy + 6);
+    ctx.stroke();
+    ctx.textAlign = 'left';
+    ctx.fillText(label, x0 + 20, cy);
+  }
   const a = addAt(f);
   ctx.strokeStyle = hot === 'add' ? look.ink : look.muted;
   ctx.lineWidth = 1.5;

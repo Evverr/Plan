@@ -46,6 +46,7 @@ export type Gesture =
   | { type: 'place'; at: Point; tool: 'sticky' | 'text' | 'task' | 'table' | 'mind' | 'timeline' | 'form' | 'poll' | 'kanban' | 'header' | 'page'; to?: Point }
   /** «Канбан»: a stage's pill pressed (`i` where its column is now), dragged along the header. */
   | { type: 'stageDrag'; id: string; i: number; start: Point; moved: boolean }
+  | { type: 'newCard'; id: string }
   | { type: 'tableLine'; id: string; start: Point; lines: TableLine[]; cols0: number[]; rows0: number[] }
   | { type: 'link'; from: string; fromSide: Side | null; to: Point; target: string | null }
   | { type: 'relink'; id: string; from: Point; to: Point; target: string | null; away?: boolean; body?: boolean; going?: boolean;
@@ -562,6 +563,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         ed.startEditing(g.id, null, 'end');
       }
       return;
+    // A kanban's «Создать задачу» let go on (typed in once let go: pressed, the field would lose it).
+    case 'newCard': { const f = board.get(g.id); if (f) ed.addKanbanTask(f); return; }
     case 'stageDrag':
       // Let go where it was pressed: the stage's menu.
       if (!g.moved) window.dispatchEvent(new CustomEvent('planx:stage', { detail: { id: g.id, i: g.i } }));
