@@ -901,6 +901,24 @@ export const checks = {
     expect(await p.ev(`(() => { const f = planx.board.get('${k.id}'), t = planx.board.get([...planx.editor.selection][0]); return f.members.includes(t.id) && t.x > planx.board.get('t').x; })()`), 'one in the next column').toBe(true);
   },
 
+  async '"Таймлайн растёт": a task on a timeline copied past its edge (Alt and an arrow, «Дублировать»), the timeline grown to take it in, it on it'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 900, y: 500 }); const t = b.list().find((i) => i.tl);
+      b.add(e.newItem('task', t.x + t.w - 320, t.y + t.h - 80, { id: 'a', text: 'Задача' })); e.settle(['a']); e.setSelection(['a']); })()`);
+    await sleep(200);
+    const tl = () => p.ev(`(() => { const t = planx.board.list().find((i) => i.tl); return { w: t.w, h: t.h, x: t.x, y: t.y, n: t.members.length }; })()`);
+    const was = await tl();
+    await p.ev(`planx.editor.duplicateArrow(1, 0)`);
+    await sleep(200);
+    let now = await tl();
+    expect([now.w > was.w, now.n, now.x === was.x].join(), 'wider, the copy on it').toBe('true,2,true');
+    const c = await p.ev(`(() => { const t = planx.board.list().find((i) => i.tl), c = planx.board.get([...planx.editor.selection][0]); return t.x + t.w - c.x - c.w; })()`);
+    expect(c >= 24, 'room right of it').toBe(true);
+    await p.ev(`planx.editor.duplicateArrow(0, 1)`);
+    await sleep(200);
+    now = await tl();
+    expect([now.h > was.h, now.n].join(), 'taller, that copy on it too').toBe('true,3');
+  },
+
   async '"Кучки": a kanban with its cards and header one pile: drawn together, a layer down all of it, hidden, aligned, copied and deleted whole'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addKanban({ x: 900, y: 500 }); const k = b.list().find((i) => i.kb);
       b.add(e.newItem('task', k.x + 30, k.y + 80, { id: 'c', text: 'Карточка' })); e.settle(['c']);

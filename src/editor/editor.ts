@@ -9,6 +9,7 @@ import { onEmojiLoad } from '../emoji/emoji';
 import { onPictureLoad, type Picture } from '../canvas/pictures';
 import { freshTable, withCellFormat, withCount, withTableFormat, type TableLine } from '../model/table';
 import type { AudioNote } from '../canvas/audio';
+import { growTimelines } from '../labs/tlGrow';
 import { addChild, descendants, foldedAway, folding, makeRoom, mindDepth, mindRoot, regroup, tidyBranches, type Way } from '../model/mind';
 import { readJSON, writeJSON } from '../storage';
 import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoomedAt } from './camera';
@@ -1599,7 +1600,8 @@ export class Editor {
   }
 
   /** Pastes what was copied `offset` from where it was, or with its middle at the board point `at`. */
-  paste(offset = 30, at?: Point): void {
+  /** (`grow`: copies made beside what they're of, a timeline they're on grown to take them, «Таймлайн растёт».) */
+  paste(offset = 30, at?: Point, grow = false): void {
     const clip = this.copied();
     if (!clip) return;
     let data: { items: Item[]; links: Link[] };
@@ -1615,7 +1617,8 @@ export class Editor {
     }
     // Into the layer picked ("Слои", src/labs), wherever they were cut or copied from.
     if (labOn('layers')) { const ly = newItemLayer(this.board); data.items = data.items.map((i) => ({ ...i, ly })); }
-    const { items, links } = this.insertCopies(data.items, data.links, offset);
+    const { items, links, map } = this.insertCopies(data.items, data.links, offset);
+    if (grow && labOn('tlGrow')) growTimelines(this.board, data.items, map);
     // Copies land in the frame they're pasted into, unless they came with their own.
     const held = new Set(items.flatMap((i) => i.members ?? []));
     this.settle(items.filter((i) => !held.has(i.id)).map((i) => i.id));
@@ -1671,7 +1674,7 @@ export class Editor {
     if (!d) return;
     const at = { x: b.x + b.w / 2 + d.x, y: b.y + b.h / 2 + d.y };
     this.clipboard = data;
-    this.paste(0, at);
+    this.paste(0, at, true);
     this.clipboard = keep;
   }
 
@@ -1682,7 +1685,7 @@ export class Editor {
     const at = arrowCopyAt(this.board.list(), (JSON.parse(data) as { items: Item[] }).items, this.selectedItems().filter((i) => !i.host), dx, dy);
     if (!at) return;
     this.clipboard = data;
-    this.paste(0, at);
+    this.paste(0, at, true);
     this.clipboard = keep;
   }
 
@@ -1702,7 +1705,7 @@ export class Editor {
       at = down ? { x: last.x + b.w / 2, y: last.y + last.h + gap + b.h / 2 } : { x: last.x + last.w + gap + b.w / 2, y: last.y + b.h / 2 };
     }
     this.clipboard = data;
-    this.paste(0, at);
+    this.paste(0, at, true);
     this.clipboard = keep;
   }
 
