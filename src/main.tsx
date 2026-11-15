@@ -9,7 +9,7 @@ import { keepMenusOnScreen } from './ui/onScreen';
 import { fadeOutPopups } from './ui/leaving';
 import { keepLinksHere } from './route';
 import { useLabs } from './labs/labs';
-import { SideNav, SidePageView, sidePageFromUrl, useSideOpen } from './labs/SideNav';
+import { SideNav, SidePageView, sidePageFromUrl, useSideAway, useSideOpen } from './labs/SideNav';
 import { readText } from './storage';
 import { setSideOffset } from './labs/sideViewport';
 
@@ -24,7 +24,7 @@ function Root() {
     window.addEventListener('popstate', on);
     return () => window.removeEventListener('popstate', on);
   }, []);
-  const labs = useLabs(), sideOn = useSideOpen(), side = labs.sideNav && sideOn;
+  const labs = useLabs(), sideOn = useSideOpen(), away = useSideAway(), side = labs.sideNav && sideOn;
   // A board beside the side: pushed over by it (see labs/sideViewport.ts).
   // (As wide as the side, --side-w in labs.css.)
   useEffect(() => setSideOffset(side && boardId ? 250 : 0), [side, boardId]);
@@ -32,7 +32,7 @@ function Root() {
   useEffect(() => { if (page && !boardId) document.documentElement.dataset.theme = readText('planx-theme') === 'dark' ? 'dark' : 'light'; }, [page, boardId]);
   const content = boardId ? <App key={boardId} boardId={boardId} /> : page ? <SidePageView page={page} /> : <ShelfPage />;
   return (
-    <div className={`app-shell ${side ? 'side-open' : ''} ${boardId ? 'on-board' : ''}`}>
+    <div className={`app-shell ${side ? 'side-open' : ''} ${side && away ? 'side-away' : ''} ${boardId ? 'on-board' : ''}`}>
       {side && <SideNav page={page} board={!!boardId} />}
       <div className="app-content">{content}</div>
     </div>

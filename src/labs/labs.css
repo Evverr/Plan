@@ -383,6 +383,11 @@
 .app-shell.side-open:not(.on-board) .shelf-page { left: var(--side-w); }
 /* A board beside the side: its own area right of it, the frame for all that's fixed in it (see sideViewport.ts). */
 .app-shell.side-open.on-board > .app-content { position: fixed; top: 0; bottom: 0; left: var(--side-w); right: 0; transform: translateZ(0); overflow: hidden; }
+/* Sliding away (SideNav.tsx, putSideAway): out behind the left edge, the board's area widening with it. */
+.app-shell.side-away .side-nav { animation: side-out .26s cubic-bezier(.4, 0, .2, 1) forwards; }
+@keyframes side-out { to { transform: translateX(-100%); } }
+.app-shell.side-open.on-board > .app-content { transition: left .26s cubic-bezier(.4, 0, .2, 1); }
+.app-shell.side-away.on-board > .app-content { left: 0; }
 /* The shelf's logo in place of «Мои доски», opening the side (ShelfPage.tsx). */
 .shelf-page .shelf-logo { align-self: center; height: 34px; margin-left: -8px; padding: 0 8px; border: 0; border-radius: 8px; background: none;
   color: inherit; font: 700 20px "Inter", var(--ui); letter-spacing: -0.01em; cursor: pointer; }

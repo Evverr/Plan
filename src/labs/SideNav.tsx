@@ -25,6 +25,28 @@ export function setSideOpen(on: boolean): void {
 export const useSideOpen = (): boolean =>
   useSyncExternalStore((fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; }, () => open);
 
+/** Sliding away now (put away once it's gone: see putSideAway). */
+let away = false;
+export const useSideAway = (): boolean =>
+  useSyncExternalStore((fn) => { listeners.add(fn); return () => { listeners.delete(fn); }; }, () => away);
+/** How long it takes to slide away (labs.css: side-out). */
+const AWAY_MS = 260;
+/** The side slid away out of sight, the board beside it widening as it goes; then put away. */
+export function putSideAway(): void {
+  if (!open || away) return;
+  away = true;
+  listeners.forEach((fn) => fn());
+  setTimeout(() => { away = false; setSideOpen(false); }, AWAY_MS);
+}
+/** «Работа» pressed: the side to go once the board it leads to has loaded (see takeSideAway). */
+let goOnLoad = false;
+/** Called by a board once it's loaded: the side slid away, if «Работа» led there. */
+export function takeSideAway(): void {
+  if (!goOnLoad) return;
+  goOnLoad = false;
+  putSideAway();
+}
+
 /** The pages the side leads to besides the boards: in the address as ?page=… */
 export type SidePage = 'settings' | 'profile' | 'help' | 'home';
 export const sidePageFromUrl = (): SidePage | null => {
@@ -59,12 +81,14 @@ export function SideNav({ page, board }: { page: SidePage | null; board: boolean
 }
 
 /** «Работа»: the board worked on last (see App), or the boards with none yet; the side put away, the
- *  board the whole window. */
+ *  board the whole window once it's loaded, the side sliding away. */
 const LAST = 'planx-last-board';
 export const noteBoard = (id: string): void => writeText(LAST, id);
 function toWork() {
-  setSideOpen(false);
   const id = readText(LAST);
+  // (On that board already: away at once.)
+  if (id && new URLSearchParams(location.search).get('board') === id) { putSideAway(); return; }
+  goOnLoad = true;
   navigate(id && /^[A-Za-z0-9_-]{1,64}$/.test(id) ? `${location.pathname}?board=${id}` : location.pathname);
 }
 

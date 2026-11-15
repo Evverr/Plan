@@ -9,7 +9,7 @@ import { usePanelPlace } from './labs/panelPlace';
 import { TextEditor } from './ui/TextEditor';
 import { TextPanel } from './ui/FormatPanel';
 import { TaskKeepPop, TaskMenu, TaskPop, TaskTipBubble } from './ui/TaskPop';
-import { noteBoard, setSideOpen, useSideOpen } from './labs/SideNav';
+import { noteBoard, setSideOpen, takeSideAway, useSideOpen } from './labs/SideNav';
 import { navigate } from './route';
 import { Discussion } from './labs/Discussion';
 import { CallButton } from './labs/CallButton';
@@ -69,6 +69,8 @@ export function App({ boardId }: { boardId: string }) {
   // goes back to ("Боковая панель", src/labs).
   useShelfTracking(boardId, board);
   useEffect(() => noteBoard(boardId), [boardId]);
+  // Loaded (what's kept here, drawn): the side slid away, if «Работа» led here.
+  useEffect(() => { void conn.local.whenSynced.then(() => requestAnimationFrame(() => requestAnimationFrame(takeSideAway))); }, [conn]);
   const toShelf = () => {
     window.dispatchEvent(new Event('planx:leave'));
     navigate(shelfUrlFor(boardId));
