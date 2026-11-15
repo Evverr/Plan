@@ -1729,7 +1729,9 @@ export class Editor {
     if (one && line && (line.axis === 'x' || line[line.length - 1] === one)) {
       const [prev, last] = line.slice(-2), down = line.axis === 'y';
       const gap = down ? last.y - prev.y - prev.h : last.x - prev.x - prev.w;
-      at = down ? { x: last.x + b.w / 2, y: last.y + last.h + gap + b.h / 2 } : { x: last.x + last.w + gap + b.w / 2, y: last.y + b.h / 2 };
+      // (Its copy's own corner there, what's copied with it, an instance's contents past its frame say, where it is to that.)
+      const cx = b.x + b.w / 2 - one.x, cy = b.y + b.h / 2 - one.y;
+      at = down ? { x: last.x + cx, y: last.y + last.h + gap + cy } : { x: last.x + last.w + gap + cx, y: last.y + cy };
     }
     this.clipboard = data;
     this.paste(0, at, true);

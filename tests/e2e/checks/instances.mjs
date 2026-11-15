@@ -308,4 +308,12 @@ export const checks = {
     })()`);
     expect(titleY, 'title above the visible rotated child').toBeNear(663);
   },
+
+  async 'an instance stretched, Cmd+D three times: its copies in a row, level'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; const r = e.newItem('rect', 0, 0, { w: 180, h: 110 }); b.add(r); const s = e.newItem('rect', 66, 9, { w: 48, h: 92 }); b.add(s); const m = e.newItem('emoji', 143, 5, { w: 27, h: 27, text: '🙂' }); b.add(m); e.setSelection([r.id, s.id, m.id]); e.makeComponent(); e.finishComponent(); const i = b.list().find((x) => x.inst); b.update(i.id, { grow: { w: 224, h: 106 } }); e.setSelection([i.id]); })()`);
+    await sleep(300);
+    for (let k = 0; k < 3; k++) { await p.ev('planx.editor.duplicate()'); await sleep(200); }
+    const ys = await p.ev(`[...new Set(planx.board.list().filter((i) => i.inst).map((i) => i.y))].join()`);
+    expect(ys, 'all at one height').toBe('-20');
+  },
 };
