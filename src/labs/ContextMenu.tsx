@@ -234,6 +234,8 @@ export function ContextMenu({ editor, onToast }: { editor: Editor; onToast: (tex
           {row('message', 'Комментарий', run(() => startComment(at.w, editor.selectedItems()[0])))}
           <div className="menu-line" />
         </>}
+        {/* A frame or a component (not a timeline, kanban or instance: theirs is named elsewhere): its title typed in at once. */}
+        {one?.type === 'frame' && !one.tl && !one.kb && !one.inst && row('edit-l', 'Переименовать', run(() => editor.startEditing(one.id, null, 'all')))}
         {row('copy', 'Скопировать', run(() => { if (editor.copy()) onToast('Скопировано. Вставить: Ctrl+V или правым кликом'); }))}
         {row('arrow-top-l', 'Переместить вверх', run(() => editor.shiftZ(1)))}
         {row('arrow-down-l', 'Переместить вниз', run(() => editor.shiftZ(-1)))}

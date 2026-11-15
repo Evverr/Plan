@@ -2296,6 +2296,18 @@ export const checks = {
     expect(await p.ev(`planx.board.get('st').x`), 'what is on it stays').toBe(stX);
   },
 
+  async '"Меню по правому клику": a frame\'s «Переименовать» types its title in at once'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); planx.board.add(e.newItem('frame', 300, 200, { id: 'f', w: 400, h: 300, text: 'Фрейм', members: [] })); e.setSelection([]); })()`);
+    await sleep(200);
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 500, y: 350 });
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: 500, y: 350, button: 'right', buttons: 2, clickCount: 1 });
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 500, y: 350, button: 'right', buttons: 0, clickCount: 1 });
+    await sleep(200);
+    await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.context-menu .menu-row')].find((b) => b.textContent === 'Переименовать').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
+    await sleep(200);
+    expect(await p.ev(`[planx.editor.editingId, document.activeElement?.classList.contains('text-edit'), document.activeElement?.value].join()`), 'its title typed in').toBe('f,true,Фрейм');
+  },
+
   async '"Меню по правому клику": a right click picks what is under it and opens the menu; its rows do what they say'(p) {
     await stickers(p);
     await p.ev('planx.editor.setSelection([])');
