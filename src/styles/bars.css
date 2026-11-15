@@ -47,11 +47,13 @@
 /* Too wide to sit beside the zoom panel: one bar's height (52px) and a gap higher. */
 .panel.raised { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
 .panel.docked.raised { bottom: var(--s60); border-radius: var(--panel-radius); }
-.sw { width: var(--e26); height: var(--e26); border-radius: 50%; border: var(--s2) solid transparent; background-clip: padding-box !important; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); cursor: pointer; padding: 0; margin: 0 3.5px; }
-/* The picked one: on a pressed button's tint (a square with round corners, as .ib.on), its circle as big as ever, no rings. */
+.sw { width: var(--e26); height: var(--e26); border-radius: 50%; border: var(--s4) solid transparent; background-clip: padding-box !important; cursor: pointer; padding: 0; margin: 0 3.5px; }
+/* (Its colour a circle 2 short of its old edge all round: a ring cut out of it, what's behind seen
+   through it, on a dark panel or glass as on a white one.) */
+/* The picked one: on a light grey square with round corners (as a pressed button), the ring round its circle that grey. */
 .sw.on, .sw.custom.on { position: relative; overflow: visible; }
 /* (Before it, under its circle: its ::after is the wider spot it's pressed by, see panels.css.) */
-.sw.on::before { content: ""; position: absolute; z-index: -1; inset: calc(-1 * var(--s4)); background: var(--fmt-on); border-radius: var(--s6); pointer-events: none; }
+.sw.on::before { content: ""; position: absolute; z-index: -1; inset: calc(-1 * var(--s6)); background: var(--fmt-hover); border-radius: var(--s6); pointer-events: none; }
 .sw-group, .sort-wrap { display: flex; align-items: center; }
 .table-count { gap: var(--s2); font-size: var(--s14); color: var(--fmt-ink); }
 /* A table's rows and columns carry their own separators, wherever they're moved to: a line either
@@ -68,6 +70,8 @@
 .sw.custom { position: relative; overflow: hidden; display: inline-block; background: conic-gradient(#FF5E5E, #FFD25E, #8CE35E, #5ED9E3, #5E8CFF, #C45EFF, #FF5E5E); }
 .sw.custom input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .sw.none { background: linear-gradient(135deg, transparent 45%, var(--danger) 45%, var(--danger) 55%, transparent 55%), var(--surface) !important; }
+/* (Its circle within the cut ring too, outlined: there's no colour to show it.) */
+.sw.none { background-clip: padding-box !important; box-shadow: inset 0 0 0 1px var(--line); }
 .paint-target { gap: var(--s2); }
 .op-wrap { position: relative; display: flex; }
 /* As tall as the panel under it, with its shadow. */
