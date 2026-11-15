@@ -434,7 +434,8 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
   const tables = items.filter((i) => i.type === 'table'), links = editor.selectedLinks();
   // (Shapes, not blocks of code: «Без текста».)
   const group = items.length === 1 && items[0].type === 'frame' && !items[0].tl && !items[0].kb && !items[0].inst ? items[0] : null;
-  const shapes = items.filter((i) => (i.type === 'rect' || i.type === 'ellipse' || i.type === 'polygon') && !i.code), noText = shapes.length > 0 && shapes.every((s) => s.nt);
+  // (Nor a «Титул», src/labs/header.ts.)
+  const shapes = items.filter((i) => (i.type === 'rect' || i.type === 'ellipse' || i.type === 'polygon') && !i.code && !i.hd), noText = shapes.length > 0 && shapes.every((s) => s.nt);
   // An instance picked alone, or something in one (not of a built-in component: those aren't changed).
   const inOne = items.length === 1 ? (items[0].host ? editor.board.get(items[0].host) : items[0]) : undefined;
   const editInst = inOne?.inst && !inOne.inst.startsWith('@') ? inOne.id : null;
