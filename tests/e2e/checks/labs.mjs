@@ -101,6 +101,9 @@ export const checks = {
     expect(!!(await p.rect('.shelf-page')), 'the boards').toBe(true);
     await go('Работа');
     await sleep(800);
+    expect([await p.ev('location.search').then((q) => q.startsWith('?board=')), !!(await p.rect('.side-nav'))].join(), '«Работа»: the board, the side put away').toBe('true,false');
+    await p.ev(`(async () => (await import('/src/labs/SideNav.tsx')).setSideOpen(true))()`);
+    await sleep(400);
     // The board pushed over by it: its area right of the side, as wide as what's left of the window.
     expect([await p.ev(`document.querySelector('.app-content').offsetLeft`), await p.ev('innerWidth'), await p.ev(`document.querySelector('.board-canvas').clientWidth`)].join(), 'the board beside it').toBe('200,1000,1000');
     await go('Настройки');
@@ -117,6 +120,8 @@ export const checks = {
     await go('Работа');
     await sleep(800);
     expect([await p.ev('location.search').then((q) => q.startsWith('?board=')), await p.ev(`!!document.querySelector('.board-canvas')`)].join(), '«Работа»: the board again').toBe('true,true');
+    await p.ev(`(async () => (await import('/src/labs/SideNav.tsx')).setSideOpen(true))()`);
+    await sleep(300);
     // Its logo: the start, a hero; no cross there, by the boards one.
     await p.click(await p.at('.side-nav .side-nav-logo'));
     await sleep(300);
@@ -948,6 +953,9 @@ export const checks = {
     await p.ev(`planx.editor.setSelection([])`);
     await p.drag([90, 140], [100 + 200, 150 + 100]);
     expect(await p.ev(`[planx.editor.selection.has('c'), planx.editor.selection.has('${kid}')].join()`), 'boxed in part: its card, not it').toBe('true,false');
+    await p.ev(`planx.editor.setSelection([])`);
+    await p.drag([100 + kb[0] + 20, 150 + kb[1] + 20], [100 + kb[0] - 20, 150 + kb[1] - 20]);
+    expect(await p.ev(`[planx.editor.selection.has('c'), planx.editor.selection.has('${kid}')].join()`), 'touched, nothing in it boxed: it').toBe('false,true');
     await p.ev(`(() => { const e = planx.editor; e.setSelection(['${kid}']); e.duplicate(); })()`);
     await sleep(300);
     expect(await p.ev(`planx.board.list().filter((i) => i.type === 'task').length`), 'copied: its card too').toBe(2);
@@ -2346,6 +2354,20 @@ export const checks = {
     await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.context-menu .menu-row')].find((b) => b.textContent === 'Переименовать').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
     await sleep(200);
     expect(await p.ev(`[planx.editor.editingId, document.activeElement?.classList.contains('text-edit'), document.activeElement?.value].join()`), 'its title typed in').toBe('f,true,Фрейм');
+    await p.key('Escape', 'Escape', 27);
+    // An instance (its component put away): its component's name, all its instances with it.
+    await p.ev(`(() => { const e = planx.editor; planx.board.add(e.newItem('sticky', 900, 250, { id: 's', w: 160, h: 160 })); e.setSelection(['s']); e.makeComponent(); e.stopEditing(); })()`);
+    await sleep(300);
+    const comp = await p.ev(`planx.board.list().find((i) => i.comp).id`);
+    await p.ev(`(() => { planx.editor.finishComponent(); })()`);
+    await sleep(300);
+    const inst = await p.ev(`planx.board.list().find((i) => i.inst === '${comp}')?.id`);
+    await p.ev(`(() => { const e = planx.editor; e.setSelection(['${inst}']); e.startEditing('${inst}', null, 'all'); })()`);
+    await sleep(200);
+    await p.ev(`(() => { const t = document.querySelector('.text-edit'); t.value = 'Карточка'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await p.key('Enter', 'Enter', 13);
+    await sleep(300);
+    expect(await p.ev(`[planx.board.get('${comp}').text, planx.board.get('${inst}').text].join()`), 'the instance renamed: its component').toBe('Карточка,Карточка');
   },
 
   async '"Меню по правому клику": a right click picks what is under it and opens the menu; its rows do what they say'(p) {

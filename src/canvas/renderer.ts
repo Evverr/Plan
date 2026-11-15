@@ -574,7 +574,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         const y = b.y - 2, gap = GLYPH + 3, comp = s.get(it.inst);
         const first = !!comp && firstInstance(comp, s.items)?.id === it.id;
         drawIcon(ctx, first || s.hotPlus === `glyph:${it.id}` ? 'component-solid' : 'component', b.x - 2, y - GLYPH + 1, GLYPH, COMPONENT_COLOR);
-        ctx.fillText(it.text ?? '', b.x + gap, y, Math.max(0, b.w - gap));
+        // (Its name being typed in, «Переименовать»: the field over it instead.)
+        if (!editing) ctx.fillText(it.text ?? '', b.x + gap, y, Math.max(0, b.w - gap));
         break;
       }
       const kin = it.comp;

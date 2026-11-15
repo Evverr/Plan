@@ -1837,6 +1837,10 @@ export class Editor {
       } else if (it.type === 'text' && !value.trim()) {
         this.board.remove([id]);
         this.selection.delete(id);
+      } else if (it.type === 'frame' && it.inst && !it.inst.startsWith('@') && this.board.get(it.inst)) {
+        // An instance renamed («Переименовать»): its component, and with it all its instances (see
+        // model/components.ts); nothing typed, as it was.
+        if (value.trim() && value !== (it.text ?? '')) this.board.transact(() => { this.board.update(it.inst!, { text: value }); this.board.update(id, { text: value }); });
       } else if (value !== (it.text ?? '')) {
         // Links on parts of it move with what's typed (see model/textLinks.ts).
         const patch: Partial<Item> = { text: value, ...mindFit(this, it, value), ...(it.fold && { w: foldedSize(value).w }), ...(it.links && { links: remapLinks(it.text ?? '', value, it.links) }), ...(it.rs && { rs: remapLinks(it.text ?? '', value, it.rs) }) };

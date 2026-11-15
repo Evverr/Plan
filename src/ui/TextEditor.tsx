@@ -3,7 +3,8 @@ import type { Editor } from '../editor/editor';
 import { alignOf, TEXT_COLORS, textPad, textPadR, textPadY, type Item } from '../model/types';
 import { fittedSize, fontOf, FONTS, LINE_HEIGHT, textBlockHeight, withList } from '../canvas/text';
 import { FOLD_FS, FOLD_ICON, FOLD_PAD, FOLD_RIGHT, FOLD_TITLE_GAP } from '../model/frame';
-import { center } from '../canvas/geometry';
+import { center, instanceBounds } from '../canvas/geometry';
+import { COMPONENT_COLOR } from '../model/components';
 import { descLook, oneLineTitle, TASK_FONT, taskFieldBox } from '../canvas/task';
 import { headerFieldBox } from '../labs/header';
 import { addChild, rootTextColor, siblingTints } from '../model/mind';
@@ -88,8 +89,10 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
   const pad = code ? CODE_LEFT : textPad(item), padY = code ? CODE_TOP : textPadY(item);
   const width = field ? field.w : folded ? Math.max(160, item.w - FOLD_PAD - FOLD_TITLE_GAP - FOLD_ICON - FOLD_RIGHT)
     : isFrame ? Math.max(160, item.w * 0.6) : code ? item.w - CODE_LEFT - CODE_PAD : item.w - pad - textPadR(item);
-  const top = field ? field.y : folded ? item.y + (item.h - 26) / 2 : isFrame ? item.y - 30 : item.y + padY;
-  const p = editor.toScreen({ x: field ? field.x : item.x + (folded ? FOLD_PAD : isFrame ? 0 : pad), y: top });
+  // An instance's name (its component's, «Переименовать»): where its red title is, over its contents.
+  const named = isFrame && !folded && item.inst ? instanceBounds(item, editor.board.list()) : null;
+  const top = field ? field.y : folded ? item.y + (item.h - 26) / 2 : named ? named.y - 2 - 24 : isFrame ? item.y - 30 : item.y + padY;
+  const p = editor.toScreen({ x: field ? field.x : named ? named.x + 17 : item.x + (folded ? FOLD_PAD : isFrame ? 0 : pad), y: top });
 
   /** A field as tall as what's typed in it takes (a task's title wrapping, «Заголовок задачи в три строки»:
    *  three lines at most). */
@@ -134,6 +137,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
         fontSize: fs,
         lineHeight: isFrame ? '26px' : code ? CODE_LINE : LINE_HEIGHT,
         fontWeight: isFrame ? 600 : code ? 400 : fontOf(item).weight,
+        ...(named && { color: COMPONENT_COLOR }),
         ...(!isFrame && {
           fontFamily: item.ff ? FONTS[item.ff]?.css : undefined,
           fontStyle: item.fi ? 'italic' : undefined,

@@ -58,10 +58,12 @@ export function SideNav({ page, board }: { page: SidePage | null; board: boolean
   );
 }
 
-/** «Работа»: the board worked on last (see App), or the boards with none yet. */
+/** «Работа»: the board worked on last (see App), or the boards with none yet; the side put away, the
+ *  board the whole window. */
 const LAST = 'planx-last-board';
 export const noteBoard = (id: string): void => writeText(LAST, id);
 function toWork() {
+  setSideOpen(false);
   const id = readText(LAST);
   navigate(id && /^[A-Za-z0-9_-]{1,64}$/.test(id) ? `${location.pathname}?board=${id}` : location.pathname);
 }

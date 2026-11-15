@@ -410,7 +410,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       const next = new Set(g.base), rect = g.rect;
       // A frame is taken in whole; a timeline (wide as it is) just touched, by a box started off it (one
       // started on it picks what lies on it).
-      const whole = (it: Item) => it.type === 'frame' && !(it.tl && !pointInRect(g.start, it));
+      // («Кучки», src/labs: any frame, kanban or timeline so, as a timeline; a component whole all the same.)
+      const whole = (it: Item) => it.type === 'frame' && !((it.tl || (labOn('piles') && !it.inst && !it.comp)) && !pointInRect(g.start, it));
       const inside = (it: Item) => (whole(it) ? rectContains(rect, boxOf(it)) : rectsIntersect(rect, boxOf(it)));
       const shown = ed.shown(), any = shown.some(inside);
       for (const it of shown) {
