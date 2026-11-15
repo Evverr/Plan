@@ -258,6 +258,8 @@ function hiddenUnder(ctx: CanvasRenderingContext2D, it: Item, s: Scene, view: Re
   }
 }
 
+/** However narrow a frame or an instance, this much room for its name over it (past its edge, then). */
+const TITLE_ROOM = 120;
 /** Text cut off with "…" to fit `max` wide at the context's font, on one line (a frame's or an instance's
  *  name over it), not squeezed. */
 function fitText(ctx: CanvasRenderingContext2D, text: string, max: number): string {
@@ -587,7 +589,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         const first = !!comp && firstInstance(comp, s.items)?.id === it.id;
         drawIcon(ctx, first || s.hotPlus === `glyph:${it.id}` ? 'component-solid' : 'component', b.x - 2, y - GLYPH + 1, GLYPH, COMPONENT_COLOR);
         // (Its name being typed in, «Переименовать»: the field over it instead.)
-        if (!editing) ctx.fillText(fitText(ctx, it.text ?? '', Math.max(0, b.w - gap)), b.x + gap, y);
+        if (!editing) ctx.fillText(fitText(ctx, it.text ?? '', Math.max(TITLE_ROOM, b.w - gap)), b.x + gap, y);
         break;
       }
       const kin = it.comp;
@@ -622,7 +624,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         ctx.textBaseline = 'bottom';
         // A component's name after its icon, solid.
         if (kin) drawIcon(ctx, 'component-solid', it.x, it.y - 7 - GLYPH, GLYPH, COMPONENT_COLOR);
-        ctx.fillText(fitText(ctx, kin ? it.text ?? '' : it.text!, it.w - (kin ? GLYPH + 5 : 2)), it.x + (kin ? GLYPH + 5 : 2), it.y - 8);
+        ctx.fillText(fitText(ctx, kin ? it.text ?? '' : it.text!, Math.max(TITLE_ROOM, it.w - (kin ? GLYPH + 5 : 2))), it.x + (kin ? GLYPH + 5 : 2), it.y - 8);
       }
       break;
     }
