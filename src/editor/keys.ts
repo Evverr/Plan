@@ -46,7 +46,7 @@ export function onKeyDown(ed: Editor, e: KeyboardEvent): void {
       // Cmd+G a group of what's picked, Cmd+Shift+G undone («Группы», src/labs); without them, a frame round it.
       case 'KeyG': e.preventDefault(); if (!labOn('groups')) ed.frameSelection(); else if (e.shiftKey) ed.ungroup(); else ed.group(); return;
       // Ctrl+Alt+B, as in Figma: the selected instances cut loose from their components.
-      case 'KeyB': if (e.altKey) { e.preventDefault(); ed.detachInstances(); } return;
+      case 'KeyB': if (e.altKey) { e.preventDefault(); ed.detachInstances(); ed.detachHeaders(); } return;
     }
     return;
   }

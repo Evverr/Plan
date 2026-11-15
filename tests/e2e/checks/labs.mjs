@@ -820,6 +820,10 @@ export const checks = {
     c = await corner();
     await p.drag(c, [c[0], c[1] - 300]);
     expect(await p.ev(`planx.board.get('${h.id}').h`), 'no shorter than what\'s in it').toBe(taller);
+    // «Отвязать от объекта»: its icon, title and description, each its own, picked.
+    await p.click(await p.at('.bar.panel button[title^="Отвязать от объекта"]'));
+    await sleep(200);
+    expect(await p.ev(`[!!planx.board.get('${h.id}'), [...planx.editor.selection].map((id) => planx.board.get(id).type).sort().join()].join(' ')`), 'its parts its own').toBe('false icon,text,text');
   },
 
   async '"Скрыть объект" and "Фрейм вокруг выделенного": hidden, not drawn but picked by a click or a box there; the frame tool with something picked, a frame round it'(p) {

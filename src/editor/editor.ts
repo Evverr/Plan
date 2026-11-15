@@ -15,7 +15,7 @@ import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoo
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
-import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, setHeaderTyping } from '../labs/header';
+import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -1368,6 +1368,29 @@ export class Editor {
     this.settle(freed);
     this.board.endGesture();
     this.setSelection(freed);
+  }
+
+  /** «Титул в объектах» (src/labs/header.ts), «Отвязать от объекта»: each picked one its icon, title and
+   *  description, each an item of its own where it was (the texts as boxes), picked. */
+  detachHeaders(): void {
+    const heads = this.selectedItems().filter((i) => i.hd);
+    if (!heads.length) return;
+    const freed: Item[] = [];
+    for (const it of heads) {
+      const l = headerLayout(it), at = (r: { x: number; y: number }) => ({ x: Math.round(it.x + r.x), y: Math.round(it.y + r.y) });
+      freed.push(this.newItem('icon', at(l.icon).x, at(l.icon).y, { w: l.icon.w, h: l.icon.h, icon: it.icon ?? 'kanban', color: it.color ?? 'blue' }));
+      freed.push(this.newItem('text', at(l.title).x, at(l.title).y, { w: Math.round(l.title.w), h: Math.ceil(l.title.h), fs: 24, fw: 700, tb: true, text: it.text ?? '' }));
+      if (it.desc) freed.push(this.newItem('text', at(l.desc).x, at(l.desc).y, { w: Math.round(l.desc.w), h: Math.ceil(l.desc.h), fs: 20, tb: true, text: it.desc }));
+    }
+    // One step to undo, the items put in the frames they lie in included.
+    this.board.beginGesture();
+    this.board.transact(() => {
+      freed.forEach((f) => this.board.add(f));
+      this.board.remove(heads.map((h) => h.id));
+    });
+    this.settle(freed.map((f) => f.id));
+    this.board.endGesture();
+    this.setSelection(freed.map((f) => f.id));
   }
 
   /** Picks instance `id`'s component (brought back, if it was put away) and brings it into view, gliding there. */
