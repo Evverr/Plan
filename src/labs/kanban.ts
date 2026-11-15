@@ -305,18 +305,19 @@ export function drawKanban(ctx: CanvasRenderingContext2D, f: Item, get: (id: str
     ctx.fillStyle = look.muted;
     ctx.fillText(String(counts[i]), c.x + pw + 12, py);
   });
-  // «Создать задачу»: a frame as big as a task, a «+» and its words in the middle (under the pointer, darker).
+  // «Создать задачу»: a frame as big as a task, a «+» and its words in the middle (under the pointer, a
+  // shade darker, hardly seen).
   const nb = newCardBox(f, get);
   if (nb) {
     ctx.beginPath();
     ctx.roundRect(nb.x + 0.5, nb.y + 0.5, nb.w - 1, nb.h - 1, KANBAN_RAD);
-    if (hot === 'new') { ctx.fillStyle = 'rgba(0, 0, 0, .03)'; ctx.fill(); }
-    ctx.strokeStyle = hot === 'new' ? look.muted : look.line;
+    if (hot === 'new') { ctx.fillStyle = 'rgba(0, 0, 0, .015)'; ctx.fill(); }
+    ctx.strokeStyle = look.line;
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.font = font(NEW_FS, 400);
     const label = 'Создать задачу', tw = ctx.measureText(label).width, x0 = nb.x + (nb.w - (12 + 8 + tw)) / 2, cy = nb.y + nb.h / 2;
-    ctx.strokeStyle = ctx.fillStyle = hot === 'new' ? look.ink : look.muted;
+    ctx.strokeStyle = ctx.fillStyle = look.muted;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(x0, cy); ctx.lineTo(x0 + 12, cy);
