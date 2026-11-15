@@ -6,6 +6,7 @@ import { Glyph } from '../ui/glyphs';
 import { labOn, subscribeLabs, useLabs } from './labs';
 import { LabsRail, type RailButton } from './LabsRail';
 import { addCode } from './codeBlock';
+import { ToolPreview } from '../ui/ToolPreview';
 import { drawLabs, drawMarks, laser, LASER_FADE, pillAt, toggleReaction } from './overlays';
 import { LabsPresence, useFollowing } from './presence';
 import { cameraFor, flyTo, stopFlight } from './camera';
@@ -41,7 +42,7 @@ const AWAY = '.labs-pop, .labs-rail, .labs-more, .history-pill, .confirm';
  * right edge, their popups, the timer and "following" at the top, and what they do with the
  * pointer and keys. Each shows only while it's switched on in the board menu.
  */
-export function Labs({ editor, conn, docked }: { editor: Editor; conn: Connection; docked: boolean }) {
+export function Labs({ editor, conn, docked, tool }: { editor: Editor; conn: Connection; docked: boolean; tool: string }) {
   const labs = useLabs();
   const [pop, setPop] = useState<LabPop | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -291,7 +292,8 @@ export function Labs({ editor, conn, docked }: { editor: Editor; conn: Connectio
     timer: { icon: 'timer', title: 'Общий таймер', on: pop === 'timer', onClick: () => toggle('timer') },
     laser: { icon: 'magic-wand', title: 'Лазерная указка (K)', on: laserOn, onClick: () => setLaserOn(!laserOn) },
     follow: { icon: 'meeting-point', title: 'Позвать всех ко мне', onClick: summon },
-    codeBlock: { icon: 'code', title: 'Код', onClick: () => addCode(editor), drop: (at) => addCode(editor, at) },
+    // (A click takes its tool, a click on the board puts one there; dragged off the rail, one where it's let go.)
+    codeBlock: { icon: 'code', title: 'Код', on: tool === 'code', onClick: () => editor.setTool(tool === 'code' ? 'select' : 'code'), drop: (at) => addCode(editor, at), preview: <ToolPreview tool="code" zoom={editor.cam.z} /> },
   };
   const buttons = Object.fromEntries(Object.entries(all).filter(([id]) => labs[id as keyof typeof all]));
 

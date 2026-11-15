@@ -6,7 +6,7 @@ import { panelScale, usePanelSize } from '../ui/panels/size';
 import { useSortable } from '../ui/sortable';
 
 /** `drop`: dragged off the rail, what it makes is put on the board at that point (on the screen). */
-export interface RailButton { icon: PanelIconName; title: string; on?: boolean; onClick: () => void; drop?: (at: { x: number; y: number }) => void }
+export interface RailButton { icon: PanelIconName; title: string; on?: boolean; onClick: () => void; drop?: (at: { x: number; y: number }) => void; preview?: React.ReactNode }
 
 /** Their order on the rail, top to bottom, until someone rearranges it. */
 const ORDER = ['export', 'pdf', 'search', 'layers', 'history', 'timer', 'laser', 'follow', 'codeBlock'];
@@ -21,7 +21,8 @@ export function LabsRail({ buttons, docked }: { buttons: Partial<Record<string, 
   // Those that make something go onto the board dragged off the rail, as the left rail's (its icon under the pointer).
   const sort = useSortable('planx-labs-order', ORDER, 'y', {}, {
     can: (k) => !!buttons[k]?.drop,
-    preview: (k) => buttons[k] ? <span className="tp-icon"><PanelIcon name={buttons[k]!.icon} /></span> : null,
+    // (What it makes, as it'll be, where there's a preview of it; else its icon.)
+    preview: (k) => buttons[k] ? buttons[k]!.preview ?? <span className="tp-icon"><PanelIcon name={buttons[k]!.icon} /></span> : null,
     drop: (k, at) => buttons[k]?.drop?.(at),
   });
   const present = (k: string) => !!buttons[k];
@@ -87,6 +88,8 @@ export function LabsRail({ buttons, docked }: { buttons: Partial<Record<string, 
           {hidden.map((k) => button(k, true))}
         </div>
       )}
+      {/* (What's dragged off it, under the pointer.) */}
+      {sort.ghost}
     </>
   );
 }

@@ -1,4 +1,5 @@
 import type { Tool } from '../editor/editor';
+import { CODE_BAND, CODE_NEW, CODE_RAD } from '../labs/codeBlock';
 import { isPoly } from '../editor/tools';
 import { polyPoints } from '../canvas/geometry';
 import { DEFAULTS, FILLS, type Item, type PolyShape } from '../model/types';
@@ -9,6 +10,11 @@ const MAX_PX = 180;
 /** What a rail tool would put on the board, drawn small: shown under the pointer while the tool is
  *  dragged off the rail. Null for tools that make nothing to preview. */
 export function ToolPreview({ tool, zoom }: { tool: Tool; zoom: number }) {
+  // A block of code («Код», src/labs/codeBlock.ts): its dark card, its band over it.
+  if (tool === 'code') {
+    const k = Math.min(zoom, MAX_PX / CODE_NEW.w);
+    return <span className="tp-code" style={{ width: CODE_NEW.w * k, height: CODE_NEW.h * k, borderRadius: CODE_RAD * k, borderTopWidth: CODE_BAND * k }} />;
+  }
   const type = isPoly(tool) ? 'polygon' : tool;
   const d = DEFAULTS[type as Item['type']] as Partial<Item> | undefined;
   if (!d || !['sticky', 'text', 'task', 'table', 'frame', 'rect', 'ellipse', 'polygon', 'mind'].includes(type)) return null;

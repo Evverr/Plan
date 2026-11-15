@@ -23,6 +23,7 @@ import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
+import { addCodeAt } from '../labs/codeBlock';
 import { onCodeText } from '../labs/codeBlock';
 import { levelIn } from '../labs/groups';
 import { eraseArea, eraserStyle } from '../labs/eraseArea';
@@ -43,7 +44,7 @@ export type Gesture =
   | { type: 'rotate'; id: string; c: Point; a0: number; rot0: number; held: Array<{ id: string; c: Point; rot0: number }> }
   | { type: 'create'; id: string; origin: Point; last?: Point }
   | { type: 'tab'; id: string; side: Side; start: Point }
-  | { type: 'place'; at: Point; tool: 'sticky' | 'text' | 'task' | 'table' | 'mind' | 'timeline' | 'form' | 'poll' | 'kanban' | 'header' | 'page'; to?: Point }
+  | { type: 'place'; at: Point; tool: 'sticky' | 'text' | 'task' | 'table' | 'mind' | 'timeline' | 'form' | 'poll' | 'kanban' | 'header' | 'page' | 'code'; to?: Point }
   /** «Канбан»: a stage's pill pressed (`i` where its column is now), dragged along the header. */
   | { type: 'stageDrag'; id: string; i: number; start: Point; moved: boolean }
   | { type: 'newCard'; id: string }
@@ -589,6 +590,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       if (g.tool === 'poll') { ed.addPoll(g.at); return; }
       if (g.tool === 'kanban') { ed.addKanban(g.at); return; }
       if (g.tool === 'header') { ed.addHeader(g.at); return; }
+      // «Код» (src/labs/codeBlock.ts): a block of code there, typed in.
+      if (g.tool === 'code') { addCodeAt(ed, g.at); return; }
       const d = DEFAULTS[g.tool];
       const box = g.to && normRect(g.at, g.to);
       const it = g.tool === 'text'

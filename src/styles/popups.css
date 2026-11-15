@@ -82,6 +82,7 @@
 /* A task closed, as canvas/task.ts draws it: its ring, its title. */
 .tp-task { display: flex; align-items: center; box-sizing: border-box; border: 2px solid rgba(0, 60, 255, .3); background: #F2F5FF; color: #000; font: 500 16px Inter, var(--ui); }
 .tp-task i { flex: none; border-radius: 50%; border: 1.5px solid #D3D8DE; box-sizing: border-box; }
+.tp-code { display: block; box-sizing: border-box; background: #1F1F2A; border-top: 0 solid #191922; }
 .tp-frame { display: block; box-sizing: border-box; position: relative; background: var(--frame); border: 1px solid var(--line); border-radius: 8px; }
 .tp-frame b { position: absolute; left: 2px; bottom: 100%; margin-bottom: 4px; color: var(--muted); font-weight: 600; white-space: nowrap; }
 .tp-svg { display: block; overflow: visible; fill: var(--surface); stroke: var(--line); stroke-width: 1; }

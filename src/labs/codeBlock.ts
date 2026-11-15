@@ -300,8 +300,14 @@ export function drawCode(ctx: CanvasRenderingContext2D, it: Item, z: number, edi
 }
 
 /** The rail's button: a block in the middle of the screen (or where it's dragged off the rail to), typed in at once. */
-export function addCode(ed: Editor, at = { x: innerWidth / 2, y: innerHeight / 2 }): void {
-  const c = ed.toWorld(at.x, at.y), w = 480, h = Math.ceil(CODE_TOP + CODE_FS * CODE_LINE + CODE_BOTTOM);
+export function addCode(ed: Editor, at = { x: innerWidth / 2, y: innerHeight / 2 }): void { addCodeAt(ed, ed.toWorld(at.x, at.y)); }
+
+/** As big as a new one is: a line of code. */
+export const CODE_NEW = { w: 480, h: Math.ceil(CODE_TOP + CODE_FS * CODE_LINE + CODE_BOTTOM) };
+
+/** A new block of code centred on board point `c` (the «Код» tool clicked there), typed in. */
+export function addCodeAt(ed: Editor, c: { x: number; y: number }): void {
+  const { w, h } = CODE_NEW;
   const it = ed.newItem('rect', Math.round(c.x - w / 2), Math.round(c.y - h / 2), { w, h, code: CODE_LANG, text: '', fs: CODE_FS, ff: 'mono', ta: 'left', va: 'top', rad: CODE_RAD });
   ed.addItem(it);
   ed.setTool('select');

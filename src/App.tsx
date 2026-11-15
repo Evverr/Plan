@@ -531,7 +531,7 @@ export function App({ boardId }: { boardId: string }) {
       <FramePeek editor={editor} board={board} />
       {cleared && <ClearFx key={cleared} onDone={endCleared} />}
       <Tooltips />
-      <Labs editor={editor} conn={conn} docked={docked} />
+      <Labs editor={editor} conn={conn} docked={docked} tool={ui.tool} />
       {labs.discussion && <Discussion />}
 
       {/* Typing in a table cell, the panel shows and sets that cell's own formatting. */}

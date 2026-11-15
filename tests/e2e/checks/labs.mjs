@@ -146,15 +146,27 @@ export const checks = {
 
   async '"Код": dragged off the right rail, a block put where it\'s let go'(p) {
     const at = await p.at('.labs-rail button[aria-label="Код"]');
+    // (Seen as it'll be while it's dragged.)
+    await p.mouse('mouseMoved', ...at); await p.mouse('mousePressed', ...at);
+    for (let i = 1; i <= 8; i++) { await p.mouse('mouseMoved', at[0] + (500 - at[0]) * i / 16, at[1] + (400 - at[1]) * i / 16); await sleep(16); }
+    expect(await p.ev(`!!document.querySelector('.pick-ghost .tp-code')`), 'the block under the pointer').toBe(true);
+    await p.mouse('mouseReleased', ...at);
+    await sleep(300);
+    await p.ev(`planx.board.replaceAll([], [])`);
     await p.drag(at, [500, 400], { steps: 16 });
     await sleep(300);
     const c = await p.ev(`(() => { const it = planx.board.list().find((i) => i.code); if (!it) return null; const s = planx.editor.toScreen({ x: it.x + it.w / 2, y: it.y + it.h / 2 }); return [Math.round(s.x), Math.round(s.y)]; })()`);
     expect(c && Math.abs(c[0] - 500) <= 2 && Math.abs(c[1] - 400) <= 2, `its middle where let go (${c})`).toBe(true);
   },
 
-  async '"Код": a block from the right rail, typed in at once, coloured, growing with its lines; its language picked on its panel'(p) {
+  async '"Код": its button on the right rail takes its tool, a click on the board a block there, typed in at once, coloured, growing with its lines; its language picked on its panel'(p) {
     await p.click(await p.at('.labs-rail button[aria-label="Код"]'));
+    await sleep(100);
+    expect(await p.ev(`[planx.board.list().length, planx.editor.tool, document.querySelector('.labs-rail button[aria-label="Код"]').getAttribute('aria-pressed')].join()`), 'its tool, nothing put yet').toBe('0,code,true');
+    await p.click([600, 400]);
     await sleep(200);
+    const mid = await p.ev(`(() => { const it = planx.board.list().find((i) => i.code), s = planx.editor.toScreen({ x: it.x + it.w / 2, y: it.y + it.h / 2 }); return [Math.abs(s.x - 600) <= 1, Math.abs(s.y - 400) <= 1, planx.editor.tool].join(); })()`);
+    expect(mid, 'put where clicked, the tool let go').toBe('true,true,select');
     expect(await p.ev(`!!document.querySelector('textarea.text-edit.code')`), 'typed in at once').toBe(true);
     await p.cdp('Input.insertText', { text: 'function hello(name) {\n  return `Привет, ${name}!`;\n}' });
     await sleep(100);
@@ -173,6 +185,7 @@ export const checks = {
 
   async '"Код": code too long pasted in grows the block to the screen\'s bottom edge at most, the rest scrolled to'(p) {
     await p.click(await p.at('.labs-rail button[aria-label="Код"]'));
+    await p.click([600, 300]);
     await sleep(200);
     await p.cdp('Input.insertText', { text: Array.from({ length: 120 }, (_, i) => `line(${i});`).join('\n') });
     await sleep(200);
