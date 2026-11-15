@@ -922,6 +922,25 @@ export const checks = {
     expect(await p.ev(`JSON.stringify(planx.board.linkList().map((l) => [l.from, l.to]))`), 'dragged: a link').toBe('[["s","r"]]');
   },
 
+  async 'a line led onto a timeline from off it goes to it; from what\'s on it, not to its edge (let go there, its end stays)'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('sticky', 100, 300, { id: 's', w: 160, h: 160 }));
+      b.add(e.newItem('frame', 500, 200, { id: 'tl', w: 600, h: 380, tl: '2026-11-01', members: ['t'], text: 'Таймлайн' })); b.add(e.newItem('task', 540, 260, { id: 't', w: 200, h: 52 })); e.setSelection(['s']); })()`);
+    await sleep(300);
+    await p.mouse('mouseMoved', 268, 380);
+    await sleep(200);
+    await p.drag([268, 380], [800, 500]);
+    await sleep(300);
+    expect(await p.ev(`planx.board.linkList().map((l) => l.from + '>' + l.to).join()`), 'from off it: to it').toBe('s>tl');
+    await p.ev(`planx.editor.setSelection(['t'])`);
+    await sleep(300);
+    const dot = await p.ev(`(() => { const t = planx.board.get('t'), s = planx.editor.toScreen({ x: t.x + t.w + 8, y: t.y + t.h / 2 }); return [s.x, s.y]; })()`);
+    await p.mouse('mouseMoved', ...dot);
+    await sleep(200);
+    await p.drag(dot, [900, 500]);
+    await sleep(300);
+    expect(await p.ev(`planx.board.linkList().filter((l) => l.from === 't').map((l) => planx.board.get(l.to)?.pt ? 'point' : l.to).join()`), 'from what is on it: not to its edge').toBe('point');
+  },
+
   async '"Линия в пустоту": a line let go on nothing stays (an arc), its end at an unseen point; moved there, on an item tied to it; gone with its line'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('sticky', 300, 300, { id: 's', w: 160, h: 160 })); b.add(e.newItem('rect', 900, 600, { id: 'r', w: 160, h: 160 })); e.setSelection(['s']); })()`);
     await sleep(300);
