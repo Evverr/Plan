@@ -1667,8 +1667,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       ctx.stroke();
       ctx.globalAlpha = 1;
       // («Полукруги на рамке», src/labs: its half circles instead.)
+      // (Under what lies over it, as its frame: all of it at its own height.)
+      ctx.save();
+      hiddenUnder(ctx, it, s, view);
       if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
       else if (!s.linkTool) drawDots(ctx, it, s);
+      ctx.restore();
     }
   }
   // With the line tool, the dots of the item under the pointer, whatever it is.

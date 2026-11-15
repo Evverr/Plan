@@ -914,6 +914,9 @@ export const checks = {
     await p.ev(`(() => { const e = planx.editor; e.setSelection(['${kid}']); e.deleteSelection(); })()`);
     await sleep(200);
     expect(await p.ev(`[!!planx.board.get('c'), planx.board.list().some((i) => i.tie === '${kid}')].join()`), 'deleted: its card and header too').toBe('false,false');
+    // Two at the same height (a copy, say): a layer down, under the other all the same.
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; b.add(e.newItem('task', 3000, 0, { id: 'u', z: 50 })); b.add(e.newItem('task', 3100, 10, { id: 'v', z: 50 })); e.setSelection(['v']); e.shiftZ(-1); })()`);
+    expect(await p.ev(`planx.editor.shown().filter((i) => i.id === 'u' || i.id === 'v').map((i) => i.id).join()`), 'the same height: apart').toBe('v,u');
   },
 
   async '"Заголовок задачи в три строки": a long title wraps, three lines at most, the header taller; «Заголовок в одну строку», one as before'(p) {

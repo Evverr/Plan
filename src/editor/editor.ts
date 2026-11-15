@@ -125,6 +125,10 @@ function lineOf(it: Item, all: Item[], axis: 'x' | 'y'): (Item[] & { axis: 'x' |
   return line.length > 1 ? Object.assign(line, { axis }) : null;
 }
 
+/** Heights bottom to top, each over the last (two at the same, a copy's and its original's say, apart:
+ *  else they'd never change places). */
+const rising = (z: number[]): number[] => z.reduce<number[]>((out, v) => [...out, out.length && v <= out[out.length - 1] ? out[out.length - 1] + 1 : v], []);
+
 export class Editor {
   board: Board;
   presence?: Presence;
@@ -1493,7 +1497,8 @@ export class Editor {
       at.splice(i, 1);
       at.splice(j, 0, it);
     }
-    this.board.transact(() => at.forEach((it, k) => { if (it.z !== z[k]) this.board.update(it.id, { z: z[k] }); }));
+    const zs = rising(z);
+    this.board.transact(() => at.forEach((it, k) => { if (it.z !== zs[k]) this.board.update(it.id, { z: zs[k] }); }));
   }
 
   /** These bottom to top, as drawn. */
@@ -1525,7 +1530,7 @@ export class Editor {
     // Their places as they're now drawn, each pile together, given the same heights as before.
     const out: Item[] = [], put = (p: string | null) => (kids.get(p) ?? []).forEach((it) => { out.push(it); put(it.id); });
     put(null);
-    const z = list.map((i) => i.z).sort((a, b) => a - b);
+    const z = rising(list.map((i) => i.z).sort((a, b) => a - b));
     this.board.transact(() => out.forEach((it, k) => { if (it.z !== z[k]) this.board.update(it.id, { z: z[k] }); }));
   }
 
