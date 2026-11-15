@@ -804,8 +804,8 @@ export const checks = {
     // Its icon first on its panel, a click there the same.
     await p.ev(`(() => { window.swapped = []; planx.editor.setSelection(['${h.id}']); })()`);
     await sleep(300);
-    expect(await p.ev(`document.querySelector('.bar.panel button')?.title`), 'its icon first').toBe('Другая иконка');
-    await p.click(await p.at('.bar.panel button[title="Другая иконка"]'));
+    expect(await p.ev(`document.querySelector('.bar.panel button')?.title`), 'the flag first').toBe('Заменить');
+    await p.click(await p.at('.bar.panel button[title="Заменить"]'));
     expect(await p.ev(`swapped.join()`), 'clicked: its icon to swap').toBe(h.id);
     // Its colours: its icon's and how opaque, no outline nor text.
     await p.click(await p.at('.bar.panel [data-key="colors"] button, .bar.panel button[aria-label="Цвет"]'));
