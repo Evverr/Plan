@@ -4,7 +4,7 @@ import { fontOf, textBlockHeight, withList } from '../canvas/text';
 import { taskPartAt } from '../canvas/task';
 import type { Point } from '../canvas/geometry';
 import { nearTab, sameAims, tabAims, tabAt, tabsFor } from '../labs/sideTabs';
-import { coveredAt, hitItem, hitLink, instanceBounds, linkHandles, linkShape, onAudioButton, pointInRect, sidePoint, SIDES, toLocal } from '../canvas/geometry';
+import { coveredAt, hitItem, linkBox, hitLink, instanceBounds, linkHandles, linkShape, onAudioButton, pointInRect, sidePoint, SIDES, toLocal } from '../canvas/geometry';
 import { DOT_GAP, dotGap, HANDLE } from '../canvas/renderer';
 import { instanceGlyph, instancePlus } from '../model/components';
 import { taskButtonAt } from './tasks';
@@ -30,7 +30,8 @@ const ROTATE_ZONE = 18;
 /** Whether the point is on the item's resize handle, at its lower right corner (or `more` round it). */
 export function onHandle(ed: Editor, it: Item, w: Point, more = 0): boolean {
   // What's in an instance is as big as the instance makes it; the instance's handle is at its contents' corner.
-  if (it.type === 'mind' || it.fold || it.host) return false;
+  // (Nor a component's: it's as big as what it holds.)
+  if (it.type === 'mind' || it.fold || it.host || it.comp) return false;
   // (Under something solid over it there, it's neither drawn nor taken hold of.)
   if (!it.inst && !it.rot && coveredAt(ed.shown(), it, { x: it.x + it.w, y: it.y + it.h })) return false;
   const hs = ed.reach((HANDLE + 6 + more) / 2) * 2, off = 3 / ed.cam.z, b = it.inst ? instanceBounds(it, ed.board.list()) : it;
@@ -40,7 +41,7 @@ export function onHandle(ed: Editor, it: Item, w: Point, more = 0): boolean {
 /** Whether the point is on the picked item's top left corner (or with `bottom`, its bottom left one):
  *  stretched from there as by its handle (nothing drawn there, the pointer says so). */
 export function onTopLeft(ed: Editor, it: Item, w: Point, bottom = false): boolean {
-  if (it.type === 'mind' || it.fold || it.host || it.inst || ed.editingId) return false;
+  if (it.type === 'mind' || it.fold || it.host || it.inst || it.comp || ed.editingId) return false;
   const hs = ed.reach((HANDLE + 6) / 2) * 2, off = 3 / ed.cam.z, y = bottom ? it.y + it.h + off : it.y - off;
   return pointInRect(toLocal(it, w), { x: it.x - off - hs / 2, y: y - hs / 2, w: hs, h: hs });
 }
@@ -51,7 +52,7 @@ export const onBottomLeft = (ed: Editor, it: Item, w: Point): boolean => onTopLe
  *  (onHandle) does both. Not for what keeps its proportions or sizes itself, nor what's locked. An
  *  instance by its contents. */
 export function sideAt(ed: Editor, it: Item, w: Point): 'w' | 'h' | 'l' | 't' | null {
-  if (it.fold || it.host || ed.editingId || ['mind', 'icon', 'emoji', 'ink', 'audio', 'image'].includes(it.type)) return null;
+  if (it.fold || it.host || it.comp || ed.editingId || ['mind', 'icon', 'emoji', 'ink', 'audio', 'image'].includes(it.type)) return null;
   // Near a ball on the frame («Полукруги на рамке»), it's the ball's, not the side's.
   if (tabsFor(it, ed.editingId) && nearTab(ed, it, w)) return null;
   const b = it.inst ? instanceBounds(it, ed.board.list()) : it, p = it.inst ? w : toLocal(it, w);
@@ -155,7 +156,7 @@ export function onInstanceGlyph(ed: Editor, it: Item, w: Point): boolean {
 /** Whether the point is on a component's tick for an instance of it. */
 export function onInstancePlus(ed: Editor, it: Item, w: Point): boolean {
   if (!it.comp || it.stowed || !zoomShows('comp', ed.cam.z, ed.selection.has(it.id))) return false;
-  const p = instancePlus(it, ed.cam.z / zoomSize('comp', ed.cam.z, ed.selection.has(it.id)));
+  const p = instancePlus(linkBox(it), ed.cam.z / zoomSize('comp', ed.cam.z, ed.selection.has(it.id)));
   return Math.hypot(w.x - p.x, w.y - p.y) <= Math.max(p.r * 1.3, ed.reach(0));
 }
 

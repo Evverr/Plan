@@ -90,7 +90,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
   const width = field ? field.w : folded ? Math.max(160, item.w - FOLD_PAD - FOLD_TITLE_GAP - FOLD_ICON - FOLD_RIGHT)
     : isFrame ? Math.max(160, item.w * 0.6) : code ? item.w - CODE_LEFT - CODE_PAD : item.w - pad - textPadR(item);
   // An instance's name (its component's, «Переименовать»): where its red title is, over its contents.
-  const named = isFrame && !folded && item.inst ? instanceBounds(item, editor.board.list()) : null;
+  const named = isFrame && !folded && (item.inst || item.comp) ? instanceBounds(item, editor.board.list()) : null;
   const top = field ? field.y : folded ? item.y + (item.h - 26) / 2 : named ? named.y - 3 - 24 : isFrame ? item.y - 30 : item.y + padY;
   const p = editor.toScreen({ x: field ? field.x : named ? named.x + 17 : item.x + (folded ? FOLD_PAD : isFrame ? 0 : pad), y: top });
 

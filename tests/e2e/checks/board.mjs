@@ -303,7 +303,8 @@ export const checks = {
     expect(comp?.members?.length, 'a component round both').toBe(2);
     await p.ev(`planx.editor.setSelection(['${comp.id}'])`);
     await sleep(200);
-    await p.click(await screen(p, comp.x + comp.w + 20, comp.y + 10));
+    // (Its tick by what it holds, 20 in from its frame all round.)
+    await p.click(await screen(p, comp.x + comp.w, comp.y + 30));
     await sleep(200);
     const inst = await p.ev(`planx.board.list().find((i) => i.inst === '${comp.id}')`);
     const copy = (k) => p.ev(`planx.board.get('${inst.id}~${k}')`);
@@ -314,7 +315,7 @@ export const checks = {
     await sleep(800);
     const back = await p.ev(`planx.board.get('${comp.id}')`);
     expect(!back.stowed, 'brought back').toBe(true);
-    await p.click(await screen(p, back.x + back.w + 20, back.y + 10));
+    await p.click(await screen(p, back.x + back.w, back.y + 30));
     await sleep(200);
     expect(await p.ev(`planx.board.list().filter((i) => i.inst === '${comp.id}').length`), 'a second instance').toBe(2);
     expect(await p.ev(`planx.board.list().filter((i) => i.inst === '${comp.id}').every((i) => i.w === ${comp.w})`), 'as big as the component unfolded').toBe(true);

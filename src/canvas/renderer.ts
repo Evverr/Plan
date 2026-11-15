@@ -28,7 +28,7 @@ import { drawnLinks } from '../model/textLinks';
 import { drawTimeline } from './timeline';
 import { autoInk } from '../model/color';
 import cursorUrl from './cursor.svg';
-import { anchorAt, coveredAt, solid, angleOf, traceStar, audioButton, boxOf, center, curveBetween, edgePoint, elbowRoute, inkPoints, instanceBounds, pathNodes, flattenPath, linkHandles, spreadElbows, polyPoints, linkShape, nearestSide, pointInRect, rectsIntersect, sidePoint, type Bezier, type LinkShape } from './geometry';
+import { anchorAt, coveredAt, solid, angleOf, traceStar, audioButton, boxOf, center, curveBetween, edgePoint, elbowRoute, inkPoints, hugsContents, instanceBounds, pathNodes, flattenPath, linkHandles, spreadElbows, polyPoints, linkShape, nearestSide, pointInRect, rectsIntersect, sidePoint, type Bezier, type LinkShape } from './geometry';
 import { font, fontOf, layoutText, LINE_HEIGHT, MIND_PAD_Y, withList, type FontStyle, type TextLayout } from './text';
 
 export interface Camera { x: number; y: number; z: number }
@@ -257,8 +257,8 @@ function hiddenUnder(ctx: CanvasRenderingContext2D, it: Item, s: Scene, view: Re
   }
 }
 
-/** What's framed when it's picked: an instance by its contents (its own frame unseen, wider). */
-const framedBox = (it: Item, s: Scene): Item => (it.inst ? { ...it, ...instanceBounds(it, s.items) } : it);
+/** What's framed when it's picked: an instance or a component by its contents (its own frame unseen, wider). */
+const framedBox = (it: Item, s: Scene): Item => (hugsContents(it) ? { ...it, ...instanceBounds(it, s.items) } : it);
 
 /** However narrow a frame or an instance, this much room for its name over it (past its edge, then). */
 const TITLE_ROOM = 120;
@@ -595,10 +595,12 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         break;
       }
       const kin = it.comp;
+      // (A component hugs what it holds, as an instance does: its edge and its name there.)
+      const hug = kin ? instanceBounds(it, s.items) : it;
       if (!it.inst) {
         // A component is only its red edge, with nothing filled in.
         ctx.beginPath();
-        ctx.roundRect(it.x, it.y, it.w, it.h, CORNER);
+        ctx.roundRect(hug.x, hug.y, hug.w, hug.h, CORNER);
         // A frame's fill and outline: the usual, or a colour of its own as a rectangle's (how opaque, too).
         if (!it.comp && it.color !== 'none') {
           // (Its usual one as it was; given an opacity, the surface's colour seen that far through.)
@@ -624,9 +626,12 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         ctx.fillStyle = kin ? COMPONENT_COLOR : theme.muted;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        // A component's name after its icon, solid.
-        if (kin) drawIcon(ctx, 'component-solid', it.x, it.y - 7 - GLYPH, GLYPH, COMPONENT_COLOR);
-        ctx.fillText(fitText(ctx, kin ? it.text ?? '' : it.text!, Math.max(TITLE_ROOM, it.w - (kin ? GLYPH + 5 : 2))), it.x + (kin ? GLYPH + 5 : 2), it.y - 8);
+        // A component's name after its icon, solid, as an instance's over what it holds.
+        if (kin) {
+          const y = hug.y - 3, gap = GLYPH + 3;
+          drawIcon(ctx, 'component-solid', hug.x - 2, y - GLYPH + 1, GLYPH, COMPONENT_COLOR);
+          ctx.fillText(fitText(ctx, it.text ?? '', Math.max(TITLE_ROOM, hug.w - gap)), hug.x + gap, y);
+        } else ctx.fillText(fitText(ctx, it.text!, Math.max(TITLE_ROOM, it.w - 2)), it.x + 2, it.y - 8);
       }
       break;
     }
@@ -1506,7 +1511,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     const fade = zoomFade('comp', cam.z, s.selection.has(it.id));
     if (!fade) continue;
     // Smaller as it's zoomed out (see zoomSize): as at a zoom that much bigger.
-    const z = cam.z / zoomSize('comp', cam.z, s.selection.has(it.id)), p = instancePlus(it, z);
+    const z = cam.z / zoomSize('comp', cam.z, s.selection.has(it.id)), p = instancePlus(framedBox(it, s), z);
     ctx.fillStyle = COMPONENT_COLOR;
     ctx.globalAlpha = (s.hotPlus === `tick:${it.id}` ? 1 : 0.75) * fade;
     ctx.beginPath();
@@ -1589,7 +1594,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     if (it.type === 'mind' || it.host) continue;
     ctx.globalAlpha = PICK_FRAME * (1 - k);
     outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
-    if (u.dots) {
+    if (u.dots && !it.comp) {
       const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z;
       ctx.fillStyle = theme.surface;
       ctx.strokeStyle = theme.pick;
@@ -1669,8 +1674,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
     } else if (s.showHandle && s.editingId !== id) {
-      // (Not over what lies over its corner: see coveredAt.)
-      const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z, hidden = !it.rot && coveredAt(s.items, it, { x: it.x + it.w, y: it.y + it.h });
+      // (Not over what lies over its corner: see coveredAt. Not a component's: it's as big as what it holds.)
+      const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z, hidden = !!it.comp || (!it.rot && coveredAt(s.items, it, { x: it.x + it.w, y: it.y + it.h }));
       ctx.fillStyle = theme.surface;
       ctx.strokeStyle = theme.pick;
       ctx.lineWidth = PICK_LINE / cam.z;

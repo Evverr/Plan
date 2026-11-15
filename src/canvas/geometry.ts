@@ -316,7 +316,7 @@ const JOINT_GAP = 3;
  *  not its own box (as big as its component's, padding and all). Set by the editor. */
 let instanceBox: ((it: Item) => Rect) | null = null;
 export const setInstanceBox = (fn: (it: Item) => Rect) => { instanceBox = fn; };
-export const linkBox = (it: Item): Item => (it.inst && instanceBox ? { ...it, ...instanceBox(it) } : it);
+export const linkBox = (it: Item): Item => (hugsContents(it) && instanceBox ? { ...it, ...instanceBox(it) } : it);
 
 export function linkShape(link: Link, getItem: (id: string) => Item | undefined): LinkShape | null {
   // A thing put into a line is met that much further out all round.
@@ -611,8 +611,17 @@ export function nearInk(it: Item, p: Point, tol: number): boolean {
   return false;
 }
 
-/** An instance hugs its visible contents, without the source frame's padding; empty ones keep a box. */
-export const instanceBounds = (it: Item, items: Item[]): Rect => boundsOf(items.filter((i) => i.host === it.id)) ?? boxOf(it);
+/** An instance hugs its visible contents, without the source frame's padding; empty ones keep a box. A
+ *  component (unfolded) too: what it holds, however deep. */
+export const instanceBounds = (it: Item, items: Item[]): Rect => {
+  if (!it.comp || it.fold) return boundsOf(items.filter((i) => i.host === it.id)) ?? boxOf(it);
+  const by = new Map(items.map((i) => [i.id, i])), held: Item[] = [], seen = new Set<string>();
+  const walk = (f: Item) => (f.members ?? []).forEach((m) => { const o = by.get(m); if (o && !seen.has(m)) { seen.add(m); held.push(o); walk(o); } });
+  walk(it);
+  return boundsOf(held) ?? boxOf(it);
+};
+/** Whether it's drawn and framed by what it holds (see instanceBounds): an instance, an unfolded component. */
+export const hugsContents = (it: Item): boolean => !!it.inst || (!!it.comp && !it.fold);
 
 /**
  * Topmost item under the point. Ink counts only near its line. A frame counts on its label and
@@ -626,7 +635,7 @@ export function hitItem(items: Item[], p: Point, zoom: number): Item | null {
     // A turned item is tested in its own frame, where it lies square.
     p = it.rot ? toLocal(it, at) : at;
     if (it.type === 'frame') {
-      const b = it.inst ? instanceBounds(it, items) : it, q = it.inst ? at : p;
+      const b = hugsContents(it) ? instanceBounds(it, items) : it, q = hugsContents(it) ? at : p;
       const onLabel = !it.fold && !it.tl && q.x >= b.x && q.x <= b.x + b.w && q.y >= b.y - FRAME_LABEL && q.y < b.y;
       if (onLabel || pointInRect(q, b)) return it;
       continue;
