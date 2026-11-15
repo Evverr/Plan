@@ -254,7 +254,10 @@ export function press(ed: Editor, e: PointerEvent): void {
   const bottomLeft = single && !isLocked(single) && !side && !topLeft && onBottomLeft(ed, single, w);
   if (single && !isLocked(single) && (side || topLeft || bottomLeft || onHandle(ed, single, w))) {
     board.beginGesture();
-    ed.gesture = { type: 'resize', id: single.id, start: w, orig: { ...single }, box: single.inst ? instanceBounds(single, items) : undefined, only: side ?? (topLeft ? 'tl' : bottomLeft ? 'bl' : undefined) };
+    // A component stretched by hand gets room of its own, its frame first as it's seen: round what it holds.
+    if (single.comp && !single.air) ed.reframeComponent(single.id, instanceBounds(single, items), true);
+    const orig = board.get(single.id) ?? single;
+    ed.gesture = { type: 'resize', id: single.id, start: w, orig: { ...orig }, box: single.inst ? instanceBounds(single, items) : undefined, only: side ?? (topLeft ? 'tl' : bottomLeft ? 'bl' : undefined) };
     ed.setMoving(true);
     return;
   }

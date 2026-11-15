@@ -4,7 +4,7 @@ import { fontOf, textBlockHeight, withList } from '../canvas/text';
 import { taskPartAt } from '../canvas/task';
 import type { Point } from '../canvas/geometry';
 import { nearTab, sameAims, tabAims, tabAt, tabsFor } from '../labs/sideTabs';
-import { coveredAt, hitItem, linkBox, hitLink, instanceBounds, linkHandles, linkShape, onAudioButton, pointInRect, sidePoint, SIDES, toLocal } from '../canvas/geometry';
+import { coveredAt, hitItem, hugsContents, linkBox, hitLink, instanceBounds, linkHandles, linkShape, onAudioButton, pointInRect, sidePoint, SIDES, toLocal } from '../canvas/geometry';
 import { DOT_GAP, dotGap, HANDLE } from '../canvas/renderer';
 import { instanceGlyph, instancePlus } from '../model/components';
 import { taskButtonAt } from './tasks';
@@ -30,12 +30,12 @@ const ROTATE_ZONE = 18;
 /** Whether the point is on the item's resize handle, at its lower right corner (or `more` round it). */
 export function onHandle(ed: Editor, it: Item, w: Point, more = 0): boolean {
   // What's in an instance is as big as the instance makes it; the instance's handle is at its contents' corner.
-  // (Nor a component's: it's as big as what it holds.)
-  if (it.type === 'mind' || it.fold || it.host || it.comp) return false;
+  if (it.type === 'mind' || it.fold || it.host) return false;
   // (Under something solid over it there, it's neither drawn nor taken hold of.)
-  if (!it.inst && !it.rot && coveredAt(ed.shown(), it, { x: it.x + it.w, y: it.y + it.h })) return false;
-  const hs = ed.reach((HANDLE + 6 + more) / 2) * 2, off = 3 / ed.cam.z, b = it.inst ? instanceBounds(it, ed.board.list()) : it;
-  return pointInRect(it.inst ? w : toLocal(it, w), { x: b.x + b.w + off - hs / 2, y: b.y + b.h + off - hs / 2, w: hs, h: hs });
+  if (!it.inst && !it.comp && !it.rot && coveredAt(ed.shown(), it, { x: it.x + it.w, y: it.y + it.h })) return false;
+  // (An instance's or a component's at the corner of what it holds, or of its frame with room of its own.)
+  const hug = hugsContents(it), hs = ed.reach((HANDLE + 6 + more) / 2) * 2, off = 3 / ed.cam.z, b = hug ? instanceBounds(it, ed.board.list()) : it;
+  return pointInRect(hug ? w : toLocal(it, w), { x: b.x + b.w + off - hs / 2, y: b.y + b.h + off - hs / 2, w: hs, h: hs });
 }
 
 /** Whether the point is on the picked item's top left corner (or with `bottom`, its bottom left one):
@@ -52,10 +52,10 @@ export const onBottomLeft = (ed: Editor, it: Item, w: Point): boolean => onTopLe
  *  (onHandle) does both. Not for what keeps its proportions or sizes itself, nor what's locked. An
  *  instance by its contents. */
 export function sideAt(ed: Editor, it: Item, w: Point): 'w' | 'h' | 'l' | 't' | null {
-  if (it.fold || it.host || it.comp || ed.editingId || ['mind', 'icon', 'emoji', 'ink', 'audio', 'image'].includes(it.type)) return null;
+  if (it.fold || it.host || ed.editingId || ['mind', 'icon', 'emoji', 'ink', 'audio', 'image'].includes(it.type)) return null;
   // Near a ball on the frame («Полукруги на рамке»), it's the ball's, not the side's.
   if (tabsFor(it, ed.editingId) && nearTab(ed, it, w)) return null;
-  const b = it.inst ? instanceBounds(it, ed.board.list()) : it, p = it.inst ? w : toLocal(it, w);
+  const hug = hugsContents(it), b = hug ? instanceBounds(it, ed.board.list()) : it, p = hug ? w : toLocal(it, w);
   const near = ed.reach(4), corner = ed.reach(10);
   const along = (v: number, from: number, size: number) => v >= from + corner && v <= from + size - corner;
   if (Math.abs(p.x - (b.x + b.w)) <= near && along(p.y, b.y, b.h)) return 'w';

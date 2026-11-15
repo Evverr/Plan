@@ -25,7 +25,7 @@ const same = (vals: Array<string | undefined>): string | null => (vals.length &&
 /** Rearrangeable buttons; the bin comes last until moved. */
 /** "2 объекта", "5 объектов", "21 объект". */
 const objects = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'объект' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'объекта' : 'объектов'}`;
-const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'rows', 'cols', 'crop', 'lines', 'component', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
+const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'rows', 'cols', 'crop', 'lines', 'component', 'hug', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
 
 /**
  * A palette button and the popover of colour controls it opens above it, centred on the button and
@@ -449,6 +449,12 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
     items.forEach(walk);
     return found.length === 1 ? found[0] : null;
   })();
+  const hugBack = (() => {
+    const c = items.length === 1 && items[0].comp && items[0].air && !items[0].fold ? items[0] : null;
+    if (!c) return null;
+    const b = instanceBounds({ ...c, air: undefined }, editor.board.list());
+    return Math.abs(b.x - c.x) > 0.5 || Math.abs(b.y - c.y) > 0.5 || Math.abs(b.w - c.w) > 0.5 || Math.abs(b.h - c.h) > 0.5 ? c : null;
+  })();
   const group = items.length === 1 && items[0].type === 'frame' && !items[0].tl && !items[0].kb && !items[0].inst ? items[0] : null;
   // (Nor a «Титул», src/labs/header.ts.)
   const shapes = items.filter((i) => (i.type === 'rect' || i.type === 'ellipse' || i.type === 'polygon') && !i.code && !i.hd), noText = shapes.length > 0 && shapes.every((s) => s.nt);
@@ -531,6 +537,10 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
         // something in one) alone: its component brought out to be changed instead.
         component: editInst ? btn('component', 'Редактировать компонент', () => editor.editComponentAt(editInst))
           : items.length > 0 && !(items.length === 1 && items[0].comp) ? btn('component', 'Компонент из выделенного', () => editor.makeComponent()) : undefined,
+        // A component given room of its own (its frame stretched): hugging what it holds again, coming in softly.
+        hug: hugBack ? (
+          <button className="ib comes-in" title="Ограничить по содержимому" aria-label="Ограничить по содержимому" onClick={() => editor.fitComponent(hugBack.id)}><PanelIcon name="collapse-m" /></button>
+        ) : undefined,
         // An instance can be cut loose from its component.
         detach: items.some((i) => i.inst) ? btn('component-off', 'Отвязать от компонента (Ctrl+Alt+B)', () => editor.detachInstances())
           // («Титул в объектах», src/labs: its parts, each its own.)

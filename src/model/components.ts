@@ -182,7 +182,7 @@ export function syncOps(items: Item[], links: Link[], fit?: (it: Item) => number
     const dx = inst.x - comp.x, dy = inst.y - comp.y, cw = comp.fold?.w ?? comp.w, ch = comp.fold?.h ?? comp.h;
     const map = (id: string) => copyId(inst.id, id);
     const grow = inst.grow ?? { w: 0, h: 0 }, box = inside.length ? around(inside) : null;
-    patch(inst.id, { w: cw + grow.w, h: ch + grow.h, text: comp.text, members: (comp.members ?? []).filter((m) => ids.has(m)).map(map), fold: undefined });
+    patch(inst.id, { w: cw + grow.w, h: ch + grow.h, text: comp.text, members: (comp.members ?? []).filter((m) => ids.has(m)).map(map), fold: undefined, air: comp.air });
     const made: Array<{ src: Item; old: Item | undefined; want: Item }> = [];
     for (const src of inside) {
       const id = map(src.id), old = byId.get(id), at = box && (grow.w || grow.h) ? stretched(src, box, grow) : src;

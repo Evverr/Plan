@@ -1,7 +1,7 @@
 import type { Item, Link, Side } from '../model/types';
 import { DEFAULTS, kanbanOf, ROTATABLE, uid } from '../model/types';
 import type { PathNode, Point, Rect } from '../canvas/geometry';
-import { anchorAt, angleOf, boxOf, center, hitItem, linkBox, linkShape, movedStretch, pathCrosses, nearestSide, nearInk, normRect, pointInRect, rectContains, rectsIntersect, resizedFrom, toLocal, turn } from '../canvas/geometry';
+import { anchorAt, angleOf, boxOf, center, hitItem, instanceBounds, linkBox, linkShape, movedStretch, pathCrosses, nearestSide, nearInk, normRect, pointInRect, rectContains, rectsIntersect, resizedFrom, toLocal, turn } from '../canvas/geometry';
 import { itemTextHeight, mindSize } from '../canvas/text';
 import { setSubDrag, subDropAt, TASK_MIN_W, taskPartAt, taskSize } from '../canvas/task';
 import { freshTask, moveSub, nextView, toggleSub } from '../model/task';
@@ -226,7 +226,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         board.update(g.id, { x: g.orig.x + days * day, w: g.orig.w - days * day, tl: dayKey(tlStart(g.orig), days) });
         return;
       }
-      const min = it.type === 'frame' ? 80 : it.type === 'ink' ? 4 : it.type === 'audio' ? 32 : it.type === 'icon' || it.type === 'emoji' || it.type === 'image' ? 16 : 40;
+      // (A component no smaller than what it holds: see below.)
+      const min = it.comp ? 1 : it.type === 'frame' ? 80 : it.type === 'ink' ? 4 : it.type === 'audio' ? 32 : it.type === 'icon' || it.type === 'emoji' || it.type === 'image' ? 16 : 40;
       // A turned item is stretched along its own sides.
       const { w: w0, h: h0 } = g.orig, d = turn({ x: w.x - g.start.x, y: w.y - g.start.y }, { x: 0, y: 0 }, -angleOf(g.orig));
       // Which way each side goes: by a side one way only, by the top left corner both back (the bottom left
@@ -271,6 +272,14 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         const dl = !sx ? 0 : e.altKey ? (w0 - nw) / 2 : sx < 0 ? w0 - nw : 0;
         const dt = !sy ? 0 : e.altKey ? (h0 - nh) / 2 : sy < 0 ? h0 - nh : 0;
         const at = resizedFrom(g.orig, nw, nh, dl, dt);
+        // A component («с воздухом»): round what it holds at least, its instances along (see reframeComponent).
+        if (it.comp) {
+          const c = instanceBounds({ ...it, air: undefined }, board.list());
+          const x0 = Math.min(at.x, c.x), y0 = Math.min(at.y, c.y);
+          const x1 = Math.max(at.x + nw, c.x + c.w), y1 = Math.max(at.y + nh, c.y + c.h);
+          ed.reframeComponent(g.id, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, true);
+          return;
+        }
         // (A kanban's height set so by hand stays so, see kanbanLayout.)
         board.update(g.id, { ...size, x: Math.round(at.x), y: Math.round(at.y), ...(it.kb && sy ? { kbH: true } : {}),
           ...(it.hd && sy ? { hdH: nh > headerHeight(it, { w: nw }) || undefined } : {}) });

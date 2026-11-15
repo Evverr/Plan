@@ -1319,6 +1319,29 @@ export class Editor {
     return this.frameSelection({ comp: true, text: 'Компонент' }, 20);
   }
 
+  /** A component's frame set to `r`, what it holds staying put; its instances along, each as far as its
+   *  frame's corner went, so what's in them stays put too (only as much room round it). `air`: room of its own
+   *  (see Item.air), or none: hugging what it holds. */
+  reframeComponent(id: string, r: Rect, air: boolean | undefined): void {
+    const c = this.board.get(id);
+    if (!c?.comp) return;
+    const x = Math.round(r.x), y = Math.round(r.y), dx = x - c.x, dy = y - c.y;
+    this.board.transact(() => {
+      this.board.update(id, { x, y, w: Math.round(r.w), h: Math.round(r.h), air });
+      if (dx || dy) for (const i of this.board.list()) if (i.inst === id) this.board.update(i.id, { x: i.x + dx, y: i.y + dy });
+    });
+  }
+
+  /** «Ограничить по содержимому»: a component given room of its own hugging what it holds again (its
+   *  instances too). */
+  fitComponent(id: string): void {
+    const c = this.board.get(id);
+    if (!c?.comp) return;
+    this.board.beginGesture();
+    this.reframeComponent(id, instanceBounds({ ...c, air: undefined }, this.board.list()), undefined);
+    this.board.endGesture();
+  }
+
   /** A component's tick: the component turns into an instance where it stands (the one it was brought
    *  out in place of, or a new one), picked, and is put away. */
   addInstance(id: string): void {

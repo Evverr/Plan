@@ -347,4 +347,24 @@ export const checks = {
     await sleep(300);
     expect(await p.ev(`[...planx.editor.selection].map((id) => { const i = planx.board.get(id); return i.comp ? 'C' : i.inst ? 'I' : 'in'; }).sort().join()`), 'the component\'s left half: it whole').toBe('C');
   },
+
+  async 'a component being changed stretched by its top: room of its own, its instances too, what they hold in place; «Ограничить по содержимому» hugs again'(p) {
+    const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; const s = e.newItem('sticky', 0, 0, { w: 160, h: 160 }); b.add(s); e.setSelection([s.id]); e.makeComponent(); e.finishComponent(); const i = b.list().find((x) => x.inst); e.setSelection([i.id]); e.duplicate(); const j = b.list().find((x) => x.inst && x.id !== i.id); e.editComponentAt(i.id); e.cam = { x: 400, y: 300, z: 1 }; e.camChanged(); return { c: b.list().find((x) => x.comp).id, j: j.id }; })()`);
+    await sleep(300);
+    await p.escape();
+    await p.ev(`planx.editor.setSelection(['${ids.c}'])`);
+    await sleep(300);
+    const sticky = await p.ev(`JSON.stringify(planx.board.list().filter((i) => i.host === '${ids.j}').map((i) => [i.x, i.y]))`);
+    // What it holds from (400, 300) to (560, 460) on the screen: its top side (clear of the middle) up 40.
+    await p.drag([430, 297], [430, 257]);
+    await sleep(300);
+    const c = await p.ev(`(() => { const c = planx.board.get('${ids.c}'); return [c.x, c.y, c.w, c.h, !!c.air]; })()`);
+    expect(c.join(), 'room on top of its own').toBe([0, -40, 160, 200, true].join());
+    expect(await p.ev(`(() => { const i = planx.board.get('${ids.j}'); return [i.h, !!i.air].join(); })()`), 'the other instance as tall').toBe('200,true');
+    expect(await p.ev(`JSON.stringify(planx.board.list().filter((i) => i.host === '${ids.j}').map((i) => [i.x, i.y]))`), 'what it holds in place').toBe(sticky);
+    await p.click(await p.at('button[aria-label="Ограничить по содержимому"]'));
+    await sleep(300);
+    expect(await p.ev(`(() => { const c = planx.board.get('${ids.c}'); return [c.x, c.y, c.w, c.h, !!c.air].join(); })()`), 'hugging again').toBe([0, 0, 160, 160, false].join());
+    expect(await p.ev(`!!document.querySelector('button[aria-label="Ограничить по содержимому"]')`), 'the button gone').toBe(false);
+  },
 };

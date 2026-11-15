@@ -612,8 +612,9 @@ export function nearInk(it: Item, p: Point, tol: number): boolean {
 }
 
 /** An instance hugs its visible contents, without the source frame's padding; empty ones keep a box. A
- *  component (unfolded) too: what it holds, however deep. */
+ *  component (unfolded) too: what it holds, however deep. One with room of its own (`air`): its frame. */
 export const instanceBounds = (it: Item, items: Item[]): Rect => {
+  if (it.air) return boxOf(it);
   if (!it.comp || it.fold) return boundsOf(items.filter((i) => i.host === it.id)) ?? boxOf(it);
   const by = new Map(items.map((i) => [i.id, i])), held: Item[] = [], seen = new Set<string>();
   const walk = (f: Item) => (f.members ?? []).forEach((m) => { const o = by.get(m); if (o && !seen.has(m)) { seen.add(m); held.push(o); walk(o); } });

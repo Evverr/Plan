@@ -597,6 +597,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       const kin = it.comp;
       // (A component hugs what it holds, as an instance does: its edge and its name there.)
       const hug = kin ? instanceBounds(it, s.items) : it;
+      // (Hugging what it holds, or as stretched, with room of its own: «Ограничить по содержимому» then.)
       if (!it.inst) {
         // A component is only its red edge, with nothing filled in: where a picked thing's frame goes, round
         // what it holds (its own frame, picked, not drawn: this is it).
@@ -1597,7 +1598,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     if (it.type === 'mind' || it.host || it.comp || got.stowed) continue;
     ctx.globalAlpha = PICK_FRAME * (1 - k);
     outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
-    if (u.dots && !it.comp) {
+    if (u.dots) {
       const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z;
       ctx.fillStyle = theme.surface;
       ctx.strokeStyle = theme.pick;
@@ -1677,8 +1678,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
     } else if (s.showHandle && s.editingId !== id) {
-      // (Not over what lies over its corner: see coveredAt. Not a component's: it's as big as what it holds.)
-      const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z, hidden = !!it.comp || (!it.rot && coveredAt(s.items, it, { x: it.x + it.w, y: it.y + it.h }));
+      // (Not over what lies over its corner: see coveredAt. A component's at its edge, what it holds or its own.)
+      const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z, hidden = !it.rot && !it.comp && coveredAt(s.items, it, { x: it.x + it.w, y: it.y + it.h });
       ctx.fillStyle = theme.surface;
       ctx.strokeStyle = theme.pick;
       ctx.lineWidth = PICK_LINE / cam.z;

@@ -22,6 +22,8 @@
 .tfmt.leaving { animation: fade-out .08s ease forwards; pointer-events: none; }
 @keyframes fade-out { to { opacity: 0; } }
 @keyframes fade-in { from { opacity: 0; } }
+/* A button that shows up on the panel as it's wanted («Ограничить по содержимому»): fading in. */
+.ib.comes-in { animation: fade-in .2s ease; }
 .tf-drop { position: relative; display: flex; }
 .tf-menu { position: absolute; z-index: 6; top: calc(100% + var(--s18)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: var(--s2);
   min-width: 100%; max-height: var(--e300); overflow-y: auto; padding: var(--s6); background: var(--surface); border-radius: var(--s12); box-shadow: var(--shadow); }

@@ -202,6 +202,9 @@ export interface Item {
    *  put away while its component is out in its place, being changed (`standsIn`, on the component). */
   stowed?: boolean;
   standsIn?: string;
+  /** A component given room of its own round what it holds (its frame stretched by hand, being changed),
+   *  and its instances so (copied from it): framed by their frames, not hugging their contents. */
+  air?: boolean;
   inst?: string;
   from?: string;
   host?: string;
