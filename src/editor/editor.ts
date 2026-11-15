@@ -663,7 +663,8 @@ export class Editor {
     this.setSelection([it.id]);
   }
 
-  /** «Канбан» (src/labs): a new task where its «Создать задачу» is, under the first stage's cards, typed in. */
+  /** «Канбан» (src/labs): a new task where its «Создать задачу» is, under the first stage's cards, typed in;
+   *  on a timeline too («Создать задачу на таймлайне»). */
   addKanbanTask(f: Item): void {
     const b = newCardBox(f, (id) => this.board.get(id));
     if (!b) return;

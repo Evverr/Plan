@@ -20,7 +20,7 @@ import { drawCode } from '../labs/codeBlock';
 import { drawForm } from '../labs/formObject';
 import { drawHeader } from '../labs/header';
 import { drawPoll } from '../labs/poll';
-import { drawKanban, glideOffset, gliding } from '../labs/kanban';
+import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
 import { drawDocPage, drawPager, pageCount, pageShown } from '../labs/docPage';
 import { drawTaskCard, TASK_RAD, taskShown } from './task';
 import { dotsAlways, dotsUnder } from '../labs/linkTool';
@@ -543,7 +543,13 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       } else drawText(ctx, it, 0, theme.ink, false, s);
       break;
     case 'frame': {
-      if (it.tl) { drawTimeline(ctx, it, { card: theme.surface, ink: theme.ink }, cam.z); break; }
+      if (it.tl) {
+        drawTimeline(ctx, it, { card: theme.surface, ink: theme.ink }, cam.z);
+        // Its «Создать задачу» («Создать задачу на таймлайне», src/labs), half seen.
+        const nb = newCardBox(it, s.get);
+        if (nb) { ctx.globalAlpha = 0.5; drawNewCard(ctx, nb, theme, s.hotPlus === `kb:${it.id}:new`); ctx.globalAlpha = 1; }
+        break;
+      }
       // A kanban («Канбан», src/labs): its stages and columns.
       if (it.kb) {
         const now = performance.now(), lit = (i: number) => { const t = dropTurns.get(`${it.id}:${i}`); return t ? dotLit(t, now, DROP_FADE) : 0; };

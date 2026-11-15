@@ -41,7 +41,7 @@ export const dayKey = (d: Date, by = 0): string => {
 /** A new timeline's size: this month and the next. */
 export function timelineSize(start: Date): { w: number; h: number } {
   const days = new Date(start.getFullYear(), start.getMonth() + 2, 0).getDate() + new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
-  return { w: TL_PAD * 2 + days * DAY, h: 190 };
+  return { w: TL_PAD * 2 + days * DAY, h: 380 };
 }
 
 /** The steps a timeline can have (see `ts`), and a day across at its own. */
@@ -73,6 +73,13 @@ export const halfDay = (tl: Item, x: number): number => {
   const from = tl.x + TL_PAD, half = dayOf(tl) / 2;
   return from + Math.round((x - from) / half) * half;
 };
+
+/** «Создать задачу» on it («Создать задачу на таймлайне», src/labs): as big as a task, in whole days, from
+ *  today (its first day, today not on it), under its days' numbers. */
+export function tlNewCardBox(it: Item): { x: number; y: number; w: number; h: number } {
+  const day = dayOf(it), now = new Date(), i = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - tlStart(it).getTime()) / 864e5);
+  return { x: it.x + TL_PAD + (i >= 0 && i < tlDays(it) ? i : 0) * day, y: it.y + linesY(it.tfs ?? 1) + 16, w: Math.max(1, Math.round(293 / day)) * day, h: 52 };
+}
 
 export function drawTimeline(ctx: CanvasRenderingContext2D, it: Item, colors: { card: string; ink: string }, z: number): void {
   ctx.fillStyle = colors.card;

@@ -317,7 +317,8 @@ export function press(ed: Editor, e: PointerEvent): void {
   const pager = e.button === 0 && labOn('docPage') ? pagerAt(ed.board.list(), w) : null;
   if (pager) { turnPage(pager.it, pager.dir); ed.requestRender(); return; }
   // Its «Создать задачу»: a new task there, typed in.
-  const nc = e.button === 0 && !e.shiftKey && labOn('kanban') ? newCardAt(ed.board.list(), w) : null;
+  // (On a timeline too, «Создать задачу на таймлайне»; not under something put over it.)
+  const nc = e.button === 0 && !e.shiftKey ? newCardAt(ed.board.list(), w, hit) : null;
   if (nc) { ed.gesture = { type: 'newCard', id: nc.id }; return; }
   const head = e.button === 0 && !e.shiftKey && labOn('kanban') ? headerAt(ed.board.list(), w) : null;
   if (head) {

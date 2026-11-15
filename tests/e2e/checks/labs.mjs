@@ -882,6 +882,16 @@ export const checks = {
     expect(await p.ev(`(() => { const f = planx.board.get('${k.id}'), t = planx.board.get([...planx.editor.selection][0]); return f.members.includes(t.id) && t.x > planx.board.get('t').x; })()`), 'one in the next column').toBe(true);
   },
 
+  async '"Создать задачу на таймлайне": a new timeline twice as tall, «Создать задачу» on it from today; a click, a task there, typed in'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.addTimeline({ x: 0, y: 0 }); const t = planx.board.list().find((i) => i.tl); e.cam = { x: 600 - (t.x + t.w / 2) * 0.6, y: 400 - (t.y + t.h / 2) * 0.6, z: 0.6 }; e.camChanged(); e.setSelection([]); })()`);
+    await sleep(300);
+    const b = await p.ev(`(async () => { const k = await import('/src/labs/kanban.ts'), t = planx.board.list().find((i) => i.tl); const b = k.newCardBox(t, (id) => planx.board.get(id)); const s = planx.editor.toScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 }); return { ...b, sx: s.x, sy: s.y, th: t.h }; })()`);
+    expect(b.th, 'twice as tall').toBe(380);
+    await p.click([b.sx, b.sy]);
+    await sleep(300);
+    expect(await p.ev(`(() => { const t = planx.board.get(planx.editor.editingId), f = planx.board.list().find((i) => i.tl); return [t?.type, t?.x === ${b.x}, f.members.includes(t?.id)].join(); })()`), 'a task there, typed in').toBe('task,true,true');
+  },
+
   async '"Канбан в объектах": «Создать задачу» under the first stage\'s cards: a click, a task there, typed in; it goes on under it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.8 }; e.camChanged(); e.addKanban({ x: 700, y: 400 }); e.setSelection([]); })()`);
     await sleep(200);

@@ -5,6 +5,7 @@ import { font } from '../canvas/text';
 import { taskSize } from '../canvas/task';
 import { membersOf } from '../editor/frames';
 import { labOn } from './labs';
+import { tlNewCardBox } from '../canvas/timeline';
 
 /**
  * «Канбан» (src/labs, one of the "Объекты"): a frame with stages across its top (`kb`), a column under
@@ -148,8 +149,11 @@ export function dropTarget(items: Item[], it: Item | undefined, skip: Set<string
   return { id: f.id, col, x: c.x, w: c.w, y: last && next ? last.y + last.h + CARD_GAP / 2 : null };
 }
 
-/** «Создать задачу» under the first stage's cards (as they stand now: a card dragged off it, not under it). */
+/** «Создать задачу» under the first stage's cards (as they stand now: a card dragged off it, not under it);
+ *  on a timeline, from today («Создать задачу на таймлайне», src/labs). */
 export function newCardBox(f: Item, get: (id: string) => Item | undefined): { x: number; y: number; w: number; h: number } | null {
+  if (f.tl) return labOn('tlNewTask') ? tlNewCardBox(f) : null;
+  if (!f.kb || !labOn('kanban')) return null;
   const c = columns(f)[0];
   if (!c) return null;
   let y = c.y + IN;
@@ -157,11 +161,36 @@ export function newCardBox(f: Item, get: (id: string) => Item | undefined): { x:
   return { x: Math.round(c.x), y, w: kanbanLane(f), h: NEW_H };
 }
 
-/** The kanban whose «Создать задачу» a point's on (the topmost). */
-export function newCardAt(items: Item[], w: Point): Item | null {
+/** Draws a «Создать задачу» (`b`): a frame as big as a task, a «+» and its words in the middle; under the
+ *  pointer (`hot`), a shade darker, hardly seen. */
+export function drawNewCard(ctx: CanvasRenderingContext2D, b: { x: number; y: number; w: number; h: number }, look: { line: string; muted: string }, hot: boolean): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1, KANBAN_RAD);
+  if (hot) { ctx.fillStyle = 'rgba(0, 0, 0, .015)'; ctx.fill(); }
+  ctx.strokeStyle = look.line;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.font = font(NEW_FS, 400);
+  ctx.textBaseline = 'middle';
+  const label = 'Создать задачу', tw = ctx.measureText(label).width, x0 = b.x + (b.w - (12 + 8 + tw)) / 2, cy = b.y + b.h / 2;
+  ctx.strokeStyle = ctx.fillStyle = look.muted;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x0, cy); ctx.lineTo(x0 + 12, cy);
+  ctx.moveTo(x0 + 6, cy - 6); ctx.lineTo(x0 + 6, cy + 6);
+  ctx.stroke();
+  ctx.textAlign = 'left';
+  ctx.fillText(label, x0 + 20, cy);
+  ctx.restore();
+}
+
+/** The kanban or timeline whose «Создать задачу» a point's on (the topmost; `over`, what's under the
+ *  pointer, it or nothing: not under something put over it). */
+export function newCardAt(items: Item[], w: Point, over?: Item | null): Item | null {
   const get = (id: string) => items.find((i) => i.id === id);
   for (let k = items.length - 1; k >= 0; k--) {
-    const f = items[k], b = f.kb ? newCardBox(f, get) : null;
+    const f = items[k], b = (f.kb || f.tl) && (!over || over.id === f.id) ? newCardBox(f, get) : null;
     if (b && w.x >= b.x && w.x <= b.x + b.w && w.y >= b.y && w.y <= b.y + b.h) return f;
   }
   return null;
@@ -188,10 +217,10 @@ export function headerAt(items: Item[], w: Point): { f: Item; part: { stage: num
 export const columnAt = (f: Item, x: number): number => columnOf(f, x);
 
 /** A kanban's header part under the pointer, as the renderer lights it (`kb:<id>:stage:<i>`, `…:add`). */
-export function kanbanHot(items: Item[], w: Point): string | null {
-  if (!labOn('kanban')) return null;
-  const nc = newCardAt(items, w);
+export function kanbanHot(items: Item[], w: Point, over?: Item | null): string | null {
+  const nc = newCardAt(items, w, over);
   if (nc) return `kb:${nc.id}:new`;
+  if (!labOn('kanban')) return null;
   const h = headerAt(items, w);
   return !h || h.part === 'head' ? null : `kb:${h.f.id}:${h.part === 'add' ? 'add' : `stage:${h.part.stage}`}`;
 }
@@ -305,27 +334,9 @@ export function drawKanban(ctx: CanvasRenderingContext2D, f: Item, get: (id: str
     ctx.fillStyle = look.muted;
     ctx.fillText(String(counts[i]), c.x + pw + 12, py);
   });
-  // «Создать задачу»: a frame as big as a task, a «+» and its words in the middle (under the pointer, a
-  // shade darker, hardly seen).
+  // «Создать задачу».
   const nb = newCardBox(f, get);
-  if (nb) {
-    ctx.beginPath();
-    ctx.roundRect(nb.x + 0.5, nb.y + 0.5, nb.w - 1, nb.h - 1, KANBAN_RAD);
-    if (hot === 'new') { ctx.fillStyle = 'rgba(0, 0, 0, .015)'; ctx.fill(); }
-    ctx.strokeStyle = look.line;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.font = font(NEW_FS, 400);
-    const label = 'Создать задачу', tw = ctx.measureText(label).width, x0 = nb.x + (nb.w - (12 + 8 + tw)) / 2, cy = nb.y + nb.h / 2;
-    ctx.strokeStyle = ctx.fillStyle = look.muted;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(x0, cy); ctx.lineTo(x0 + 12, cy);
-    ctx.moveTo(x0 + 6, cy - 6); ctx.lineTo(x0 + 6, cy + 6);
-    ctx.stroke();
-    ctx.textAlign = 'left';
-    ctx.fillText(label, x0 + 20, cy);
-  }
+  if (nb) drawNewCard(ctx, nb, look, hot === 'new');
   const a = addAt(f);
   ctx.strokeStyle = hot === 'add' ? look.ink : look.muted;
   ctx.lineWidth = 1.5;

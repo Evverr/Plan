@@ -334,7 +334,7 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
     ?? (over?.code && ed.editingId !== over.id && onCodeCopy(over, w) ? `code:${over.id}` : null)
     ?? (over?.form && onFormButton(over, w) ? `form:${over.id}` : null)
     ?? (over?.poll ? pollHot(over, w) : null)
-    ?? kanbanHot(ed.board.list(), w)
+    ?? kanbanHot(ed.board.list(), w, over)
     ?? (labOn('docPage') ? pagerHot(ed.board.list(), w) : null);
   if (hot !== ed.hotPlus) { ed.hotPlus = hot; ed.requestRender(); }
   if (hot || frameButtonUnder(ed, w) || foldBadgeAt(ed, w)) cursor = 'pointer';
