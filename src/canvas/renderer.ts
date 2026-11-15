@@ -12,7 +12,7 @@ import type { Guide } from './guides';
 import { FOLD_FS, FOLD_PAD, FOLD_TITLE_MAX, frameButtons } from '../model/frame';
 import { COMPONENT_COLOR, firstInstance, instancePlus } from '../model/components';
 import { labOn } from '../labs/labs';
-import { drawTabs, ghostNow, tabsFor, towardOffset, type TabAims } from '../labs/sideTabs';
+import { aimsOut, drawTabs, ghostNow, tabsFor, towardOffset, type TabAims } from '../labs/sideTabs';
 import { zoomFade, zoomSize } from '../labs/zoomFade';
 import { gripsOn } from '../labs/tableMove';
 import { gridKind } from '../labs/boardGrid';
@@ -28,7 +28,7 @@ import { drawnLinks } from '../model/textLinks';
 import { drawTimeline } from './timeline';
 import { autoInk } from '../model/color';
 import cursorUrl from './cursor.svg';
-import { anchorAt, coveredAt, solid, angleOf, linkBox, traceStar, audioButton, boxOf, center, curveBetween, edgePoint, elbowRoute, inkPoints, instanceBounds, pathNodes, flattenPath, linkHandles, spreadElbows, polyPoints, linkShape, nearestSide, pointInRect, rectsIntersect, sidePoint, SIDES, type Bezier, type LinkShape } from './geometry';
+import { anchorAt, coveredAt, solid, angleOf, traceStar, audioButton, boxOf, center, curveBetween, edgePoint, elbowRoute, inkPoints, instanceBounds, pathNodes, flattenPath, linkHandles, spreadElbows, polyPoints, linkShape, nearestSide, pointInRect, rectsIntersect, sidePoint, type Bezier, type LinkShape } from './geometry';
 import { font, fontOf, layoutText, LINE_HEIGHT, MIND_PAD_Y, withList, type FontStyle, type TextLayout } from './text';
 
 export interface Camera { x: number; y: number; z: number }
@@ -192,16 +192,15 @@ export function dotGap(it: Item, side: Side, now = performance.now()): number {
   else if (t.on !== on) pillTurns.set(it.id, (t = { on, from: slid(t, now), at: now }));
   return DOT_GAP + (PILLS_DOT_GAP - DOT_GAP) * slid(t, now);
 }
-/** The dots' strength, and the one under the pointer's (15 across), which it grows to (and back from)
- *  three times as fast as a popup comes in. */
-const DOT_FADE = 0.3, DOT_HOT_FADE = 0.8, DOT_HOT_R = 7.5, DOT_GROW = 160 / 3;
+/** How fast what lights up (a handle, the faint frame of what's dragged) grows lit and back: three times
+ *  as fast as a popup comes in. */
+const DOT_GROW = 160 / 3;
 /** What's picked: its frame's strength; its handle's, and with the pointer on it; their line and the
  *  frame's least corner radius. */
 export const PICK_FRAME = 0.8; const PICK_FADE = 0.3, PICK_HOT_FADE = 0.8, PICK_LINE = 1.5, PICK_RAD = 4;
 /** The frame of what's being dragged: faint. */
 const DRAG_FRAME = 0.2;
-/** How far each dot is on its way to lit (1) or not (0), and since when, by item and side. */
-const dotTurns = new Map<string, { hot: boolean; from: number; at: number }>();
+/** How far something is on its way to lit (1) or not (0), since `at`. */
 const dotLit = (t: { hot: boolean; from: number; at: number }, now: number, ms = DOT_GROW) => {
   const k = Math.min(1, (now - t.at) / ms), e = 1 - (1 - k) * (1 - k);
   return t.from + ((t.hot ? 1 : 0) - t.from) * e;
@@ -212,7 +211,7 @@ let handleTurn = { hot: false, from: 0, at: 0 };
 /** Whether a link dot is still growing or shrinking (and wants another frame). */
 export const dotsMoving = (): boolean => {
   const now = performance.now();
-  return now - handleTurn.at < HANDLE_TURN || [...dotTurns.values()].some((t) => now - t.at < DOT_GROW) || [...pillTurns.values()].some((t) => now - t.at < PILLS_SLIDE)
+  return now - handleTurn.at < HANDLE_TURN || [...pillTurns.values()].some((t) => now - t.at < PILLS_SLIDE)
     || [...unpicked.values()].some((u) => now - u.at < PICK_OUT) || now - dragTurn.at < (dragTurn.hot ? DRAG_IN : DRAG_OUT)
     || [...dropTurns.values()].some((t) => now - t.at < DROP_FADE) || gliding(now);
 };
@@ -1396,27 +1395,6 @@ function drawLinks(ctx: CanvasRenderingContext2D, s: Scene, view: Rect) {
   ctx.restore();
 }
 
-/** An item's four link dots, beside its sides; the one under the pointer bigger. */
-function drawDots(ctx: CanvasRenderingContext2D, it: Item, s: Scene, fade = 1) {
-  const { cam } = s;
-  ctx.fillStyle = s.theme.pick;
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 2 / cam.z;
-  const now = performance.now();
-  for (const side of SIDES) {
-    const p = sidePoint(it, side, dotGap(it, side, now) / cam.z), key = `${it.id}:${side}`, hot = side === s.hotDot && (!s.allDots || it.id === s.linkDots);
-    let t = dotTurns.get(key);
-    if (!t) dotTurns.set(key, (t = { hot, from: hot ? 1 : 0, at: 0 }));
-    else if (t.hot !== hot) dotTurns.set(key, (t = { hot, from: dotLit(t, now), at: now }));
-    const k = dotLit(t, now);
-    ctx.beginPath();
-    ctx.globalAlpha = (DOT_FADE + (DOT_HOT_FADE - DOT_FADE) * k) * fade;
-    ctx.arc(p.x, p.y, (DOT_R + (DOT_HOT_R - DOT_R) * k) / cam.z, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-}
 
 /** «Полукруги на рамке»: the layer the copy a click would make is drawn on (see drawScene). */
 let ghostLayer: HTMLCanvasElement | null = null;
@@ -1511,6 +1489,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       g.clearRect(0, 0, c.width, c.height);
       g.setTransform(ctx.getTransform());
       drawItem(g, { ...ghostOf, id: `${ghostOf.id}~ghost`, x: ghostOf.x + d.x, y: ghostOf.y + d.y }, s);
+      // (An instance's contents with it: alone it's only its title.)
+      if (ghostOf.inst) for (const h of s.items) if (h.host === ghostOf.id) drawItem(g, { ...h, id: `${h.id}~ghost`, x: h.x + d.x, y: h.y + d.y }, s);
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.globalAlpha = 0.4 * gh.k;
@@ -1619,7 +1599,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       ctx.globalAlpha = PICK_FADE * (1 - k);
       ctx.fill();
       ctx.stroke();
-      if (!s.linkTool) drawDots(ctx, it, s, 1 - k);
+      if (tabsFor(it, null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME * (1 - k), null);
     }
     ctx.globalAlpha = 1;
   }
@@ -1683,10 +1663,10 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       ctx.fill();
       ctx.stroke();
       ctx.globalAlpha = 1;
-      // Its dots, round its contents, for links.
+      // Its half circles («Полукруги на рамке», src/labs), on the frame round its contents.
       ctx.save();
       hiddenUnder(ctx, it, s, view);
-      if (!s.linkTool) drawDots(ctx, it, s);
+      if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
     } else if (s.showHandle && s.editingId !== id) {
       // (Not over what lies over its corner: see coveredAt.)
@@ -1705,17 +1685,16 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       ctx.save();
       hiddenUnder(ctx, it, s, view);
       if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
-      else if (!s.linkTool) drawDots(ctx, it, s);
       ctx.restore();
     }
   }
-  // With the line tool, the dots of the item under the pointer, whatever it is.
+  // With the line tool, the half circles of the item under the pointer, whatever it is (the old dots no more).
   const dotted = s.linkDots ? s.get(s.linkDots) : undefined;
-  if (dotted && (s.allDots ? dotsUnder(dotted, s.selection) : s.linkTool || !(s.selection.size === 1 && s.selection.has(dotted.id)))) drawDots(ctx, linkBox(dotted), s);
+  if (dotted && (s.allDots ? dotsUnder(dotted, s.selection) : s.linkTool || !(s.selection.size === 1 && s.selection.has(dotted.id)))) drawTabs(ctx, dotted, cam.z, theme.pick, PICK_FRAME, aimsOut(s.hotDot));
   // And with "Связи инструментом", every other one's in sight.
   if (s.allDots) {
     const m = 20 / cam.z, view = { x: -cam.x / cam.z - m, y: -cam.y / cam.z - m, w: s.width / cam.z + m * 2, h: s.height / cam.z + m * 2 };
-    for (const it of s.items) if (it.id !== dotted?.id && dotsAlways(it, s.selection) && rectsIntersect(view, boxOf(it))) drawDots(ctx, linkBox(it), s);
+    for (const it of s.items) if (it.id !== dotted?.id && dotsAlways(it, s.selection) && rectsIntersect(view, boxOf(it))) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, null);
   }
 
   if (s.mindMove) {

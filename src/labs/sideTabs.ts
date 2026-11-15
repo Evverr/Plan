@@ -1,6 +1,6 @@
 import type { Item, Side } from '../model/types';
 import type { Point } from '../canvas/geometry';
-import { SIDES, sidePoint } from '../canvas/geometry';
+import { linkBox, SIDES, sidePoint } from '../canvas/geometry';
 import type { Editor } from '../editor/editor';
 import { isLocked, labOn } from './labs';
 
@@ -44,10 +44,10 @@ const radius = (zoom: number) => (BALL_R * Math.sqrt(zoom)) / zoom;
 /** How near the ball takes the pointer (on it), on the board. */
 const reach = (zoom: number) => radius(zoom) * 1.6;
 
-/** Whether what's picked gets them: on trial, not typed in, not a mind map node (its own "+"), an
- *  instance or what's in one, nor turned, nor locked. */
+/** Whether what's picked gets them: on trial, not typed in, not a mind map node (its own "+"), nor
+ *  what's in an instance, nor turned, nor locked. (An instance's on the frame round its contents.) */
 export const tabsFor = (it: Item | undefined, editing: string | null): it is Item =>
-  !!it && labOn('sideTabs') && !editing && it.type !== 'mind' && !it.inst && !it.host && !it.rot && !it.tie && !isLocked(it);
+  !!it && labOn('sideTabs') && !editing && it.type !== 'mind' && !it.host && !it.rot && !it.tie && !isLocked(it);
 
 /** The middle of a side on the frame. */
 const framePoint = (it: Item, side: Side, zoom: number): Point => sidePoint(it, side, FRAME_OFF / zoom);
@@ -61,8 +61,8 @@ const past = (it: Item, side: Side, w: Point, off: number) =>
 export const tabAt = (ed: Editor, it: Item, w: Point): Side | null => tabAtZ(it, w, ed.cam.z, ed.tabAims);
 
 /** The same at zoom `z`, the balls out as `was` has them. */
-function tabAtZ(it: Item, w: Point, z: number, was: TabAims | null): Side | null {
-  const r = radius(z);
+function tabAtZ(item: Item, w: Point, z: number, was: TabAims | null): Side | null {
+  const it = linkBox(item), r = radius(z);
   for (const side of SIDES) {
     if (!past(it, side, w, FRAME_OFF / z)) continue;
     // (The ball out whole has its middle `mid` past the frame.)
@@ -114,11 +114,14 @@ function aimsZ(it: Item, w: Point | null, z: number, was: TabAims | null): TabAi
   return out;
 }
 
+/** At rest, but `side`'s out whole (the pointer on it). */
+export const aimsOut = (side: Side | null | undefined): TabAims => { const a = resting(); if (side) a[side] = ON; return a; };
+
 export const sameAims = (a: TabAims | null, b: TabAims | null): boolean => (!a || !b ? a === b : SIDES.every((s) => a[s] === b[s]));
 
 /** Whether the point is by a ball on the frame (its middle, a side): no stretching there, the ball nearby. */
 export const nearTab = (ed: Editor, it: Item, w: Point): boolean =>
-  SIDES.some((side) => { const p = framePoint(it, side, ed.cam.z); return Math.hypot(w.x - p.x, w.y - p.y) <= NO_STRETCH / ed.cam.z; });
+  SIDES.some((side) => { const p = framePoint(linkBox(it), side, ed.cam.z); return Math.hypot(w.x - p.x, w.y - p.y) <= NO_STRETCH / ed.cam.z; });
 
 /** Each ball's size as it eases there (by "item:side"): from, to, since. */
 const shown = new Map<string, { from: number; to: number; at: number }>();
@@ -141,8 +144,8 @@ function easeTo(key: string, to: number, now: number): number {
 
 /** The balls on the picked one's frame (on the board, as the frame is drawn): each showing past it as
  *  much as `aims` says, easing there; the one wholly out (the pointer on it) bigger. */
-export function drawTabs(ctx: CanvasRenderingContext2D, it: Item, zoom: number, color: string, alpha: number, aims: TabAims | null): void {
-  const r = radius(zoom), now = performance.now(), want = aims ?? resting();
+export function drawTabs(ctx: CanvasRenderingContext2D, item: Item, zoom: number, color: string, alpha: number, aims: TabAims | null): void {
+  const it = linkBox(item), r = radius(zoom), now = performance.now(), want = aims ?? resting();
   if (SHOW_ZONES) drawZones(ctx, it, zoom);
   ctx.save();
   ctx.fillStyle = color;
@@ -190,7 +193,8 @@ function drawZones(ctx: CanvasRenderingContext2D, it: Item, zoom: number): void 
 export const TAB_GAP = 72;
 /** Where the copy goes from it that way, its size and the gap off it; none if something's there already
  *  (a copy made before, say): nothing made that way, nor shown. (`items`: what's on the board.) */
-export function towardOffset(it: Item, side: Side, items: Item[] = []): Point | null {
+export function towardOffset(item: Item, side: Side, items: Item[] = []): Point | null {
+  const it = linkBox(item);
   const d = side === 'right' ? { x: it.w + TAB_GAP, y: 0 } : side === 'left' ? { x: -it.w - TAB_GAP, y: 0 } : side === 'bottom' ? { x: 0, y: it.h + TAB_GAP } : { x: 0, y: -it.h - TAB_GAP };
   const taken = items.some((o) => o.id !== it.id && !o.host && o.type !== 'frame' && o.type !== 'ink'
     && o.x < it.x + d.x + it.w && it.x + d.x < o.x + o.w && o.y < it.y + d.y + it.h && it.y + d.y < o.y + o.h);
