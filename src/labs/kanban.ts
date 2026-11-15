@@ -19,7 +19,7 @@ import { labOn } from './labs';
 export interface Stage { n: string; c: string }
 
 /** Its stages when it's put on the board. */
-export const FIRST_STAGES: Stage[] = [{ n: 'Не начато', c: 'gray' }, { n: 'В работе', c: 'blue' }, { n: 'Готово', c: 'green' }];
+export const FIRST_STAGES: Stage[] = [{ n: 'Постановка', c: 'blue' }, { n: 'В работе', c: 'green' }, { n: 'Ревью', c: 'yellow' }, { n: 'Финал', c: 'gray' }];
 
 /** In board units (KB in model/types.ts besides): between cards, how tall a column is at least. Its
  *  stages' pills: corners as a mind map node's. */

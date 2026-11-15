@@ -752,7 +752,7 @@ export const checks = {
   },
 
   async '"Канбан в объектах": a task dragged in stands in the column it\'s let go over, under the one there; dragged out, it\'s free and the gap closes'(p) {
-    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.addKanban({ x: 700, y: 400 });
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.addKanban({ x: 900, y: 400 });
       b.add(e.newItem('task', 100, 1100, { id: 't1', text: 'Первая' })); b.add(e.newItem('task', 500, 1100, { id: 't2', text: 'Вторая' })); e.setSelection([]); })()`);
     await sleep(200);
     const k = await p.ev(`(() => { const f = planx.board.list().find((i) => i.kb); return { id: f.id, x: f.x, y: f.y }; })()`);
@@ -898,16 +898,16 @@ export const checks = {
   },
 
   async '"Канбан в объектах": its «+» adds a stage; a stage\'s pill opens its menu: renamed, recoloured, moved'(p) {
-    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.8 }; e.camChanged(); e.addKanban({ x: 700, y: 400 }); e.setSelection([]); })()`);
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.addKanban({ x: 900, y: 500 }); e.setSelection([]); })()`);
     await sleep(200);
     const k = () => p.ev(`(() => { const f = planx.board.list().find((i) => i.kb); return { x: f.x, y: f.y, w: f.w, kb: f.kb }; })()`);
     let f = await k();
     // «+»: at the header's right end.
-    const z = 0.8;
+    const z = 0.6;
     await p.click([(f.x + f.w - 16 - 20 + 8) * z, (f.y + 28) * z]);
     await sleep(150);
     f = await k();
-    expect(f.kb.length, 'a fourth stage').toBe(4);
+    expect(f.kb.length, 'a fifth stage').toBe(5);
     // The first pill.
     await p.click([(f.x + 16 + 20) * z, (f.y + 28) * z]);
     await sleep(200);

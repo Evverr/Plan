@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Board } from '../src/model/board';
 import type { Item } from '../src/model/types';
-import { FIRST_STAGES, addStage, columns, deleteStage, kanbanSize, moveStage, tidyKanbans } from '../src/labs/kanban';
+import { addStage, columns, deleteStage, kanbanSize, moveStage, tidyKanbans } from '../src/labs/kanban';
+
+// Three stages (a new one has four, FIRST_STAGES).
+const STAGES = [{ n: 'Не начато', c: 'gray' }, { n: 'В работе', c: 'blue' }, { n: 'Готово', c: 'green' }];
 
 const make = () => {
   const b = new Board(), size = kanbanSize(3);
-  b.add({ id: 'k', type: 'frame', x: 0, y: 0, ...size, z: 0, kb: FIRST_STAGES, members: ['t1', 't2', 'r', 's'] } as Item);
+  b.add({ id: 'k', type: 'frame', x: 0, y: 0, ...size, z: 0, kb: STAGES, members: ['t1', 't2', 'r', 's'] } as Item);
   const col = columns(b.get('k')!);
   // Two tasks let go in the first column (t2 over t1), a rectangle in the second, a sticker in the third.
   b.add({ id: 't1', type: 'task', x: col[0].x + 40, y: 300, w: 293, h: 52, z: 1 } as Item);
