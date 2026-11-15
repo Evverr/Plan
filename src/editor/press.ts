@@ -1,6 +1,6 @@
 import type { TableLine } from '../model/table';
 import { colsOf, rowsOf } from '../model/table';
-import { center, hitItem, hitLink, instanceBounds, linkBox, linkShape, onAudioButton } from '../canvas/geometry';
+import { center, hitItem, hitLink, instanceBounds, linkShape, onAudioButton } from '../canvas/geometry';
 import { taskButtonAt } from './tasks';
 import { tabAt, tabsFor } from '../labs/sideTabs';
 import { taskPartAt } from '../canvas/task';
@@ -21,7 +21,6 @@ import { nibPress } from '../labs/nib';
 import { nodeEditing, pressNode } from '../labs/paths';
 import { swapKind } from '../labs/swap';
 import { linkPartAt, openLink } from '../labs/textLink';
-import { dotsOn, dotsUnder } from '../labs/linkTool';
 import { startComment } from '../labs/comments';
 
 /** A press on the board: works out what it starts (a gesture followed till it's let go) or does at
@@ -235,13 +234,6 @@ export function press(ed: Editor, e: PointerEvent): void {
   if (unfold) {
     ed.setCollapsed(unfold.id, unfold.way, false);
     ed.setSelection([]);
-    return;
-  }
-  // "Связи инструментом" (src/labs) with its dots out: a dot under the pointer, of anything, starts a link.
-  const modeIt = labOn('linkTool') && dotsOn() && ed.linkDots ? board.get(ed.linkDots) : undefined;
-  const modeSide = modeIt && !isLocked(modeIt) && dotsUnder(modeIt, ed.selection) ? anyDotAt(ed, linkBox(modeIt), w) : null;
-  if (modeIt && modeSide) {
-    ed.gesture = { type: 'link', from: modeIt.id, fromSide: modeSide, to: w, target: null };
     return;
   }
   // «Полукруги на рамке» (src/labs): a half circle: a copy that way on a click, a link when dragged.

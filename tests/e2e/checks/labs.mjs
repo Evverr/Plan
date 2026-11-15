@@ -533,82 +533,51 @@ export const checks = {
     await sleep(300);
   },
 
-  async '"Связи инструментом": no dots on what\'s picked; «Связи» on the zoom bar (or C) puts out every item\'s, a mind map node\'s under the pointer, the cursor kept, things moved as usual'(p) {
+  async '"Связи инструментом": no dots on what\'s picked; «Связи» on the zoom bar (or C): the picked one\'s dots as ever, the pointer on a line or on something with lines lights them and frames what they join'(p) {
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('linkTool', true))()`);
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('sideTabs', false))()`);
     await sleep(100);
     const { a, c } = await stickers(p);
+    const b = await p.ev(`(() => { const e = planx.editor, it = e.newItem('sticky', ...Object.values(e.toWorld(900, 250)), { text: 'Без линий' }); planx.board.add(it); return it.id; })()`);
     await p.ev(`(() => { const e = planx.editor; planx.board.add(e.newItem('mind', ...Object.values(e.toWorld(500, 600)), { id: 'm', text: 'Тема', w: 120, h: 50 })); })()`);
-    // Where an item's right dot is, and its middle, on the screen.
     const dot = (id) => p.ev(`(async () => { const g = await import('/src/canvas/geometry.ts'), r = await import('/src/canvas/renderer.ts'), e = planx.editor, it = planx.board.get('${id}');
       const s = e.toScreen(g.sidePoint(it, 'right', r.dotGap(it, 'right') / e.cam.z)), b = e.canvas.getBoundingClientRect(); return [s.x + b.left, s.y + b.top]; })()`);
     const mid = (id) => p.ev(`(() => { const e = planx.editor, i = planx.board.get('${id}'), s = e.toScreen({ x: i.x + i.w / 2, y: i.y + i.h / 2 }), b = e.canvas.getBoundingClientRect(); return [s.x + b.left, s.y + b.top]; })()`);
     const links = () => p.ev(`planx.board.linkList().length`);
-    // Picked: pulled from where its dot was, it's moved, not linked. (Without «Полукруги на рамке»: its
-    // ball's there, a line pulled out of it.)
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('sideTabs', false))()`);
+    // Off: picked, pulled from where its dot was, it's moved, not linked.
     await p.ev(`planx.editor.setSelection(['${a}'])`);
     await sleep(100);
     const d = await dot(a);
     await p.drag(d, [d[0] + 40, d[1]]);
     expect(await links(), 'no link from a picked one').toBe(0);
     await p.ev(`planx.board.update('${a}', { x: planx.board.get('${a}').x - 40 })`);
-    // C: the dots out, the cursor still the tool; the button lit (light blue, its icon solid blue).
+    // C: on, the cursor still the tool; the button lit.
     await p.key('c', 'KeyC', 67);
     await sleep(100);
-    expect(await p.ev(`(() => { const b = document.querySelector('button[aria-label="Связи"]'); return [planx.editor.tool, !b || b.classList.contains('solid-on')].join(); })()`), 'dots out, the cursor kept, the switch on blue').toBe('select,true');
-    // From the first's right dot (the pointer never on the item itself) to the second.
-    const from = await dot(a), to = await mid(c);
-    await p.mouse('mouseMoved', from[0] + 2, from[1]);
+    expect(await p.ev(`(() => { const b = document.querySelector('button[aria-label="Связи"]'); return [planx.editor.tool, !b || b.classList.contains('solid-on')].join(); })()`), 'on, the cursor kept, the switch on blue').toBe('select,true');
+    // The picked one's dots as ever: a link from its right dot.
+    await p.ev(`planx.editor.setSelection(['${a}'])`);
     await sleep(100);
-    expect(await p.ev(`[planx.editor.linkDots, planx.editor.hotDot].join()`), 'its dot taken').toBe(`${a},right`);
-    await p.drag([from[0] + 2, from[1]], to);
-    expect(await links(), 'linked').toBe(1);
-    // Things move as usual meanwhile.
-    const was = await p.ev(`planx.board.get('${c}').x`), at = await mid(c);
-    await p.drag(at, [at[0] + 50, at[1]]);
-    expect(await p.ev(`planx.board.get('${c}').x`) - was, 'moved').toBe(50);
-    // A mind map node: its dots under the pointer.
+    const from = await dot(a);
+    await p.mouse('mouseMoved', from[0], from[1]);
+    await sleep(100);
+    await p.drag(from, await mid(c));
+    expect(await links(), 'linked from the picked one').toBe(1);
+    await p.ev(`planx.editor.setSelection([])`);
+    // The pointer on the second: its line lit, what it joins framed; on the third (no lines), nothing.
+    await p.mouse('mouseMoved', ...(await mid(c)));
+    await sleep(100);
+    expect(await p.ev(`(() => { const r = planx.editor.related; return r ? [r.links.size, [...r.items].sort().join()].join(' ') : 'none'; })()`), 'its line and what it joins').toBe(`1 ${[a, c].sort().join()}`);
+    await p.mouse('mouseMoved', ...(await mid(b)));
+    await sleep(100);
+    expect(await p.ev(`planx.editor.related ? 'lit' : 'none'`), 'nothing lit off its lines').toBe('none');
+    // A mind map node keeps its buttons with it on.
     await p.mouse('mouseMoved', 560, 625);
     await sleep(100);
-    expect(await p.ev(`[planx.editor.linkDots, planx.editor.plusNode()?.id ?? 'no buttons'].join()`), 'the node\'s dots, not its buttons').toBe('m,no buttons');
-    // Picked: its buttons, not its dots.
-    await p.click([560, 625]);
-    await p.mouse('mouseMoved', 562, 626);
-    await sleep(100);
-    expect(await p.ev(`[planx.editor.linkDots ?? 'no dots', planx.editor.plusNode()?.id].join()`), 'picked: buttons, no dots').toBe('no dots,m');
-    // A central topic's dots out with the pointer anywhere; a branch's not.
-    expect(await p.ev(`(async () => { const m = await import('/src/labs/linkTool.ts'), none = new Set(); return [m.dotsAlways(planx.board.get('m'), none), m.dotsAlways({ ...planx.board.get('m'), parent: 'x' }, none)].join(); })()`), 'the central topic\'s always').toBe('true,false');
-    await p.ev(`(() => { planx.editor.stopEditing(); planx.editor.setSelection([]); })()`);
+    expect(await p.ev(`planx.editor.plusNode()?.id ?? 'no buttons'`), 'the node\'s buttons').toBe('m');
     await p.key('c', 'KeyC', 67);
     await sleep(50);
-    await p.mouse('mouseMoved', 561, 625);
-    await sleep(100);
-    expect(await p.ev(`planx.editor.plusNode()?.id ?? 'no buttons'`), 'the dots away: its buttons again').toBe('m');
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('linkTool', false))()`);
-  },
-
-  async '"Связи инструментом": an instance of a component has its dots, by what\'s in it, and takes links from them'(p) {
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('linkTool', true))()`);
-    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
-      b.add(e.newItem('sticky', 300, 300, { id: 's', w: 100, h: 100 })); e.setSelection(['s']); e.makeComponent(); e.stopEditing();
-      const c = b.list().find((i) => i.comp); e.addInstance(c.id); const i = b.list().find((i) => i.inst); b.update(i.id, { x: 300, y: 500 });
-      b.add(e.newItem('sticky', 800, 500, { id: 'far', w: 100, h: 100 })); e.stopEditing(); e.setSelection([]); })()`);
-    await sleep(200);
-    // (Its name, typed in as it's made, done with.)
-    await p.ev(`planx.editor.stopEditing()`);
-    await sleep(100);
-    const inst = await p.ev(`planx.board.list().find((i) => i.inst).id`);
-    // Its right dot, off what's in it (not its own box).
-    const d = await p.ev(`(async () => { const g = await import('/src/canvas/geometry.ts'), r = await import('/src/canvas/renderer.ts'), e = planx.editor, it = g.linkBox(planx.board.get('${inst}'));
-      const s = e.toScreen(g.sidePoint(it, 'right', r.dotGap(it, 'right') / e.cam.z)), b = e.canvas.getBoundingClientRect(); return [s.x + b.left, s.y + b.top]; })()`);
-    await p.key('c', 'KeyC', 67);
-    await p.mouse('mouseMoved', d[0] + 1, d[1]);
-    await sleep(100);
-    expect(await p.ev(`[planx.editor.linkDots, planx.editor.hotDot].join()`), 'its dot').toBe(`${inst},right`);
-    await p.drag([d[0] + 1, d[1]], [850, 550]);
-    expect(await p.ev(`planx.board.linkList().map((l) => l.from + '>' + l.to).join()`), 'linked from it').toBe(`${inst}>far`);
-    await p.key('c', 'KeyC', 67);
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('linkTool', false))()`);
+    await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('linkTool', false); l.setLab('sideTabs', true); })()`);
   },
 
   async 'the dark theme in "Настройки", not on the zoom bar; the link dots\' switch there instead'(p) {

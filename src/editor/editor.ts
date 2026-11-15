@@ -168,6 +168,8 @@ export class Editor {
   linkDots: string | null = null;
   /** Shared: the link under the pointer, faintly lit. */
   hotLink: string | null = null;
+  /** «Связи» on ("Связи инструментом", src/labs): the links under the pointer, lit, and what they join. */
+  related: { links: Set<string>; items: Set<string> } | null = null;
   /** The picked links' colours being set (their params open): drawn as they are, not blue. */
   linksAsThey = false;
   /** The mind map node button under the pointer (see buttonKey). */
@@ -756,7 +758,7 @@ export class Editor {
     if (leaving > 0) this.requestRender();
     else this.plusLeaving = null;
     const glide = this.gliding();
-    // "Связи инструментом" (src/labs): the dots out on everything, with the cursor.
+    // "Связи инструментом" (src/labs) with «Связи» on: the picked one's dots as ever, the links under the pointer lit.
     const dotsMode = labOn('linkTool') && dotsOn() && this.tool === 'select';
     drawScene(this.ctx, {
       items: this.withTyped(glide ? this.shown().map(glide) : this.shown()),
@@ -784,9 +786,9 @@ export class Editor {
       // (Not once a link's being pulled out of it.)
       ghostTab: g?.type === 'link' ? null : outSide(this.tabAims),
       hotHandle: this.hotHandle,
-      linkDots: (this.tool === 'link' || dotsMode) && !this.gesture ? this.linkDots : null,
-      linkTool: labOn('linkTool'),
-      allDots: dotsMode && !this.gesture,
+      linkDots: this.tool === 'link' && !this.gesture ? this.linkDots : null,
+      linkTool: labOn('linkTool') && !dotsMode,
+      related: dotsMode && !this.gesture ? this.related : null,
       hotPlus: this.hotPlus,
       plusFade,
       plusOn,
@@ -826,7 +828,7 @@ export class Editor {
    *  out, "Связи инструментом" in src/labs: it shows its dots instead.) */
   private plusOn(): string | null {
     const it = this.mindHover ? this.board.get(this.mindHover) : undefined;
-    if (!it || it.type !== 'mind' || it.host || isLocked(it) || this.gesture || (labOn('linkTool') && dotsOn())) return null;
+    if (!it || it.type !== 'mind' || it.host || isLocked(it) || this.gesture) return null;
     return this.selection.size === 1 && this.selection.has(it.id) ? null : it.id;
   }
 

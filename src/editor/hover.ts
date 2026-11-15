@@ -4,7 +4,7 @@ import { fontOf, textBlockHeight, withList } from '../canvas/text';
 import { taskPartAt } from '../canvas/task';
 import type { Point } from '../canvas/geometry';
 import { nearTab, sameAims, tabAims, tabAt, tabsFor } from '../labs/sideTabs';
-import { coveredAt, hitItem, hitLink, instanceBounds, linkBox, linkHandles, linkShape, onAudioButton, pointInRect, sidePoint, SIDES, toLocal } from '../canvas/geometry';
+import { coveredAt, hitItem, hitLink, instanceBounds, linkHandles, linkShape, onAudioButton, pointInRect, sidePoint, SIDES, toLocal } from '../canvas/geometry';
 import { DOT_GAP, dotGap, HANDLE } from '../canvas/renderer';
 import { instanceGlyph, instancePlus } from '../model/components';
 import { taskButtonAt } from './tasks';
@@ -20,7 +20,7 @@ import { rotateCursor } from './cursors';
 import { restOn, sameLine, tableLineAt, warmTable } from './tables';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
-import { dotsAlways, dotsOn, dotsUnder } from '../labs/linkTool';
+import { dotsOn, relatedAt } from '../labs/linkTool';
 import { linkPartAt } from '../labs/textLink';
 import { zoomShows, zoomSize } from '../labs/zoomFade';
 
@@ -195,8 +195,8 @@ export function onRotate(ed: Editor, it: Item, w: Point): boolean {
 
 /** The link dot under the point, if any. */
 export function dotAt(ed: Editor, it: Item, w: Point): Side | null {
-  // ("Связи инструментом", src/labs: only with the line tool.)
-  if (it.type === 'mind' || it.inst || it.host || labOn('linkTool')) return null;
+  // ("Связи инструментом", src/labs: only with «Связи» on.)
+  if (it.type === 'mind' || it.inst || it.host || (labOn('linkTool') && !dotsOn())) return null;
   return anyDotAt(ed, it, w);
 }
 
@@ -223,15 +223,14 @@ function lineToolHover(ed: Editor, w: Point): void {
 /** "Связи инструментом" (src/labs) with its dots out: the dot under the pointer, of any item (the topmost
  *  first; a mind map node's while the pointer's on it, if it isn't picked), taken to be pulled from.
  *  Whether there's one. */
-function dotsModeHover(ed: Editor, w: Point): boolean {
-  const was = ed.linkDots ? ed.board.get(ed.linkDots) : undefined;
-  let it = was && dotsUnder(was, ed.selection) && anyDotAt(ed, linkBox(was), w) ? was : ed.shown().filter((i) => dotsAlways(i, ed.selection)).reverse().find((i) => anyDotAt(ed, linkBox(i), w));
-  const dot = it ? anyDotAt(ed, linkBox(it), w) : null;
-  if (!it) { const hit = hitItem(ed.shown(), w, ed.cam.z); it = hit?.type === 'mind' && dotsUnder(hit, ed.selection) ? hit : undefined; }
-  const id = it?.id ?? null;
-  if (id !== ed.linkDots || dot !== ed.hotDot) { ed.linkDots = id; ed.hotDot = dot; ed.requestRender(); }
-  if (dot) ed.canvas!.style.cursor = 'crosshair';
-  return !!dot;
+/** «Связи» on ("Связи инструментом"): the lines the pointer's on, or those of what it's on, lit (see
+ *  relatedAt); the rest as ever. */
+function relatedHover(ed: Editor, w: Point): void {
+  const it = hitItem(ed.shown(), w, ed.cam.z), host = it?.host ? ed.board.get(it.host) ?? it : it;
+  const link = it && it.type !== 'frame' ? null : hitLink(ed.shownLinks(), (id) => ed.board.get(id), w, ed.cam.z);
+  const r = relatedAt(ed.shownLinks(), link ? null : host ?? null, link);
+  const key = r ? [...r.links].join() : '';
+  if (key !== (ed.related ? [...ed.related.links].join() : '')) { ed.related = r; ed.requestRender(); }
 }
 
 /** The frame button under the point, of the topmost frame in sight that has one there. */
@@ -289,7 +288,8 @@ export function pickedUnder(ed: Editor, w: Point): Item | null {
 export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   if (ed.canvas && !ed.gesture && ed.tool === 'link') { lineToolHover(ed, w); return; }
   if (!ed.canvas || ed.gesture || ed.tool !== 'select') return;
-  if (labOn('linkTool') && dotsOn() && dotsModeHover(ed, w)) return;
+  if (labOn('linkTool') && dotsOn()) relatedHover(ed, w);
+  else if (ed.related) { ed.related = null; ed.requestRender(); }
   const picked = ed.selection.size === 1 ? ed.board.get([...ed.selection][0]) : undefined;
   // A locked item has no handles to take.
   const single = isLocked(picked) ? undefined : picked;

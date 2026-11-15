@@ -107,6 +107,8 @@ export interface Scene {
    *  every item in sight shows them (a mind map node only under the pointer, as `linkDots`). */
   linkTool?: boolean;
   allDots?: boolean;
+  /** «Связи» on ("Связи инструментом", src/labs): the links the pointer's on, blue, and what they join, framed. */
+  related?: { links: Set<string>; items: Set<string> } | null;
   /** The mind map node button under the pointer, drawn full size and strength; the others are smaller and faint. */
   hotPlus: string | null;
   /** How far the node buttons have faded in, 0…1: they come a moment after the node is picked. */
@@ -1359,7 +1361,7 @@ function drawLinks(ctx: CanvasRenderingContext2D, s: Scene, view: Rect) {
       const l = s.links[k], shape = shapes[k]!;
       const look = linkLook(l, theme);
       gc.globalAlpha = l.lo ?? 1;
-      linkArrow(gc, shape, s.selection.has(l.id) && !s.linksAsThey ? SELECT_COLOR : look.color, cam.z, look.dash, look.heads, l.lw);
+      linkArrow(gc, shape, (s.selection.has(l.id) && !s.linksAsThey) || s.related?.links.has(l.id) ? SELECT_COLOR : look.color, cam.z, look.dash, look.heads, l.lw);
       // The one under the pointer a little bluer.
       if (l.id === s.hotLink && !s.selection.has(l.id)) {
         gc.globalAlpha = 0.4 * (l.lo ?? 1);
@@ -1616,6 +1618,17 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     if (!it || it.type === 'mind' || it.inst || it.host) continue;
     ctx.globalAlpha = DRAG_FRAME * dragLit;
     outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
+    ctx.globalAlpha = 1;
+  }
+  // («Связи» on: what the lit links join, framed as picked.)
+  if (s.related) for (const id of s.related.items) {
+    const got = s.selection.has(id) ? undefined : s.get(id), it = got && taskShown(got);
+    if (!it || it.pt) continue;
+    ctx.globalAlpha = PICK_FRAME;
+    ctx.save();
+    hiddenUnder(ctx, it, s, view);
+    outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
+    ctx.restore();
     ctx.globalAlpha = 1;
   }
   for (const id of s.selection) {
