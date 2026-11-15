@@ -880,7 +880,7 @@ export const checks = {
     expect(await p.ev(`[planx.board.get('lo').x, planx.board.get('ink').x].join()`), 'the picked one taken from under the drawing').toBe('140,120');
   },
 
-  async 'a task opened and closed by its right corner: its «ЗАДАЧА» pill, by its arrow, the corner round it'(p) {
+  async 'a task opened and closed by its right corner: its «ВАЖНОЕ» pill, by its arrow, the corner round it'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
       b.add(e.newItem('task', 200, 200, { id: 't', text: 'Задача', w: 293, h: 52 })); e.setSelection([]); })()`);
     await sleep(300);

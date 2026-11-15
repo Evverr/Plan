@@ -28,7 +28,7 @@ const TITLE_X = 47, MID = 26;
 const STATUS = 22, ARROW = 24;
 /** How far round the ring and the arrow a press is still theirs (the rest of the header a double click's). */
 const AROUND = 5;
-/** The «ЗАДАЧА» pill's width, about (its 9 Inter caps and 6 each side), for a press on it. */
+/** The «ВАЖНОЕ» pill's width, about (its 9 Inter caps and 6 each side), for a press on it. */
 const PILL_W = 60;
 /** Where the people's names start and their circles' middle; a row's height; a subtask's. */
 /** What's under the header keeps this far from its sides (9 more than the header's ring from its left). */
@@ -36,6 +36,8 @@ const PAD = 24;
 /** What's under the header starts where its title does, all of it on that line. */
 const LEFT = TITLE_X;
 const LABEL_X = LEFT, NAME_X = LEFT + 153, AVATAR_X = LEFT + 135, ROW = 33, SUB = 38;
+/** How much room a name wants right of its label (narrower, it goes under it), and how far under. */
+const NAME_ROOM = 110, UNDER = 28;
 /** The subtasks under who does it: their rings on its picture's middle, their text where names start. */
 const SUB_X = LEFT - 2, SUB_TEXT_X = LEFT + 26;
 /** The buttons as the panels' (.btn in popups.css): 32 tall, their text 12 bold Inter with 14 each side. */
@@ -69,7 +71,7 @@ export interface TaskLayout {
    *  subtasks' heading, each subtask's top (the last: the row adding one) and its text's height (its lines
    *  wrapped to its width), the buttons, and «Не
    *  сворачивать» left of them. */
-  lines?: number[]; rows?: Array<{ key: 'boss' | 'doer' | 'due'; y: number }>; menu?: Rect; pin?: Rect; pinSpot?: Rect; subs?: number[]; subH?: number[]; cancel?: Rect; finish?: Rect; keep?: Rect;
+  lines?: number[]; rows?: Array<{ key: 'boss' | 'doer' | 'due'; y: number; under?: boolean }>; menu?: Rect; pin?: Rect; pinSpot?: Rect; subs?: number[]; subH?: number[]; cancel?: Rect; finish?: Rect; keep?: Rect;
 }
 
 const lineH = (fs: number) => fs * LINE_HEIGHT;
@@ -154,8 +156,10 @@ export function taskLayout(it: Item, w = it.w): TaskLayout {
   const keys = full ? [...(it.tpp || it.boss || it.doer ? (['boss', 'doer'] as const) : []), ...(it.tdu || it.due ? (['due'] as const) : [])] : [];
   if (keys.length) {
     line();
-    out.rows = keys.map((key, i) => ({ key, y: at + 33 + ROW * i }));
-    at = at + 33 + ROW * (keys.length - 1) + 33;
+    // (Too narrow for a name right of its label, a kanban's card say: the circle and the name under it.)
+    const under = w < NAME_X + NAME_ROOM, step = under ? ROW + UNDER : ROW;
+    out.rows = keys.map((key, i) => ({ key, y: at + 33 + step * i, ...(under && { under }) }));
+    at = at + 33 + step * (keys.length - 1) + (under ? UNDER : 0) + 33;
   }
   // Its foot: «Отмена» and «Завершить» in the middle, shown by its menu («Показать кнопки»), after a line.
   if (full && it.tbtn) {
@@ -194,7 +198,7 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
   if (q.y >= 0 && q.y < l.head && q.x >= 0 && q.x <= l.w) {
     const on = (cx: number, half: number) => Math.abs(q.x - cx) <= half + AROUND && Math.abs(q.y - MID) <= half + AROUND;
     if (on(15 + STATUS / 2, STATUS / 2)) return 'status';
-    // Its right corner all opens or closes it: the arrow's column, and its «ЗАДАЧА» pill along the top edge.
+    // Its right corner all opens or closes it: the arrow's column, and its «ВАЖНОЕ» pill along the top edge.
     if (q.x >= l.w - 47 || (!it.ntag && q.y <= 10 && q.x >= l.w - 16 - PILL_W)) return 'arrow';
     const wide = Math.max(...titleLines(it, l.title.w).map((t) => widthOf(t, TITLE_FS, 500)));
     return q.y >= l.title.y && q.y <= l.title.y + l.title.h && q.x >= l.title.x && q.x <= l.title.x + wide ? 'title' : 'head';
@@ -204,7 +208,7 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
   if ((l.pin ?? l.pinSpot) && inRect(q, (l.pin ?? l.pinSpot)!, 2)) return 'pin';
   if (l.more && near(q, l.more.x + ARROW / 2, l.more.y + ARROW / 2, ARROW / 2 + 4)) return 'more';
   if (l.desc && inRect(q, l.desc)) return 'desc';
-  if (l.rows) for (const r of l.rows) if (Math.abs(q.y - r.y) <= 14 && q.x >= AVATAR_X - 14 && q.x <= l.w - PAD - 24) return r.key;
+  if (l.rows) for (const r of l.rows) if (r.under ? Math.abs(q.y - r.y - UNDER) <= 14 && q.x >= LEFT - 4 && q.x <= l.w - PAD : Math.abs(q.y - r.y) <= 14 && q.x >= AVATAR_X - 14 && q.x <= l.w - PAD - 24) return r.key;
   if (l.subs) {
     for (let i = 0; i < l.subs.length; i++) {
       if (q.y < l.subs[i] - 6 || q.y > l.subs[i] + STATUS + (l.subH?.[i] ?? 0) - lineH(TEXT_FS) + 6) continue;
@@ -468,7 +472,7 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     ctx.font = font(9, 600, FAMILY);
     ctx.letterSpacing = '0.5px';
     // (Opening it on a click, as the arrow; a little stronger under the pointer.)
-    const tag = 'ЗАДАЧА', pw = ctx.measureText(tag).width + 12;
+    const tag = 'ВАЖНОЕ', pw = ctx.measureText(tag).width + 12;
     ctx.beginPath();
     ctx.roundRect(x + l.w - 16 - pw, y + 1 - 7, pw, 14, 7);
     ctx.fillStyle = mix(strong.startsWith('#') ? strong : '#003CFF', bg, 0.35 + 0.15 * litNow(`${it.id}:arrow`, hot === `task:${it.id}:arrow`));
@@ -557,34 +561,36 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     ctx.fillText(text, x + LABEL_X, y + row);
     ctx.globalAlpha = 1;
   };
-  const person = (p: Person | undefined, row: number) => {
+  const person = (p: Person | undefined, row: number, ax = AVATAR_X, nx = NAME_X) => {
     ctx.beginPath();
-    ctx.arc(x + AVATAR_X, y + row, 12, 0, Math.PI * 2);
+    ctx.arc(x + ax, y + row, 12, 0, Math.PI * 2);
     ctx.fillStyle = p ? p.c : look.dark ? 'rgba(255,255,255,0.15)' : '#DFE3E6';
     ctx.fill();
     if (p) {
       ctx.font = font(11, 600, FAMILY);
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
-      ctx.fillText(p.n.slice(0, 1).toUpperCase(), x + AVATAR_X, y + row + 0.5);
+      ctx.fillText(p.n.slice(0, 1).toUpperCase(), x + ax, y + row + 0.5);
       ctx.textAlign = 'left';
     }
     ctx.font = font(TEXT_FS, 400, FAMILY);
     ctx.fillStyle = p ? look.ink : look.muted;
     ctx.globalAlpha = p ? 0.8 : 1;
-    ctx.fillText(p ? p.n : 'Не назначен', x + NAME_X, y + row);
+    ctx.fillText(p ? p.n : 'Не назначен', x + nx, y + row);
     ctx.globalAlpha = 1;
   };
-  for (const { key, y: ry } of l.rows ?? []) {
-    if (key === 'boss') { label('Постановщик', ry); person(it.boss, ry); }
-    else if (key === 'doer') { label('Исполнитель', ry); person(it.doer, ry); }
+  for (const { key, y: ry, under } of l.rows ?? []) {
+    // (Under its label on a narrow card: from its left edge, a line down.)
+    const vy = under ? ry + UNDER : ry, ax = under ? LEFT + 12 : AVATAR_X, nx = under ? LEFT + 30 : NAME_X;
+    if (key === 'boss') { label('Постановщик', ry); person(it.boss, vy, ax, nx); }
+    else if (key === 'doer') { label('Исполнитель', ry); person(it.doer, vy, ax, nx); }
     else {
       label('Крайний срок', ry);
-      drawIcon(ctx, 'calendar', x + AVATAR_X - 10, y + ry - 12, 24, BLUE);
+      drawIcon(ctx, 'calendar', x + ax - 10, y + vy - 12, 24, BLUE);
       ctx.font = font(TEXT_FS, 400, FAMILY);
       ctx.fillStyle = it.due ? look.ink : look.muted;
       ctx.globalAlpha = it.due ? 0.8 : 1;
-      ctx.fillText(it.due ? DATE(it.due) : 'Не задан', x + NAME_X, y + ry);
+      ctx.fillText(it.due ? DATE(it.due) : 'Не задан', x + nx, y + vy);
       ctx.globalAlpha = 1;
     }
   }

@@ -131,7 +131,7 @@ export function TaskMenu({ editor }: { editor: Editor }) {
       {row('Блок с ответственными', people, () => set(people ? { tpp: undefined, boss: undefined, doer: undefined } : { tpp: true }))}
       {row('Дата завершения', due, () => set(due ? { tdu: undefined, due: undefined } : { tdu: true }))}
       {row('Кнопки', !!it.tbtn, () => set({ tbtn: it.tbtn ? undefined : true }))}
-      {/* Its «ЗАДАЧА» pill at the top right, or not. */}
+      {/* Its «ВАЖНОЕ» pill at the top right, or not. */}
       {row('Тег', !it.ntag, () => set({ ntag: it.ntag ? undefined : true }))}
       {/* Its title on one line, or up to three («Заголовок задачи в три строки», src/labs). */}
       {labOn('taskLines') && row('Заголовок в одну строку', !!it.t1, () => set({ t1: it.t1 ? undefined : true }))}

@@ -123,7 +123,7 @@ export interface Item {
   tie?: string;
   /** Hidden («Скрыть объект», src/labs): not drawn, but picked as ever (its frame shows it then). */
   hid?: boolean;
-  /** A task without its «ЗАДАЧА» pill at the right of its top edge («Тег» unticked in its menu). */
+  /** A task without its «ВАЖНОЕ» pill at the right of its top edge («Тег» unticked in its menu). */
   ntag?: boolean;
   /** A task's title on one line («Заголовок в одну строку» ticked in its menu); else up to three. */
   t1?: boolean;
@@ -381,7 +381,7 @@ export const DEFAULTS: Record<ItemType, Partial<Item> & { w: number; h: number }
   emoji: { w: 27, h: 27 },
   ink: { w: 1, h: 1 },
   image: { w: 200, h: 150 },
-  // (A new one without its «ЗАДАЧА» pill: «Тег» ticked in its menu shows it.)
+  // (A new one without its «ВАЖНОЕ» pill: «Тег» ticked in its menu shows it.)
   task: { w: 293, h: 52, color: 'blue', fs: 16, text: '', ntag: true },
   table: { w: 360, h: 120, fs: 14 },
   audio: { w: 300, h: 64 },
