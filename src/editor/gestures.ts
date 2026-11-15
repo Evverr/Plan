@@ -718,7 +718,7 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
           const id = ed.addLineEnd(g.to);
           // (Curved: its other end pinned to a side, as it's drawn; the point's facing it.)
           const other = board.get(g.start ? l.to : l.from), oc = other ? center(linkBox(other)) : g.from;
-          const otherSide = (g.start ? l.toSide : l.fromSide) ?? (other ? nearestSide(other, g.to) : undefined), mine = facing(g.to, oc);
+          const otherSide = (g.start ? l.toSide : l.fromSide) ?? (other ? nearestSide(linkBox(other), g.to) : undefined), mine = facing(g.to, oc);
           board.relink(l.id, g.start
             ? { from: id, to: l.to, fromSide: mine, toSide: otherSide, toAt: l.toAt }
             : { from: l.from, to: id, fromSide: otherSide, fromAt: l.fromAt, toSide: mine });
@@ -829,14 +829,15 @@ export function eraseAlong(ed: Editor, a: Point, b: Point): void {
  * (its middle within 10 px of it). Its start taken, it turns round: from its other end to there; its
  * one arrowhead (wherever it was) going there. Pinned by its sides only when it was, or now that it's let go off a side's middle.
  */
-function relinkTo(ed: Editor, l: Link, target: Item, p: Point, start: boolean): void {
-  const board = ed.board, from = start ? l.to : l.from;
+function relinkTo(ed: Editor, l: Link, on: Item, p: Point, start: boolean): void {
+  // (An instance or a component by what it holds, as its lines run: see linkBox.)
+  const board = ed.board, from = start ? l.to : l.from, target = linkBox(on);
   const { side, at } = anchorAt(target, p, 10 / ed.cam.z), keep = board.get(from);
   // Its end let go on the item it's at already: only somewhere else on it. (Its start let go on its own
   // item turns it round, as anywhere: the arrow into that.)
   if (!start && target.id === l.to) {
     const sided = !!l.fromSide || at !== 0.5, other = board.get(l.from);
-    const otherSide = l.fromSide ?? (other ? nearestSide(other, center(target)) : undefined);
+    const otherSide = l.fromSide ?? (other ? nearestSide(linkBox(other), center(target)) : undefined);
     board.relink(l.id, { from: l.from, to: l.to, fromSide: sided ? otherSide : undefined, fromAt: sided ? l.fromAt : undefined, toSide: sided ? side : undefined, toAt: sided && at !== 0.5 ? at : undefined });
     return;
   }
@@ -849,7 +850,7 @@ function relinkTo(ed: Editor, l: Link, target: Item, p: Point, start: boolean): 
       if (l.heads === 'start') board.updateLink(l.id, { heads: undefined });
       board.relink(l.id, {
         from: heldId, to: from,
-        fromSide: sided ? heldSide ?? (held ? nearestSide(held, center(target)) : undefined) : undefined, fromAt: sided ? heldAt : undefined,
+        fromSide: sided ? heldSide ?? (held ? nearestSide(linkBox(held), center(target)) : undefined) : undefined, fromAt: sided ? heldAt : undefined,
         toSide: sided ? side : undefined, toAt: sided && at !== 0.5 ? at : undefined,
       });
     });
@@ -864,7 +865,7 @@ function relinkTo(ed: Editor, l: Link, target: Item, p: Point, start: boolean): 
     if (l.heads === 'start') board.updateLink(l.id, { heads: undefined });
     board.relink(l.id, {
       from, to: target.id,
-      fromSide: sided ? fromSide ?? (keep ? nearestSide(keep, center(target)) : undefined) : undefined,
+      fromSide: sided ? fromSide ?? (keep ? nearestSide(linkBox(keep), center(target)) : undefined) : undefined,
       toSide: sided ? side : undefined,
       fromAt: sided ? fromAt : undefined,
       toAt: sided && at !== 0.5 ? at : undefined,

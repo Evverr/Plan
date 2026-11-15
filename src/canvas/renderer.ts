@@ -598,9 +598,11 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       // (A component hugs what it holds, as an instance does: its edge and its name there.)
       const hug = kin ? instanceBounds(it, s.items) : it;
       if (!it.inst) {
-        // A component is only its red edge, with nothing filled in.
+        // A component is only its red edge, with nothing filled in: where a picked thing's frame goes, round
+        // what it holds (its own frame, picked, not drawn: this is it).
         ctx.beginPath();
-        ctx.roundRect(hug.x, hug.y, hug.w, hug.h, CORNER);
+        if (kin) { const off = 3 / cam.z; ctx.roundRect(hug.x - off, hug.y - off, hug.w + off * 2, hug.h + off * 2, Math.max(corner(it) + off, PICK_RAD / cam.z)); }
+        else ctx.roundRect(it.x, it.y, it.w, it.h, CORNER);
         // A frame's fill and outline: the usual, or a colour of its own as a rectangle's (how opaque, too).
         if (!it.comp && it.color !== 'none') {
           // (Its usual one as it was; given an opacity, the surface's colour seen that far through.)
@@ -1591,7 +1593,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     // (A task gliding open or closed, as it's drawn now.)
     const k = (now - u.at) / PICK_OUT, got = s.get(id), it = got && framedBox(taskShown(got), s);
     if (k >= 1 || !it) { unpicked.delete(id); continue; }
-    if (it.type === 'mind' || it.host) continue;
+    // (Not what's put away meanwhile: an instance its component's brought out in place of, say.)
+    if (it.type === 'mind' || it.host || it.comp || got.stowed) continue;
     ctx.globalAlpha = PICK_FRAME * (1 - k);
     outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
     if (u.dots && !it.comp) {
@@ -1614,7 +1617,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
   const dragLit = s.live ? dotLit(dragTurn, now, dragTurn.hot ? DRAG_IN : DRAG_OUT) : 1;
   if (s.live && !s.dragging && dragLit > 0) for (const id of dragged) {
     const got = s.selection.has(id) ? undefined : s.get(id), it = got && framedBox(taskShown(got), s);
-    if (!it || it.type === 'mind' || it.host) continue;
+    if (!it || it.type === 'mind' || it.host || it.comp || got.stowed) continue;
     ctx.globalAlpha = DRAG_FRAME * dragLit;
     outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
     ctx.globalAlpha = 1;
@@ -1635,8 +1638,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     // («Канбан»: a card taken up, tilted, shows no frame: the column lit and the blue line show where it goes.)
     if (!it || s.nodesOf === id || (s.live && s.lifted?.includes(id))) continue;
     // A mind map node shows it's picked by its "+" buttons alone, which a few picked together don't get.
-    // (An instance framed by its contents, its red title over them.)
-    if (it.type !== 'mind' || s.selection.size > 1) {
+    // (An instance framed by its contents, its red title over them; a component's red edge is its frame.)
+    if ((it.type !== 'mind' || s.selection.size > 1) && !it.comp) {
       ctx.globalAlpha = s.dragging ? DRAG_FRAME * dragLit : PICK_FRAME;
       ctx.save();
       hiddenUnder(ctx, it, s, view);

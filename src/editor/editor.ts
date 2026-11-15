@@ -747,7 +747,9 @@ export class Editor {
       const at = fromEnd ? relinked.toAt : relinked.fromAt;
       // Its arrowheads as they'll be: one goes to where it's led, two stay two, none none.
       const heads = { start: relinked.heads === 'both', end: relinked.heads !== 'none' };
-      if (from) linkPreview = { from, fromSide: side ?? null, fromAt: at, heads, to: g.to, target: g.target ? this.board.get(g.target) ?? null : null, style: relinked.style };
+      // (An instance or a component by what it holds, as its lines run: see linkBox.)
+      const target = g.target ? this.board.get(g.target) : undefined;
+      if (from) linkPreview = { from: linkBox(from), fromSide: side ?? null, fromAt: at, heads, to: g.to, target: target ? linkBox(target) : null, style: relinked.style };
     }
     // A mind map node's buttons stay while its text is being typed (one click opens it for typing).
     const plusOn = this.plusOn();

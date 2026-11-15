@@ -45,9 +45,10 @@ const radius = (zoom: number) => (BALL_R * Math.sqrt(zoom)) / zoom;
 const reach = (zoom: number) => radius(zoom) * 1.6;
 
 /** Whether what's picked gets them: on trial, not typed in, not a mind map node (its own "+"), nor
- *  what's in an instance, nor turned, nor locked. (An instance's on the frame round its contents.) */
+ *  what's in an instance, nor a component being changed, nor turned, nor locked. (An instance's on the
+ *  frame round its contents.) */
 export const tabsFor = (it: Item | undefined, editing: string | null): it is Item =>
-  !!it && labOn('sideTabs') && !editing && it.type !== 'mind' && !it.host && !it.rot && !it.tie && !isLocked(it);
+  !!it && labOn('sideTabs') && !editing && it.type !== 'mind' && !it.host && !it.comp && !it.rot && !it.tie && !isLocked(it);
 
 /** The middle of a side on the frame. */
 const framePoint = (it: Item, side: Side, zoom: number): Point => sidePoint(it, side, FRAME_OFF / zoom);
