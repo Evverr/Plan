@@ -686,7 +686,18 @@ export class Editor {
     const b = newCardBox(f, (id) => this.board.get(id));
     if (!b) return;
     const it = this.newItem('task', b.x, b.y, { w: b.w, h: b.h });
-    this.addItem(it);
+    if (f.tl) {
+      // On a timeline two, joined: the second from the first's middle, two thirds of a task lower, named; the
+      // line out of the first's bottom into its left side.
+      const next = this.newItem('task', b.x + b.w / 2, b.y + b.h + Math.round(b.h * 2 / 3), { w: b.w, h: b.h, text: 'Вторая задача' });
+      next.z = it.z + 1;
+      this.board.transact(() => {
+        this.board.add(it);
+        this.board.add(next);
+        this.board.addLink({ id: uid(), from: it.id, to: next.id, fromSide: 'bottom', fromAt: 0.25, toSide: 'left', style: 'elbow' });
+      });
+      this.settle([it.id, next.id]);
+    } else this.addItem(it);
     this.setTool('select');
     this.setSelection([it.id]);
     this.startEditing(it.id);

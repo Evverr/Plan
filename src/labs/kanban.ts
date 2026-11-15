@@ -172,7 +172,7 @@ export function newCardBox(f: Item, get: (id: string) => Item | undefined): { x:
 
 /** Draws a «Создать задачу» (`b`): a frame as big as a task, a «+» and its words in the middle; under the
  *  pointer (`hot`), a shade darker, hardly seen. */
-export function drawNewCard(ctx: CanvasRenderingContext2D, b: { x: number; y: number; w: number; h: number }, look: { line: string; muted: string }, hot: boolean): void {
+export function drawNewCard(ctx: CanvasRenderingContext2D, b: { x: number; y: number; w: number; h: number }, look: { line: string; muted: string }, hot: boolean, label = 'Создать задачу'): void {
   ctx.save();
   ctx.beginPath();
   ctx.roundRect(b.x + 0.5, b.y + 0.5, b.w - 1, b.h - 1, KANBAN_RAD);
@@ -182,7 +182,7 @@ export function drawNewCard(ctx: CanvasRenderingContext2D, b: { x: number; y: nu
   ctx.stroke();
   ctx.font = font(NEW_FS, 400);
   ctx.textBaseline = 'middle';
-  const label = 'Создать задачу', tw = ctx.measureText(label).width, x0 = b.x + (b.w - (12 + 8 + tw)) / 2, cy = b.y + b.h / 2;
+  const tw = ctx.measureText(label).width, x0 = b.x + (b.w - (12 + 8 + tw)) / 2, cy = b.y + b.h / 2;
   ctx.strokeStyle = ctx.fillStyle = look.muted;
   ctx.lineWidth = 1.5;
   ctx.beginPath();

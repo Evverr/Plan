@@ -957,7 +957,7 @@ export const checks = {
     expect(await p.ev(`['a', 'b', 'c'].map((id) => planx.board.get(id).h).join()`), 'three lines, one, one').toBe('93,52,52');
   },
 
-  async '"Создать задачу на таймлайне": a new timeline twice as tall, «Создать задачу» on it from today; a click, a task there, typed in'(p) {
+  async '"Создать задачу на таймлайне": a new timeline twice as tall, «Создать задачи» on it from today; a click, two tasks there joined, the first typed in'(p) {
     await p.ev(`(() => { const e = planx.editor; e.addTimeline({ x: 0, y: 0 }); const t = planx.board.list().find((i) => i.tl); e.cam = { x: 600 - (t.x + t.w / 2) * 0.6, y: 400 - (t.y + t.h / 2) * 0.6, z: 0.6 }; e.camChanged(); e.setSelection([]); })()`);
     await sleep(300);
     const b = await p.ev(`(async () => { const k = await import('/src/labs/kanban.ts'), t = planx.board.list().find((i) => i.tl); const b = k.newCardBox(t, (id) => planx.board.get(id)); const s = planx.editor.toScreen({ x: b.x + b.w / 2, y: b.y + b.h / 2 }); return { ...b, sx: s.x, sy: s.y, th: t.h }; })()`);
@@ -965,6 +965,7 @@ export const checks = {
     await p.click([b.sx, b.sy]);
     await sleep(300);
     expect(await p.ev(`(() => { const t = planx.board.get(planx.editor.editingId), f = planx.board.list().find((i) => i.tl); return [t?.type, t?.x === ${b.x}, f.members.includes(t?.id)].join(); })()`), 'a task there, typed in').toBe('task,true,true');
+    expect(await p.ev(`(() => { const t = planx.board.get(planx.editor.editingId), f = planx.board.list().find((i) => i.tl), n = planx.board.list().find((i) => i.type === 'task' && i.id !== t.id), l = planx.board.linkList()[0]; return [n?.text, Math.abs(n?.x - (t.x + t.w / 2)) <= 0.5, n?.y === t.y + t.h + Math.round(t.h * 2 / 3), f.members.includes(n?.id), l?.from === t.id && l?.to === n?.id].join(); })()`), 'a second one, named, joined').toBe('Вторая задача,true,true,true,true');
     await p.escape();
     await sleep(200);
     const b2 = await p.ev(`(async () => { const k = await import('/src/labs/kanban.ts'), t = planx.board.list().find((i) => i.tl); return k.newCardBox(t, (id) => planx.board.get(id)); })()`);
