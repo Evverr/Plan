@@ -695,7 +695,7 @@ export const checks = {
   },
 
   async 'a timeline is picked by a box drawn round it, or over its edge'(p) {
-    // (Without the header over it, «Заголовок в объектах», which a box round it takes in too.)
+    // (Without the header over it, «Титул в объектах», which a box round it takes in too.)
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('headerObject', false))()`);
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.addTimeline({ x: 1000, y: 800 }); e.setSelection([]); })()`);
     await sleep(200);

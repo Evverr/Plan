@@ -256,7 +256,7 @@ export function clickTypes(it: Item | null | undefined, w: Point): boolean {
     return part === 'title' || part === 'desc';
   }
   if (it.type === 'text') return true;
-  // A header («Заголовок в объектах», src/labs): its title or description.
+  // A header («Титул в объектах», src/labs): its title or description.
   if (it.hd) { const part = headerPartAt(it, w); return part === 'title' || part === 'desc'; }
   // A block of code: where it's typed in (not its band with the language, its line numbers or its edges).
   if (it.code) return !!it.text && onCodeText(it, w);

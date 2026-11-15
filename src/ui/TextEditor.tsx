@@ -76,7 +76,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
   // A folded frame's title is typed in where it stands, inside the bar.
   const folded = isFrame && !!item.fold;
   // A task: its title, description or a subtask, where the card has it (see canvas/task.ts).
-  // A header («Заголовок в объектах», src/labs): its title or its description, so too.
+  // A header («Титул в объектах», src/labs): its title or its description, so too.
   const field: (ReturnType<typeof taskFieldBox> & { family?: string }) | null = item.type === 'task' ? taskFieldBox(item, editor.editingCell)
     : item.hd ? headerFieldBox(item, editor.editingCell) : null;
   const desc = item.type === 'task' && field && editor.editingCell === 0 ? descLook(item) : null;

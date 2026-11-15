@@ -3,7 +3,7 @@ import type { Point, Rect } from '../canvas/geometry';
 import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
 
 /**
- * «Заголовок в объектах»: an icon, a title right of it and a description under that, one item (a
+ * «Титул в объектах»: an icon, a title right of it and a description under that, one item (a
  * rectangle with `hd`; its title its text, its description `desc`, its icon `icon` in its colour). As
  * wide as it's stretched, as tall as they take: the description stands right under the title, pushed
  * down as the title takes more lines. A double click on the icon takes another, on the title or the

@@ -6,7 +6,7 @@ import { labOn } from './labs';
 import { layerRoot } from './sideViewport';
 
 /** The objects there are ("Объекты"): their tool, icon and name. */
-export const OBJECTS: Array<[Tool, string, string]> = [['timeline', 'timeline', 'Таймлайн'], ['poll', 'poll', 'Голосование'], ['kanban', 'kanban', 'Канбан'], ['header', 'headlines', 'Заголовок']];
+export const OBJECTS: Array<[Tool, string, string]> = [['timeline', 'timeline', 'Таймлайн'], ['poll', 'poll', 'Голосование'], ['kanban', 'kanban', 'Канбан'], ['header', 'headlines', 'Титул']];
 
 /**
  * "Объекты": the menu its rail button opens, beside it, as the board menu looks. Picking one takes

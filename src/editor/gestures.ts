@@ -241,7 +241,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       if (it.type === 'text' && !it.tb) nh = itemTextHeight(it, it.text, nw);
       // A task only wider or narrower, as tall as what's in it then (see canvas/task.ts).
       if (it.type === 'task') { nw = Math.max(it.tv ? 360 : TASK_MIN_W, nw); nh = taskSize(it, nw).h; }
-      // A header («Заголовок в объектах», src/labs): no shorter than its title and description take at its width
+      // A header («Титул в объектах», src/labs): no shorter than its title and description take at its width
       // (stretched taller, kept so: see headerFit).
       if (it.hd) { nw = Math.max(HEADER_MIN_W, nw); nh = Math.max(sy ? nh : it.hdH ? it.h : 0, headerHeight(it, { w: nw })); }
       // Text wrapping onto more lines (or fewer) takes the text just under it along.
@@ -524,7 +524,7 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         if (labOn('nib') && editablePath(it)) { startNodeEdit(ed, it.id); return; }
         // "Замена двойным кликом": an emoji, an icon or a shape shows its neighbours, a shape opening for
         // typing too (unless that was the instance it's in being entered).
-        // A header («Заголовок в объектах», src/labs): its icon another to take, its title or description typed in.
+        // A header («Титул в объектах», src/labs): its icon another to take, its title or description typed in.
         if (it?.hd) {
           const part = headerPartAt(it, g.start);
           if (part === 'icon' && swapKind(it)) openSwap(g.id);

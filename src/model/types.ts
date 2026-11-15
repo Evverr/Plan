@@ -113,7 +113,7 @@ export interface Item {
   tdu?: boolean;
   /** A task's «Отмена» and «Завершить» shown at its foot («Показать кнопки» in its menu). */
   tbtn?: boolean;
-  /** A rectangle that's a header («Заголовок в объектах», src/labs/header.ts): its icon (`icon`, in its
+  /** A rectangle that's a header («Титул в объектах», src/labs/header.ts): its icon (`icon`, in its
    *  `color`), its title (its text) and its description (`desc`). */
   hd?: boolean;
   /** A header stretched taller by hand: kept so, never shorter than what's in it takes. */

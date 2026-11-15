@@ -777,7 +777,7 @@ export const checks = {
     expect((await at('t2')).y, 'the gap closed').toBe(k.y + 58 + 16);
   },
 
-  async '"Заголовок в объектах": an icon, a title and a description, one item; one over a new kanban, its title and icon; its icon double clicked, another to take; its title typed longer or it narrower, its description pushed down'(p) {
+  async '"Титул в объектах": an icon, a title and a description, one item; one over a new kanban, its title and icon; its icon double clicked, another to take; its title typed longer or it narrower, its description pushed down'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('header', { x: 400, y: 200 }); })()`);
     await sleep(300);
     const headers = () => p.ev(`planx.board.list().filter((i) => i.hd).map((h) => [h.icon, h.text, h.desc.split(',')[0]].join(' / '))`);
@@ -2089,7 +2089,7 @@ export const checks = {
     const c = await p.ev(`planx.board.get('${comp.id}')`);
     expect(`${c.text} ${c.obj} ${!!c.stowed} ${await p.ev(`planx.board.list().filter((i) => i.inst === '${comp.id}').length`)}`, 'named, an object, an instance in its place').toBe('Карточка true true 1');
     await p.click(await p.at('.tools [data-key="objects"]'));
-    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'the menu').toBe('Таймлайн | Голосование | Канбан | Заголовок | Мои объекты');
+    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'the menu').toBe('Таймлайн | Голосование | Канбан | Титул | Мои объекты');
     const mineRow = await p.ev(`(() => { const r = [...document.querySelectorAll('.objects-menu .menu-row')].find((b) => b.textContent === 'Мои объекты').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
     await p.mouse('mouseMoved', ...mineRow);
     await sleep(150);
@@ -2114,7 +2114,7 @@ export const checks = {
     await sleep(150);
     expect(await p.ev(`(localStorage.getItem('planx-my-objects') ?? '[]') + ' ' + !!planx.board.get('${comp.id}').obj + ' ' + planx.board.list().filter((i) => i.inst === '${comp.id}').length`), 'off the list, its instances there').toBe('[] true 3');
     await p.click(await p.at('.tools [data-key="objects"]'));
-    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'among the board\'s own now').toBe('Таймлайн | Голосование | Канбан | Заголовок | Объекты документа');
+    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'among the board\'s own now').toBe('Таймлайн | Голосование | Канбан | Титул | Объекты документа');
   },
 
   async '"Мои объекты" are kept in the browser: put on another board, a copy of the component comes along; another\'s object is kept with «+»'(p) {
@@ -2151,7 +2151,7 @@ export const checks = {
     await p.click(await p.at('.objects-mine .menu-take'));
     await sleep(150);
     expect(await p.ev(`JSON.parse(localStorage.getItem('planx-my-objects')).map((o) => o.name).join()`), 'kept').toBe('Карточка,Чужой');
-    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'no longer the board\'s own only').toBe('Таймлайн | Голосование | Канбан | Заголовок | Мои объекты');
+    expect(await p.ev(`[...document.querySelectorAll('.objects-menu > .menu-item > .menu-row span')].map((e) => e.textContent).join(' | ')`), 'no longer the board\'s own only').toBe('Таймлайн | Голосование | Канбан | Титул | Мои объекты');
     await p.ev(`localStorage.removeItem('planx-my-objects')`);
   },
 

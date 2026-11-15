@@ -17,7 +17,7 @@ export function swapKind(it: Item | undefined): SwapKind | null {
   // Not in a component that comes with PlanX (a task's ring is clicked through its states instead).
   if (!it || !labOn('swap') || isLocked(it) || it.from?.startsWith('@')) return null;
   if (it.type === 'emoji') return 'emoji';
-  // (A header's, «Заголовок в объектах»: its icon, a double click on it.)
+  // (A header's, «Титул в объектах»: its icon, a double click on it.)
   if (it.type === 'icon' || it.hd) return 'icon';
   if (it.type === 'image' && it.doodle) return 'doodle';
   // (Not a shape: a double click on it opens its text for typing.)

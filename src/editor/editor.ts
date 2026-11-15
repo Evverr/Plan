@@ -623,7 +623,7 @@ export class Editor {
     const it = this.newItem('frame', Math.round(c.x - size.w / 2), Math.round(c.y - size.h / 2), { ...size, tl: dayKey(start), text: 'Таймлайн', members: [] });
     this.board.beginGesture();
     this.addItem(it);
-    // A header over it («Заголовок в объектах», src/labs).
+    // A header over it («Титул в объектах», src/labs).
     if (labOn('headerObject')) this.addHeader(c, { item: it, title: 'Таймлайн', icon: 'timeline', color: 'green' });
     this.board.endGesture();
     this.setTool('select');
@@ -649,7 +649,7 @@ export class Editor {
   }
 
   /** «Канбан» (src/labs/kanban.ts), centred on `c`, with its first stages, picked; a header over it
-   *  («Заголовок в объектах»). */
+   *  («Титул в объектах»). */
   addKanban(c: Point): void {
     const size = kanbanSize(FIRST_STAGES.length);
     const it = this.newItem('frame', Math.round(c.x - size.w / 2), Math.round(c.y - size.h / 2), { ...size, kb: FIRST_STAGES.map((s) => ({ ...s })), text: 'Канбан', members: [] });
@@ -661,7 +661,7 @@ export class Editor {
     this.setSelection([it.id]);
   }
 
-  /** «Заголовок в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its
+  /** «Титул в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its
    *  left, its title and icon theirs (as Женя's over a timeline or kanban), what's picked left as it is. */
   addHeader(c: Point, over?: { item: Item; title: string; icon: string; color: string }): void {
     const look = { hd: true, text: over?.title ?? HEADER_NAME, desc: HEADER_DESC, icon: over?.icon ?? 'kanban', color: over?.color ?? 'blue', sc: 'none' };
@@ -1715,7 +1715,7 @@ export class Editor {
     if (it) {
       const value = text.replace(/\s+$/, '');
       if (it.hd) {
-        // «Заголовок в объектах» (src/labs): its title or its description, as tall as they then take.
+        // «Титул в объектах» (src/labs): its title or its description, as tall as they then take.
         setHeaderTyping(null);
         const patch: Partial<Item> = cell === 0 ? { desc: value } : { text: value }, h = headerFit(it, patch);
         if (value !== (cell === 0 ? it.desc ?? '' : it.text ?? '') || h !== it.h) this.board.update(id, { ...patch, h });
@@ -1809,7 +1809,7 @@ export class Editor {
   previewText(id: string, text: string): void {
     this.typed = { id, text };
     const it = this.board.get(id);
-    // «Заголовок в объектах» (src/labs): as tall as what's typed takes, its description under its title.
+    // «Титул в объектах» (src/labs): as tall as what's typed takes, its description under its title.
     if (it?.hd) {
       setHeaderTyping(id, this.editingCell, text);
       const h = headerFit(it);
