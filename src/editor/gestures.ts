@@ -681,8 +681,16 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
           if (point && !board.linkList().some((k) => k.id !== l.id && (k.from === point.id || k.to === point.id))) board.remove([point.id]);
         });
       } else if (l && g.away && !target && g.going && labOn('lineEnd')) {
-        // Let go on nothing: the end stays there, at an unseen point (moved, if it was one already).
-        if (point) board.update(point.id, { x: Math.round(g.to.x), y: Math.round(g.to.y) });
+        // Let go on nothing: the end stays there, at an unseen point (moved, if it was one already: facing
+        // its other end from there, its bends gone, as it was drawn while dragged).
+        if (point) board.transact(() => {
+          board.update(point.id, { x: Math.round(g.to.x), y: Math.round(g.to.y) });
+          const other = board.get(g.start ? l.to : l.from), mine = facing(g.to, other ? center(linkBox(other)) : g.from);
+          board.relink(l.id, g.start
+            ? { from: point.id, to: l.to, fromSide: mine, toSide: l.toSide, toAt: l.toAt }
+            : { from: l.from, to: point.id, fromSide: l.fromSide, fromAt: l.fromAt, toSide: mine });
+          if (l.via) board.updateLink(l.id, { via: undefined });
+        });
         else board.transact(() => {
           const id = ed.addLineEnd(g.to);
           // (Curved: its other end pinned to a side, as it's drawn; the point's facing it.)

@@ -939,6 +939,10 @@ export const checks = {
     await p.drag(await at(760, 480), await at(380, 380));
     await sleep(300);
     expect(await state(), 'let go on its own item: as it was').toBe('point 760,480');
+    // Moved again, under its item: its end faces it from there (not as it faced from where it was).
+    await p.drag(await at(760, 480), await at(380, 700));
+    await sleep(300);
+    expect(await p.ev(`(() => { const l = planx.board.linkList()[0], t = planx.board.get(l.to); return [t.x, t.y, l.toSide, !!l.via].join(); })()`), 'facing it from under it').toBe('380,700,top,false');
     await p.ev(`(() => { planx.editor.setSelection([planx.board.linkList()[0].id]); planx.editor.deleteSelection(); })()`);
     expect(await p.ev(`planx.board.list().filter((i) => i.pt).length + ' ' + planx.board.linkList().length`), 'gone with its line').toBe('0 0');
   },
