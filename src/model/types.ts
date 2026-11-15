@@ -379,7 +379,8 @@ export const DEFAULTS: Record<ItemType, Partial<Item> & { w: number; h: number }
   emoji: { w: 27, h: 27 },
   ink: { w: 1, h: 1 },
   image: { w: 200, h: 150 },
-  task: { w: 293, h: 52, color: 'blue', fs: 16, text: '' },
+  // (A new one without its «ЗАДАЧА» pill: «Тег» ticked in its menu shows it.)
+  task: { w: 293, h: 52, color: 'blue', fs: 16, text: '', ntag: true },
   table: { w: 360, h: 120, fs: 14 },
   audio: { w: 300, h: 64 },
   polygon: { w: 160, h: 150, color: 'purple', fs: 16, text: '' },
