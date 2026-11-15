@@ -6,7 +6,8 @@ import { fillOpacity, MIND_PALETTE, mindDepth } from '../model/mind';
 import { colsOf, rowsOf } from '../model/table';
 import { PanelIcon, type PanelIconName } from './PanelIcon';
 import { Glyph } from './glyphs';
-import { openSwap } from '../labs/swap';
+import { openSwap, swapKind } from '../labs/swap';
+import { Tile } from './IconPicker';
 import { useSortable } from './sortable';
 import { ColorPicker } from './ColorPicker';
 import { crowds, EDGE, fitPopovers, shownRects } from '../layout';
@@ -436,6 +437,10 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
   if (!items.length && (over || !linkCount)) return null;
   const tables = items.filter((i) => i.type === 'table'), links = editor.selectedLinks();
   // (Shapes, not blocks of code: «Без текста».)
+  const one = items.length === 1 ? items[0] : null, kind = one && (one.hd ? 'icon' : swapKind(one));
+  const swapping = !one || !kind ? null : kind === 'emoji' ? { title: 'Другой эмодзи', look: <Tile kind="emoji" id={one.emoji ?? ''} px={30} /> }
+    : kind === 'doodle' ? { title: 'Другой стикер', look: <Tile kind="doodle" id={one.doodle ?? ''} px={30} /> }
+    : kind === 'icon' ? { title: 'Другая иконка', look: <Glyph id={one.icon ?? 'kanban'} className="pi-glyph" /> } : null;
   const group = items.length === 1 && items[0].type === 'frame' && !items[0].tl && !items[0].kb && !items[0].inst ? items[0] : null;
   // (Nor a «Титул», src/labs/header.ts.)
   const shapes = items.filter((i) => (i.type === 'rect' || i.type === 'ellipse' || i.type === 'polygon') && !i.code && !i.hd), noText = shapes.length > 0 && shapes.every((s) => s.nt);
@@ -467,11 +472,12 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
       }}>
       {sort.renderFit({
         // A block of code's language ("Код", src/labs).
-        // A header («Титул», src/labs/header.ts): its icon first, a click on it (as a double click there) its neighbours to take.
-        hdIcon: items.length === 1 && items[0].hd ? (
-          <button className="ib" title="Другая иконка" aria-label="Другая иконка" onClick={() => openSwap(items[0].id)}><Glyph id={items[0].icon ?? 'kanban'} className="pi-glyph" /></button>
+        // What can be put another in its place (an emoji, an icon, a game sticker; a header's icon, «Титул»,
+        // src/labs/header.ts): it first, a click on it (as a double click there) its neighbours to take.
+        hdIcon: swapping ? (
+          <button className="ib" title={swapping.title} aria-label={swapping.title} onClick={() => openSwap(items[0].id)}>{swapping.look}</button>
         ) : undefined,
-        sepHd: items.length === 1 && items[0].hd ? <div className="sep" /> : undefined,
+        sepHd: swapping ? <div className="sep" /> : undefined,
         lang: labs.codeBlock && items.length === 1 && items[0].code ? <CodeLang key={items[0].id} editor={editor} item={items[0]} /> : undefined,
         sepLang: labs.codeBlock && items.length === 1 && items[0].code ? <div className="sep" /> : undefined,
         // A document saved as a file ("Документ", src/labs).

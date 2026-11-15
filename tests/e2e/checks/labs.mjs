@@ -2737,4 +2737,15 @@ export const checks = {
     expect(await lines(t), 'its lines up').toBe('up,up,up,up');
     for (const x of [q, r, t]) await x.close();
   },
+
+  async '"Замена двойным кликом": an emoji or icon picked, it first on the panel, a click there its neighbours'(p) {
+    const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; const m = e.newItem('emoji', 0, 0, { w: 64, h: 64, emoji: 'emoji-u1f600' }); b.add(m); const i = e.newItem('icon', 200, 0, { w: 64, h: 64, icon: 'kanban' }); b.add(i); e.setSelection([m.id]); return [m.id, i.id]; })()`);
+    await sleep(400);
+    expect(await p.ev(`!!document.querySelector('button[aria-label="Другой эмодзи"] .pick-emoji')`), 'the emoji on the panel').toBe(true);
+    await p.ev(`planx.editor.setSelection(['${ids[1]}'])`);
+    await sleep(400);
+    await p.click(await p.at('button[aria-label="Другая иконка"]'));
+    await sleep(400);
+    expect(await p.ev(`!!document.querySelector('.icon-grid')`), 'its neighbours').toBe(true);
+  },
 };
