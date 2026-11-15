@@ -959,10 +959,10 @@ export const checks = {
     await p.escape();
     await sleep(200);
     const b2 = await p.ev(`(async () => { const k = await import('/src/labs/kanban.ts'), t = planx.board.list().find((i) => i.tl); return k.newCardBox(t, (id) => planx.board.get(id)); })()`);
-    expect(b2.y >= b.y + 52 + 12, 'it under the new one, not hidden by it').toBe(true);
+    expect(b2, 'gone with the first task').toBe(null);
   },
 
-  async '"Канбан в объектах": «Создать задачу» under the first stage\'s cards: a click, a task there, typed in; it goes on under it'(p) {
+  async '"Канбан в объектах": «Создать задачу» under the first stage while it\'s empty: a click, a task there, typed in; gone with it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.8 }; e.camChanged(); e.addKanban({ x: 700, y: 400 }); e.setSelection([]); })()`);
     await sleep(200);
     const box = async () => { const b = await p.ev(`(async () => { const k = await import('/src/labs/kanban.ts'), f = planx.board.list().find((i) => i.kb); return k.newCardBox(f, (id) => planx.board.get(id)); })()`); return b; };
@@ -974,7 +974,7 @@ export const checks = {
     await p.ev(`(() => { const t = document.querySelector('.text-edit'); t.value = 'Первая'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
     await p.escape();
     await sleep(300);
-    expect((await box()).y, 'it under the new one').toBe(b.y + 52 + 12);
+    expect(await box(), 'gone with the first card').toBe(null);
   },
 
   async '"Канбан в объектах": its «+» adds a stage; a stage\'s pill opens its menu: renamed, recoloured, moved'(p) {

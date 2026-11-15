@@ -28,13 +28,13 @@ describe('«Канбан»', () => {
     expect(b.get('s')).toMatchObject({ x: col[2].x + 30, y: 200 });
   });
 
-  it('pushes those under one that grows down, and grows itself with its longest column (the first, «Создать задачу» under its cards)', () => {
+  it('pushes those under one that grows down, and grows itself with its longest column', () => {
     const { b, col } = make();
     tidyKanbans(b);
     b.update('t2', { h: 400 });
     tidyKanbans(b);
     expect(b.get('t1')!.y).toBe(col[0].y + 16 + 400 + 12);
-    expect(b.get('k')!.h).toBe(kanbanSize(3, 400 + 12 + 52 + 12 + 52).h);
+    expect(b.get('k')!.h).toBe(kanbanSize(3, 400 + 12 + 52).h);
   });
 
   it('stretched taller by hand stays so; its cards needing more, it\'s as tall as they need again, shrinking with them', () => {
@@ -46,7 +46,7 @@ describe('«Канбан»', () => {
     expect(b.get('k')!.h, 'kept as stretched').toBe(auto + 300);
     b.update('t2', { h: 600 });
     tidyKanbans(b);
-    expect(b.get('k')!.h, 'pushed by its cards').toBe(kanbanSize(3, 600 + 12 + 52 + 12 + 52).h);
+    expect(b.get('k')!.h, 'pushed by its cards').toBe(kanbanSize(3, 600 + 12 + 52).h);
     expect(b.get('k')!.kbH).toBeUndefined();
     b.update('t2', { h: 52 });
     tidyKanbans(b);

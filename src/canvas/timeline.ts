@@ -74,18 +74,13 @@ export const halfDay = (tl: Item, x: number): number => {
   return from + Math.round((x - from) / half) * half;
 };
 
-/** «Создать задачу» on it («Создать задачу на таймлайне», src/labs): as big as a task, in whole days, from
- *  today (its first day, today not on it), under its days' numbers, and under what's on it across those
- *  days (`get`: what it holds), never hidden by it. */
-export function tlNewCardBox(it: Item, get?: (id: string) => Item | undefined): { x: number; y: number; w: number; h: number } {
+/** «Создать задачу» on it («Создать задачу на таймлайне», src/labs), while nothing's on it yet (`get`:
+ *  what it holds): as big as a task, in whole days, from today (its first day, today not on it), under its
+ *  days' numbers. */
+export function tlNewCardBox(it: Item, get: (id: string) => Item | undefined): { x: number; y: number; w: number; h: number } | null {
+  if ((it.members ?? []).some((id) => get(id))) return null;
   const day = dayOf(it), now = new Date(), i = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - tlStart(it).getTime()) / 864e5);
-  const x = it.x + TL_PAD + (i >= 0 && i < tlDays(it) ? i : 0) * day, w = Math.max(1, Math.round(293 / day)) * day;
-  let y = it.y + linesY(it.tfs ?? 1) + 16;
-  for (const id of it.members ?? []) {
-    const o = get?.(id);
-    if (o && !o.tv && o.x < x + w && o.x + o.w > x && o.y + o.h + 12 > y) y = o.y + o.h + 12;
-  }
-  return { x, y, w, h: 52 };
+  return { x: it.x + TL_PAD + (i >= 0 && i < tlDays(it) ? i : 0) * day, y: it.y + linesY(it.tfs ?? 1) + 16, w: Math.max(1, Math.round(293 / day)) * day, h: 52 };
 }
 
 export function drawTimeline(ctx: CanvasRenderingContext2D, it: Item, colors: { card: string; ink: string }, z: number): void {

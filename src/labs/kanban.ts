@@ -13,8 +13,8 @@ import { tlNewCardBox } from '../canvas/timeline';
  * among those there; each column's cards stand one under another, a gap between, so one opened (taller)
  * pushes those under it down, and one taken out closes the gap. Rectangles take the column's width. Laid
  * out again after each change made here (see tidyKanbans), not while something's being dragged; the
- * frame as tall as its longest column. Under the first stage's cards, «Создать задачу»: a frame as big
- * as a task, a click on it a new task there, typed in.
+ * frame as tall as its longest column. With no cards yet, «Создать задачу» under the first stage: a
+ * frame as big as a task, a click on it a new task there, typed in; gone with the first card.
  */
 
 export interface Stage { n: string; c: string }
@@ -90,8 +90,8 @@ export function kanbanLayout(board: Board, f: Item, items: Item[]): Map<string, 
       if (at.x !== c.x || at.y !== c.y || at.w !== c.w || at.h !== c.h) out.set(c.id, at);
       y += h + CARD_GAP;
     }
-    // (Under the first stage's, «Создать задачу».)
-    if (i === 0) y += NEW_H + CARD_GAP;
+    // (Nothing in it yet: «Создать задачу» under the first stage.)
+    if (i === 0 && !(f.members ?? []).some((id) => board.get(id))) y += NEW_H + CARD_GAP;
     tall = Math.max(tall, y - CARD_GAP - cols[i].y - IN);
   });
   const least = kanbanSize(cols.length, tall, KB.MIN_COL), kept = f.kbH && f.h >= least.h;
@@ -149,16 +149,14 @@ export function dropTarget(items: Item[], it: Item | undefined, skip: Set<string
   return { id: f.id, col, x: c.x, w: c.w, y: last && next ? last.y + last.h + CARD_GAP / 2 : null };
 }
 
-/** «Создать задачу» under the first stage's cards (as they stand now: a card dragged off it, not under it);
- *  on a timeline, from today («Создать задачу на таймлайне», src/labs). */
+/** «Создать задачу» under the first stage, while it has no cards (one dragged in, it's gone); on a timeline,
+ *  from today («Создать задачу на таймлайне», src/labs). */
 export function newCardBox(f: Item, get: (id: string) => Item | undefined): { x: number; y: number; w: number; h: number } | null {
   if (f.tl) return labOn('tlNewTask') ? tlNewCardBox(f, get) : null;
-  if (!f.kb || !labOn('kanban')) return null;
+  if (!f.kb || !labOn('kanban') || (f.members ?? []).some((id) => get(id))) return null;
   const c = columns(f)[0];
   if (!c) return null;
-  let y = c.y + IN;
-  for (const id of f.members ?? []) { const it = get(id); if (it && snaps(it) && columnOf(f, it.x + it.w / 2) === 0) y = Math.max(y, it.y + it.h + CARD_GAP); }
-  return { x: Math.round(c.x), y, w: kanbanLane(f), h: NEW_H };
+  return { x: Math.round(c.x), y: c.y + IN, w: kanbanLane(f), h: NEW_H };
 }
 
 /** Draws a «Создать задачу» (`b`): a frame as big as a task, a «+» and its words in the middle; under the
