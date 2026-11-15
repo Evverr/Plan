@@ -14,8 +14,8 @@ import { readJSON, writeJSON } from '../storage';
 import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoomedAt } from './camera';
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
-import { around, contents, copyId, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
-import { HEADER_GAP, HEADER_H, HEADER_LIB, HEADER_W, headerIcon, headerParts, headerTitle } from '../labs/header';
+import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
+import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerHeight, setHeaderTyping } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -661,34 +661,17 @@ export class Editor {
     this.setSelection([it.id]);
   }
 
-  /** «Заголовок в объектах» (src/labs/header.ts): an instance of the board's header (its component put on
-   *  it the first time), centred on `c`, picked; or, `over` given, over its left, its title and icon
-   *  theirs (as Женя's over a timeline or kanban), what's picked left as it is. */
+  /** «Заголовок в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its
+   *  left, its title and icon theirs (as Женя's over a timeline or kanban), what's picked left as it is. */
   addHeader(c: Point, over?: { item: Item; title: string; icon: string; color: string }): void {
-    let comp = this.board.list().find((i) => i.comp && i.lib === HEADER_LIB);
-    this.board.beginGesture();
-    if (!comp) {
-      const parts = headerParts((type, x, y, extra) => this.newItem(type, Math.round(x), Math.round(y), extra), c.x - HEADER_W / 2, c.y - HEADER_H / 2);
-      this.board.transact(() => parts.forEach((p) => this.board.add(p)));
-      comp = parts[0];
-    }
-    const x = over ? over.item.x : Math.round(c.x - HEADER_W / 2), y = over ? over.item.y - HEADER_GAP - HEADER_H : Math.round(c.y - HEADER_H / 2);
-    const inst = this.newItem('frame', x, y, { w: comp.w, h: comp.h, inst: comp.id, text: comp.text, members: [], born: Date.now() });
-    this.board.add(inst);
-    if (over) {
-      // Its copies made now, to be given the title and icon.
-      this.syncNow();
-      const parts = (comp.members ?? []).map((id) => this.board.get(id)).filter((i): i is Item => !!i);
-      const title = headerTitle(parts), icon = headerIcon(parts);
-      this.board.transact(() => {
-        if (title) this.board.update(copyId(inst.id, title.id), { text: over.title });
-        if (icon) this.board.update(copyId(inst.id, icon.id), { icon: over.icon, color: over.color });
-      });
-    }
-    this.board.endGesture();
+    const look = { hd: true, text: over?.title ?? HEADER_NAME, desc: HEADER_DESC, icon: over?.icon ?? 'kanban', color: over?.color ?? 'blue', sc: 'none' };
+    const h = headerHeight({ id: '', type: 'rect', x: 0, y: 0, w: HEADER_W, h: 0, z: 0, ...look });
+    const x = over ? over.item.x : Math.round(c.x - HEADER_W / 2), y = over ? over.item.y - HEADER_GAP - h : Math.round(c.y - h / 2);
+    const it = this.newItem('rect', x, y, { ...look, w: HEADER_W, h });
+    this.addItem(it);
     if (over) return;
     this.setTool('select');
-    this.setSelection([inst.id]);
+    this.setSelection([it.id]);
   }
 
   requestRender(): void {
@@ -1731,7 +1714,12 @@ export class Editor {
     if (this.editingId === id) { this.editingId = null; this.editingCell = null; }
     if (it) {
       const value = text.replace(/\s+$/, '');
-      if (it.type === 'task') {
+      if (it.hd) {
+        // «Заголовок в объектах» (src/labs): its title or its description, as tall as they then take.
+        setHeaderTyping(null);
+        const patch: Partial<Item> = cell === 0 ? { desc: value } : { text: value }, h = headerHeight(it, patch);
+        if (value !== (cell === 0 ? it.desc ?? '' : it.text ?? '') || h !== it.h) this.board.update(id, { ...patch, h });
+      } else if (it.type === 'task') {
         // Its title, its description or a subtask (see model/task.ts); as tall as it then takes.
         // (Refit even with nothing new: it may have grown for what was typed past the end, now dropped.)
         const patch = taskTextPatch(it, cell, value), h = fitTask(it, patch ?? {});
@@ -1821,6 +1809,14 @@ export class Editor {
   previewText(id: string, text: string): void {
     this.typed = { id, text };
     const it = this.board.get(id);
+    // «Заголовок в объектах» (src/labs): as tall as what's typed takes, its description under its title.
+    if (it?.hd) {
+      setHeaderTyping(id, this.editingCell, text);
+      const h = headerHeight(it);
+      if (h !== it.h) this.board.update(id, { h });
+      this.requestRender();
+      return;
+    }
     // A task as tall as what's typed in its part takes.
     if (it?.type === 'task') {
       const patch = taskTextPatch(it, this.editingCell, text) ?? {}, h = fitTask(it, { ...patch, ...(this.editingCell && !text.trim() && { subs: it.subs }) });

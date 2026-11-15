@@ -777,24 +777,39 @@ export const checks = {
     expect((await at('t2')).y, 'the gap closed').toBe(k.y + 58 + 16);
   },
 
-  async '"Заголовок в объектах": an icon, a title and a description, one component for the board; one over a new kanban, its title and icon; its icon double clicked, another to take'(p) {
+  async '"Заголовок в объектах": an icon, a title and a description, one item; one over a new kanban, its title and icon; its icon double clicked, another to take; its title typed longer or it narrower, its description pushed down'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('header', { x: 400, y: 200 }); })()`);
     await sleep(300);
-    const headers = () => p.ev(`planx.board.list().filter((i) => i.inst && planx.board.get(i.inst)?.lib === 'planx:header').map((h) => planx.board.list().filter((c) => c.host === h.id).map((c) => c.type === 'icon' ? c.icon : c.text.split(',')[0]).join(' / '))`);
+    const headers = () => p.ev(`planx.board.list().filter((i) => i.hd).map((h) => [h.icon, h.text, h.desc.split(',')[0]].join(' / '))`);
     expect((await headers()).join(), 'its parts').toBe('kanban / Заголовок / Здесь идет описание заголовка');
     await p.ev(`(() => { planx.editor.setSelection([]); planx.editor.addKanban({ x: 1200, y: 900 }); })()`);
     await sleep(300);
     expect((await headers())[1], 'over the kanban').toBe('kanban / Канбан / Здесь идет описание заголовка');
-    expect(await p.ev(`(() => { const l = planx.board.list(), k = l.find((i) => i.kb), h = l.filter((i) => i.inst)[1]; return [l.filter((i) => i.comp).length, h.x === k.x, k.y - h.y - h.h, planx.editor.selection.has(k.id)].join(); })()`), 'one component; over its left, 24 off; the kanban picked').toBe('1,true,24,true');
+    expect(await p.ev(`(() => { const l = planx.board.list(), k = l.find((i) => i.kb), h = l.filter((i) => i.hd)[1]; return [h.x === k.x, k.y - h.y - h.h, planx.editor.selection.has(k.id)].join(); })()`), 'over its left, 24 off; the kanban picked').toBe('true,24,true');
     await p.ev(`(() => { planx.editor.setSelection([]); window.swapped = []; addEventListener('planx:swap', (e) => swapped.push(e.detail)); })()`);
-    const ic = await p.ev(`(() => { const l = planx.board.list(), h = l.find((i) => i.inst), ic = l.find((i) => i.host === h.id && i.type === 'icon'), s = planx.editor.toScreen({ x: ic.x + 18, y: ic.y + 18 }); return [s.x, s.y]; })()`);
-    for (const n of [1, 2]) {
-      await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: ic[0], y: ic[1], button: 'left', clickCount: n });
-      await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: ic[0], y: ic[1], button: 'left', clickCount: n });
-      await sleep(60);
-    }
-    await sleep(300);
-    expect(await p.ev(`swapped.length === 1 && planx.board.get(swapped[0])?.type`), 'its icon to swap').toBe('icon');
+    const h = await p.ev(`(() => { const h = planx.board.list().find((i) => i.hd); return { id: h.id, x: h.x, y: h.y, w: h.w, h: h.h }; })()`);
+    const dbl = async (wx, wy) => {
+      const s = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${wx}, y: ${wy} }); return [s.x, s.y]; })()`);
+      for (const n of [1, 2]) {
+        await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: s[0], y: s[1], button: 'left', clickCount: n });
+        await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: s[0], y: s[1], button: 'left', clickCount: n });
+        await sleep(60);
+      }
+      await sleep(300);
+    };
+    await dbl(h.x + 18, h.y + 18);
+    expect(await p.ev(`swapped.join()`), 'its icon to swap').toBe(h.id);
+    await p.escape();
+    await p.ev(`planx.editor.setSelection([])`);
+    await dbl(h.x + 80, h.y + 15);
+    expect(await p.ev(`[planx.editor.editingId, planx.editor.editingCell].join()`), 'its title typed in').toBe(`${h.id},`);
+    await p.ev(`(() => { const t = document.querySelector('.text-edit'); t.value = 'Очень длинный заголовок, который не поместится в одну строку и перейдёт на вторую'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await p.escape();
+    await sleep(200);
+    const taller = await p.ev(`planx.board.get('${h.id}').h`);
+    expect(taller > h.h + 25, 'two lines of title: its description pushed down').toBe(true);
+    await p.ev(`(async () => { const l = await import('/src/labs/header.ts'), it = planx.board.get('${h.id}'); window.descY = l.headerLayout(it).desc.y; })()`);
+    expect(await p.ev('descY') > 60, 'the description under the second line').toBe(true);
   },
 
   async '"Скрыть объект" and "Фрейм вокруг выделенного": hidden, not drawn but picked by a click or a box there; the frame tool with something picked, a frame round it'(p) {

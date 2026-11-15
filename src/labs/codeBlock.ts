@@ -192,6 +192,9 @@ export function scrollCode(it: Item, e: WheelEvent, z: number): boolean {
 /** The copy button at the right end of its band: its middle, and how near it takes a press. */
 const COPY = 20;
 const copyAt = (it: Item): Point => ({ x: it.x + it.w - CODE_PAD - COPY / 2, y: it.y + CODE_BAND / 2 });
+/** Whether board point `p` is where its code's typed in (not its band with the language, its line numbers or its edges). */
+export const onCodeText = (it: Item, p: Point): boolean =>
+  p.x >= it.x + CODE_LEFT && p.x <= it.x + it.w - CODE_PAD && p.y >= it.y + CODE_TOP && p.y <= it.y + it.h - CODE_BOTTOM;
 export const onCodeCopy = (it: Item, p: Point): boolean => !!it.code && Math.abs(p.x - copyAt(it).x) <= 14 && Math.abs(p.y - copyAt(it).y) <= 14;
 /** When a block was copied, its tick shown that long instead. */
 let copied: { id: string; at: number } | null = null;

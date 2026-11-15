@@ -22,6 +22,8 @@ import { clickTypes, onMindText, updateCursor } from './hover';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
+import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
+import { onCodeText } from '../labs/codeBlock';
 import { levelIn } from '../labs/groups';
 import { eraseArea, eraserStyle } from '../labs/eraseArea';
 import { nibDrag, nibRelease } from '../labs/nib';
@@ -239,6 +241,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       if (it.type === 'text' && !it.tb) nh = itemTextHeight(it, it.text, nw);
       // A task only wider or narrower, as tall as what's in it then (see canvas/task.ts).
       if (it.type === 'task') { nw = Math.max(it.tv ? 360 : TASK_MIN_W, nw); nh = taskSize(it, nw).h; }
+      // A header («Заголовок в объектах», src/labs) only wider or narrower, as tall as its title and description then.
+      if (it.hd) { nw = Math.max(HEADER_MIN_W, nw); nh = headerHeight(it, { w: nw }); }
       // Text wrapping onto more lines (or fewer) takes the text just under it along.
       const moves = pushedBelow(it, nh - it.h, board.list());
       board.transact(() => {
@@ -483,9 +487,9 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         timelineSides(ed, [...g.orig.keys()]);
         board.endGesture();
         noteMindMoved(ed, [...ed.selection]);
-        // Picked by the press that dragged it: let go, not picked (no frame, no panel; a click picks it), what
-        // was picked before picked again, its panel back.
-        if (g.fresh) ed.setSelection((g.was ?? []).filter((id) => board.get(id) || board.getLink(id)));
+        // Picked by the press that dragged it: let go, not picked (no frame, no panel; a click picks it), nor
+        // what was picked before (that was let go of as it was taken).
+        if (g.fresh) ed.setSelection([]);
       } else if (g.url) {
         // A link on a part of its text, clicked ("Ссылка в тексте", src/labs): opened in a new tab.
         window.open(g.url, '_blank', 'noopener');
@@ -502,8 +506,9 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
           else ed.hotPlus = null;
           ed.requestRender();
         }
-      } else if (board.get(g.id)?.code && !board.get(g.id)?.text && !g.dbl && ed.editingId !== g.id) {
-        // A block of code with nothing in it ("Код", src/labs), clicked: typed in at once, to paste into.
+      } else if (board.get(g.id)?.code && !board.get(g.id)?.text && !g.dbl && ed.editingId !== g.id && onCodeText(board.get(g.id)!, g.start)) {
+        // A block of code with nothing in it ("Код", src/labs), clicked where it's typed in: typed in at once,
+        // to paste into (its band, line numbers or edges only pick it).
         ed.startEditing(g.id, null, 'end');
       } else if (g.dbl) {
         const it = board.get(g.id);
@@ -517,6 +522,13 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         if (labOn('nib') && editablePath(it)) { startNodeEdit(ed, it.id); return; }
         // "Замена двойным кликом": an emoji, an icon or a shape shows its neighbours, a shape opening for
         // typing too (unless that was the instance it's in being entered).
+        // A header («Заголовок в объектах», src/labs): its icon another to take, its title or description typed in.
+        if (it?.hd) {
+          const part = headerPartAt(it, g.start);
+          if (part === 'icon' && swapKind(it)) openSwap(g.id);
+          else ed.startEditing(g.id, part === 'desc' ? 0 : null, 'end');
+          return;
+        }
         if (swapKind(it)) {
           openSwap(g.id);
           if (it!.type !== 'emoji' && it!.type !== 'icon' && !g.enter) ed.startEditing(g.id, null);
@@ -533,7 +545,7 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       } else if (g.again && !g.cell && clickTypes(board.get(g.id), g.start)) {
         // Picked already, clicked again on its text: typed in, as on a double click.
         const it = board.get(g.id)!;
-        ed.startEditing(g.id, it.type === 'task' ? taskFieldAt(it, g.start) : null);
+        ed.startEditing(g.id, it.type === 'task' ? taskFieldAt(it, g.start) : it.hd ? (headerPartAt(it, g.start) === 'desc' ? 0 : null) : null);
       } else if (g.again && !g.cell && under(ed, g.id, g.start)) {
         // "Клик сквозь": what's under it there is picked instead.
         ed.setSelection([under(ed, g.id, g.start)!.id]);

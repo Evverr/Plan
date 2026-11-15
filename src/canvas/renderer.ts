@@ -18,6 +18,7 @@ import { gripsOn } from '../labs/tableMove';
 import { gridKind } from '../labs/boardGrid';
 import { drawCode } from '../labs/codeBlock';
 import { drawForm } from '../labs/formObject';
+import { drawHeader } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, glideOffset, gliding } from '../labs/kanban';
 import { drawDocPage, drawPager, pageCount, pageShown } from '../labs/docPage';
@@ -499,6 +500,12 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       if (it.code) { drawCode(ctx, it, cam.z, editing, s.hotPlus); break; }
       // A form («Форма», src/labs): a card of its own too.
       if (it.form) { drawForm(ctx, it, theme, cam.z * s.dpr, s.hotPlus === `form:${it.id}`); break; }
+      // A header («Заголовок в объектах», src/labs): its icon in its colour, its title and description.
+      if (it.hd) {
+        const c = it.color ?? 'blue', ink = c.startsWith('#') ? shade(c, theme.dim) : ICON_COLORS[c] || FILLS[c] ? shade(ICON_COLORS[c] || FILLS[c], theme.dim) : theme.ink;
+        drawHeader(ctx, it, theme.ink, (name, x, y, size) => drawIcon(ctx, name, x, y, size, ink), editing ? s.editingCell : undefined);
+        break;
+      }
       // A poll («Голосование», src/labs), the part under the pointer lit.
       if (it.poll) { drawPoll(ctx, it, theme, cam.z * s.dpr, s.hotPlus?.startsWith(`poll:${it.id}:`) ? s.hotPlus.slice(`poll:${it.id}:`.length) : null); break; }
       const none = it.color === 'none';

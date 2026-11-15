@@ -5,6 +5,7 @@ import { fittedSize, fontOf, FONTS, LINE_HEIGHT, textBlockHeight, withList } fro
 import { FOLD_FS, FOLD_ICON, FOLD_PAD, FOLD_RIGHT, FOLD_TITLE_GAP } from '../model/frame';
 import { center } from '../canvas/geometry';
 import { descLook, TASK_FONT, taskFieldBox } from '../canvas/task';
+import { headerFieldBox } from '../labs/header';
 import { addChild, rootTextColor, siblingTints } from '../model/mind';
 import { autoInk } from '../model/color';
 import { colsOf, rowsOf } from '../model/table';
@@ -34,7 +35,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
     const el = ref.current!;
     // A task's part: its description, a subtask, or its title.
     const cell = editor.editingCell;
-    el.value = (item.type === 'task' && cell === 0 ? item.desc : item.type === 'task' && cell ? item.subs?.[cell - 1]?.t : item.text) ?? '';
+    el.value = ((item.type === 'task' || item.hd) && cell === 0 ? item.desc : item.type === 'task' && cell ? item.subs?.[cell - 1]?.t : item.text) ?? '';
     if (code) setLiveCode(id, el.value);
     el.focus();
     if (editor.editCaret === 'end') el.setSelectionRange(el.value.length, el.value.length);
@@ -75,7 +76,10 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
   // A folded frame's title is typed in where it stands, inside the bar.
   const folded = isFrame && !!item.fold;
   // A task: its title, description or a subtask, where the card has it (see canvas/task.ts).
-  const field = item.type === 'task' ? taskFieldBox(item, editor.editingCell) : null, desc = field && editor.editingCell === 0 ? descLook(item) : null;
+  // A header («Заголовок в объектах», src/labs): its title or its description, so too.
+  const field: (ReturnType<typeof taskFieldBox> & { family?: string }) | null = item.type === 'task' ? taskFieldBox(item, editor.editingCell)
+    : item.hd ? headerFieldBox(item, editor.editingCell) : null;
+  const desc = item.type === 'task' && field && editor.editingCell === 0 ? descLook(item) : null;
   // A task's title: on one line, scrolled across as it's typed past its end (its subtasks wrap, as drawn).
   const sub = item.type === 'task' && editor.editingCell === null;
   // A sticker or a shape: its text shrinks to fit it as it's typed, as the canvas draws it.
@@ -94,7 +98,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
     if (!el) return;
     let top = 0;
     if (code) el.style.height = `${Math.max(0, item.h - CODE_TOP - CODE_BOTTOM)}px`;
-    else if (field) el.style.height = `${sub ? field.h : textBlockHeight(el.value, width, fs, { weight: field.weight, family: desc?.family ?? TASK_FONT, italic: desc?.italic })}px`;
+    else if (field) el.style.height = `${sub ? field.h : textBlockHeight(el.value, width, fs, { weight: field.weight, family: desc?.family ?? field.family ?? TASK_FONT, italic: desc?.italic })}px`;
     else if (item.type !== 'text' && !isFrame) {
       // As tall as the canvas lays the lines out (exactly, not rounded), so they land where it drew them;
       // in a sticker or a shape, at the size it comes out at there (smaller as it fills it).
@@ -133,7 +137,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
         }),
         padding: isFrame ? '0 4px' : 0,
         ...(code && { color: 'transparent', caretColor: '#E6E7EC', whiteSpace: 'pre', overflowWrap: 'normal', tabSize: 2 }),
-        ...(field && { fontFamily: FONTS[TASK_FONT].css, fontWeight: field.weight, fontStyle: undefined, textAlign: 'left', textDecoration: undefined, color: 'var(--ink)',
+        ...(field && { fontFamily: FONTS[field.family ?? TASK_FONT].css, fontWeight: field.weight, fontStyle: undefined, textAlign: 'left', textDecoration: undefined, color: 'var(--ink)',
           ...(sub && { whiteSpace: 'pre', overflowWrap: 'normal' }) }),
         // Its description as the text panel sets it (see descLook).
         ...(desc && { fontFamily: FONTS[desc.family]?.css, fontStyle: desc.italic ? 'italic' : undefined, textAlign: desc.align,
@@ -168,7 +172,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
         if (code) { setLiveCode(id, e.currentTarget.value); editor.previewText(id, e.currentTarget.value); editor.requestRender(); return; }
         if (item.type === 'text' || item.type === 'task' || item.type === 'mind') editor.previewText(id, e.currentTarget.value);
         if (field) {
-          if (!sub) e.currentTarget.style.height = `${textBlockHeight(e.currentTarget.value, width, fs, { weight: field.weight, family: desc?.family ?? TASK_FONT, italic: desc?.italic })}px`;
+          if (!sub) e.currentTarget.style.height = `${textBlockHeight(e.currentTarget.value, width, fs, { weight: field.weight, family: desc?.family ?? field.family ?? TASK_FONT, italic: desc?.italic })}px`;
         } else if (item.type !== 'text' && !isFrame) {
           const el = e.currentTarget, size = boxed ? fittedSize(withList(el.value, item.ls), width, item.h - padY * 2, fs, fontOf(item)) : fs;
           el.style.fontSize = `${size}px`;
@@ -180,7 +184,12 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
       onBlur={commit}
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (field && ((e.key === 'Enter' && (e.metaKey || e.ctrlKey)) || e.key === 'Escape')) {
+        if (item.hd && editor.editingCell === null && (e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
+          // A header's title done with on Enter or Tab: its description typed in next.
+          e.preventDefault();
+          commit();
+          editor.startEditing(id, 0, 'end');
+        } else if (item.type === 'task' && field && ((e.key === 'Enter' && (e.metaKey || e.ctrlKey)) || e.key === 'Escape')) {
           // A task's part done with on Cmd+Enter (Ctrl+Enter) or Esc (Enter a new line in its description):
           // the task closed, unless it's to stay open («Не сворачивать»).
           e.preventDefault();
@@ -196,7 +205,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
           e.preventDefault();
           commit();
           if (!editor.finishComponent()) editor.setSelection([]);
-        } else if (field && editor.editingCell === null && (e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
+        } else if (item.type === 'task' && field && editor.editingCell === null && (e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
           // A task's title done with on Enter or Tab: its description typed in next (opened to it, if closed).
           e.preventDefault();
           commit();
@@ -205,7 +214,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
           if (!it || it.nd) return;
           if (!it.tv) setView(editor.board, it, taskOpen());
           editor.startEditing(id, 0, 'end');
-        } else if (field && editor.editingCell && e.key === 'Enter' && !e.shiftKey) {
+        } else if (item.type === 'task' && field && editor.editingCell && e.key === 'Enter' && !e.shiftKey) {
           // A subtask done with on Enter, the next one after it begun.
           e.preventDefault();
           const cell = editor.editingCell, typed = e.currentTarget.value.trim();

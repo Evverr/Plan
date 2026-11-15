@@ -113,6 +113,9 @@ export interface Item {
   tdu?: boolean;
   /** A task's «Отмена» and «Завершить» shown at its foot («Показать кнопки» in its menu). */
   tbtn?: boolean;
+  /** A rectangle that's a header («Заголовок в объектах», src/labs/header.ts): its icon (`icon`, in its
+   *  `color`), its title (its text) and its description (`desc`). */
+  hd?: boolean;
   /** Hidden («Скрыть объект», src/labs): not drawn, but picked as ever (its frame shows it then). */
   hid?: boolean;
   /** A task without its «ЗАДАЧА» pill at the right of its top edge («Тег» unticked in its menu). */

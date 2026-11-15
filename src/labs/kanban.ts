@@ -44,7 +44,7 @@ function pillW(name: string): number {
 export const KANBAN_RAD = 12;
 
 /** What goes into its cells: tasks, and rectangles that are only that (not a block of code, a form…). */
-export const snaps = (it: Item): boolean => it.type === 'task' || (it.type === 'rect' && !it.code && !it.form && !it.poll);
+export const snaps = (it: Item): boolean => it.type === 'task' || (it.type === 'rect' && !it.code && !it.form && !it.poll && !it.hd);
 
 /** Its columns, on the board: as wide as it is, shared between them (stretched with it). */
 export function columns(f: Item): Array<{ x: number; y: number; w: number; h: number }> {

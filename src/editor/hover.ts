@@ -8,7 +8,8 @@ import { coveredAt, hitItem, hitLink, instanceBounds, linkBox, linkHandles, link
 import { DOT_GAP, dotGap, HANDLE } from '../canvas/renderer';
 import { instanceGlyph, instancePlus } from '../model/components';
 import { taskButtonAt } from './tasks';
-import { CODE_BOTTOM, CODE_LEFT, CODE_PAD, CODE_TOP, onCodeCopy } from '../labs/codeBlock';
+import { onCodeCopy, onCodeText } from '../labs/codeBlock';
+import { headerPartAt } from '../labs/header';
 import { onFormButton } from '../labs/formObject';
 import { pollHot } from '../labs/poll';
 import { kanbanHot } from '../labs/kanban';
@@ -255,8 +256,10 @@ export function clickTypes(it: Item | null | undefined, w: Point): boolean {
     return part === 'title' || part === 'desc';
   }
   if (it.type === 'text') return true;
+  // A header («Заголовок в объектах», src/labs): its title or description.
+  if (it.hd) { const part = headerPartAt(it, w); return part === 'title' || part === 'desc'; }
   // A block of code: where it's typed in (not its band with the language, its line numbers or its edges).
-  if (it.code) return !!it.text && w.x >= it.x + CODE_LEFT && w.x <= it.x + it.w - CODE_PAD && w.y >= it.y + CODE_TOP && w.y <= it.y + it.h - CODE_BOTTOM;
+  if (it.code) return !!it.text && onCodeText(it, w);
   if (!it.text?.trim() || it.rot) return false;
   // Its lines as laid out across it: down from its top, or in its middle.
   const pad = textPad(it), padY = textPadY(it), width = it.w - pad - textPadR(it);

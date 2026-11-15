@@ -1,33 +1,65 @@
 import type { Item } from '../model/types';
+import type { Point, Rect } from '../canvas/geometry';
+import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
 
 /**
- * «Заголовок в объектах»: an icon, a title right of it and a description under that, a component of the
- * board's own (made on the board the first time one's put there, put away), each one an instance of it:
- * its icon (a double click on it to take another), title and description each its own. A new timeline or
- * kanban has one over it, its title and icon theirs.
+ * «Заголовок в объектах»: an icon, a title right of it and a description under that, one item (a
+ * rectangle with `hd`; its title its text, its description `desc`, its icon `icon` in its colour). As
+ * wide as it's stretched, as tall as they take: the description stands right under the title, pushed
+ * down as the title takes more lines. A double click on the icon takes another, on the title or the
+ * description types in it. A new timeline or kanban has one over it, its title and icon theirs.
  */
-export const HEADER_LIB = 'planx:header';
 export const HEADER_NAME = 'Заголовок';
-/** Its parts: the icon at its top left, the title and the description right of it, as Женя's component. */
-const ICON = 36, TEXT_X = 40, TITLE_FS = 24, TITLE_H = 31, DESC_Y = 34, DESC_FS = 20, DESC_H = 88, TEXT_W = 620;
-export const HEADER_W = TEXT_X + TEXT_W, HEADER_H = DESC_Y + DESC_H;
+export const HEADER_DESC = 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.';
+/** Its parts, as Женя's component: the icon at its top left, the title and the description right of it. */
+const ICON = 36, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
+export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
 export const HEADER_GAP = 24;
+/** Narrowest it's stretched to. */
+export const HEADER_MIN_W = TEXT_X + 120;
 
-type Make = (type: Item['type'], x: number, y: number, extra: Partial<Item>) => Item;
+/** What's being typed in one now, as it's typed: which part (null its title, 0 its description). */
+let typing: { id: string; cell: number | null; text: string } | null = null;
+export const setHeaderTyping = (id: string | null, cell: number | null = null, text = '') => { typing = id ? { id, cell, text } : null; };
 
-/** The component's parts at x, y (its frame first): what to put on the board the first time. */
-export function headerParts(make: Make, x: number, y: number): Item[] {
-  const icon = make('icon', x, y, { w: ICON, h: ICON, icon: 'kanban', color: 'blue' });
-  const title = make('text', x + TEXT_X, y + 1, { w: TEXT_W, h: TITLE_H, fs: TITLE_FS, fw: 700, tb: true, text: HEADER_NAME });
-  const desc = make('text', x + TEXT_X, y + DESC_Y, { w: TEXT_W, h: DESC_H, fs: DESC_FS, tb: true,
-    text: 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.' });
-  // (Not one of the board's objects, `obj`: it's in «Объекты» already.)
-  const frame = make('frame', x, y, { w: HEADER_W, h: HEADER_H, text: HEADER_NAME, comp: true, stowed: true, lib: HEADER_LIB,
-    members: [icon.id, title.id, desc.id] });
-  return [frame, icon, title, desc];
+const titleOf = (it: Item) => (typing?.id === it.id && typing.cell === null ? typing.text : it.text ?? '');
+const descOf = (it: Item) => (typing?.id === it.id && typing.cell === 0 ? typing.text : it.desc ?? '');
+
+/** Where its parts are, from its top left: its title as many lines as it takes, its description under it. */
+export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect; title: Rect; desc: Rect; h: number } {
+  const a = { ...it, ...patch }, w = Math.max(40, a.w - TEXT_X);
+  const th = textBlockHeight(titleOf(a) || ' ', w, TITLE_FS, { weight: 700 }), dy = TITLE_Y + th + DESC_GAP;
+  const dh = textBlockHeight(descOf(a) || ' ', w, DESC_FS);
+  return { icon: { x: 0, y: 0, w: ICON, h: ICON }, title: { x: TEXT_X, y: TITLE_Y, w, h: th }, desc: { x: TEXT_X, y: dy, w, h: dh }, h: Math.ceil(Math.max(ICON, dy + dh)) };
+}
+export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
+
+/** The part of it at board point `p`: its icon, title or description. */
+export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | null {
+  const l = headerLayout(it), x = p.x - it.x, y = p.y - it.y;
+  const on = (r: Rect) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  return on(l.icon) ? 'icon' : on(l.title) ? 'title' : y >= l.desc.y && x >= l.desc.x ? 'desc' : null;
 }
 
-/** Its parts in the component: the icon and the title (the bold text). */
-export const headerIcon = (parts: Item[]) => parts.find((i) => i.type === 'icon');
-export const headerTitle = (parts: Item[]) => parts.find((i) => i.type === 'text' && i.fw === 700);
+/** Where a part's typed in (null its title, 0 its description), for the text overlay. */
+export function headerFieldBox(it: Item, cell: number | null): Rect & { fs: number; weight: number; family: string } {
+  const l = headerLayout(it), r = cell === 0 ? l.desc : l.title;
+  return { x: it.x + r.x, y: it.y + r.y, w: r.w, h: r.h, fs: cell === 0 ? DESC_FS : TITLE_FS, weight: cell === 0 ? 400 : 700, family: 'onest' };
+}
+
+/** Draws it: its icon by `icon`, its title and description in `ink`, but the part being typed in (`cell`). */
+export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string, icon: (name: string, x: number, y: number, size: number) => void, cell?: number | null): void {
+  const l = headerLayout(it);
+  icon(it.icon ?? 'kanban', it.x + l.icon.x, it.y + l.icon.y, ICON);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = ink;
+  const lines = (text: string, r: Rect, fs: number, weight: number) => {
+    ctx.font = font(fs, weight);
+    const lh = fs * LINE_HEIGHT;
+    wrapText(text, r.w, (t) => ctx.measureText(t).width).forEach((line, i) => ctx.fillText(line, it.x + r.x, it.y + r.y + lh * i + lh / 2));
+  };
+  if (cell !== null) lines(it.text ?? '', l.title, TITLE_FS, 700);
+  if (cell !== 0) lines(it.desc ?? '', l.desc, DESC_FS, 400);
+}
