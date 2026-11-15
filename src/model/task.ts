@@ -59,6 +59,14 @@ export function freshTask(board: Board, it: Item, c: { x: number; y: number }, o
 /** Its height for what's in it now, with a change to it. */
 export const fitTask = (it: Item, patch: Partial<Item> = {}): number => taskSize({ ...it, ...patch }).h;
 
+/** Each task as tall as it comes out now (its title wrapping anew, «Заголовок задачи в три строки» turned
+ *  on or off, say), for good; whether any was. */
+export function refitTasks(board: Board): boolean {
+  const fix = board.list().filter((i) => i.type === 'task' && fitTask(i) !== i.h);
+  if (fix.length) board.forGood(() => fix.forEach((i) => board.updateForGood(i.id, { h: fitTask(i) })));
+  return fix.length > 0;
+}
+
 /** A subtask ticked off, or back on. */
 export function toggleSub(board: Board, it: Item, i: number): void {
   const subs = [...(it.subs ?? [])];

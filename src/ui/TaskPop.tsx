@@ -4,6 +4,7 @@ import type { Item, Person } from '../model/types';
 import type { TaskKeep, TaskPick, TaskTip } from '../editor/tasks';
 import { PEER_COLORS, type Me } from '../collab/connection';
 import { fitTask, keepOpen } from '../model/task';
+import { labOn } from '../labs/labs';
 import { PanelIcon } from './PanelIcon';
 
 /** A colour for someone typed in by hand: the same for the same name. */
@@ -132,6 +133,8 @@ export function TaskMenu({ editor }: { editor: Editor }) {
       {row('Кнопки', !!it.tbtn, () => set({ tbtn: it.tbtn ? undefined : true }))}
       {/* Its «ЗАДАЧА» pill at the top right, or not. */}
       {row('Тег', !it.ntag, () => set({ ntag: it.ntag ? undefined : true }))}
+      {/* Its title on one line, or up to three («Заголовок задачи в три строки», src/labs). */}
+      {labOn('taskLines') && row('Заголовок в одну строку', !!it.t1, () => set({ t1: it.t1 ? undefined : true }))}
     </div>
   );
 }

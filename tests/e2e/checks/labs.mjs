@@ -882,6 +882,13 @@ export const checks = {
     expect(await p.ev(`(() => { const f = planx.board.get('${k.id}'), t = planx.board.get([...planx.editor.selection][0]); return f.members.includes(t.id) && t.x > planx.board.get('t').x; })()`), 'one in the next column').toBe(true);
   },
 
+  async '"Заголовок задачи в три строки": a long title wraps, three lines at most, the header taller; «Заголовок в одну строку», one as before'(p) {
+    await p.ev(`(() => { const e = planx.editor, long = 'Очень длинный заголовок задачи, который переносится на несколько строк и даже больше чем на три строки вот так';
+      planx.board.add(e.newItem('task', 100, 100, { id: 'a', text: long })); planx.board.add(e.newItem('task', 100, 300, { id: 'b', text: 'Короткая' })); planx.board.add(e.newItem('task', 500, 300, { id: 'c', text: long, t1: true })); })()`);
+    await sleep(300);
+    expect(await p.ev(`['a', 'b', 'c'].map((id) => planx.board.get(id).h).join()`), 'three lines, one, one').toBe('93,52,52');
+  },
+
   async '"Создать задачу на таймлайне": a new timeline twice as tall, «Создать задачу» on it from today; a click, a task there, typed in'(p) {
     await p.ev(`(() => { const e = planx.editor; e.addTimeline({ x: 0, y: 0 }); const t = planx.board.list().find((i) => i.tl); e.cam = { x: 600 - (t.x + t.w / 2) * 0.6, y: 400 - (t.y + t.h / 2) * 0.6, z: 0.6 }; e.camChanged(); e.setSelection([]); })()`);
     await sleep(300);

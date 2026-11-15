@@ -125,6 +125,8 @@ export interface Item {
   hid?: boolean;
   /** A task without its «ЗАДАЧА» pill at the right of its top edge («Тег» unticked in its menu). */
   ntag?: boolean;
+  /** A task's title on one line («Заголовок в одну строку» ticked in its menu); else up to three. */
+  t1?: boolean;
   /** A task kept open («Не сворачивать»): not closed by Esc, Cmd+Enter or a click elsewhere. */
   keep?: boolean;
   /** A task's description not shown (its menu's «Описание» unticked): kept, only hidden. */

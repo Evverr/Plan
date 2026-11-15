@@ -48,7 +48,7 @@ import { codeFit, scrollCode } from '../labs/codeBlock';
 import { FORM_H, FORM_RAD, FORM_W } from '../labs/formObject';
 import { POLL_RAD, POLL_W, pollLayout } from '../labs/poll';
 import { FIRST_STAGES, dropTarget, kanbanSize, newCardBox, snaps, tidyKanbans } from '../labs/kanban';
-import { closeTask, fitTask, freshTask, renewTasks, taskTextPatch } from '../model/task';
+import { closeTask, fitTask, freshTask, refitTasks, renewTasks, taskTextPatch } from '../model/task';
 import { setTaskRedraw } from '../canvas/task';
 import { outSide, setTabsRedraw, towardOffset, type TabAims } from '../labs/sideTabs';
 
@@ -421,7 +421,8 @@ export class Editor {
     doc.on('afterTransaction', tidy);
     offs.push(() => doc.off('afterTransaction', tidy));
     offs.push(onEmojiLoad(() => this.requestRender()));
-    offs.push(subscribeLabs(() => this.requestRender()));
+    // (Tasks as tall as their titles then come out, «Заголовок задачи в три строки».)
+    offs.push(subscribeLabs(() => { this.refitTasks(); this.requestRender(); }));
     offs.push(onPictureLoad(() => this.requestRender()));
     if (this.presence) offs.push(this.presence.subscribe(() => this.requestRender()));
     document.fonts?.ready.then(() => { clearTextCache(); this.requestRender(); });
@@ -457,6 +458,8 @@ export class Editor {
     if (this.editingId && !this.board.get(this.editingId)) { this.editingId = null; changed = true; }
     if (changed) { this.presence?.setSelection([...this.selection]); this.emit(); }
     if (this.needsFit && this.board.list().length && this.width) { this.needsFit = false; this.fit(); }
+    // Opened (or first come from the server): its tasks as tall as their titles come out here.
+    if (!this.tasksFitted && this.board.list().length) { this.tasksFitted = true; queueMicrotask(() => this.refitTasks()); }
     // Instances follow their components, whoever changed them (see model/components.ts).
     if (!this.syncing && hasComponents(this.board.list())) {
       this.syncing = true;
@@ -661,6 +664,12 @@ export class Editor {
     this.board.endGesture();
     this.setTool('select');
     this.setSelection([it.id]);
+  }
+
+  /** Tasks as tall as they come out (see refitTasks), the kanbans they're in laid out again. */
+  private tasksFitted = false;
+  private refitTasks(): void {
+    if (refitTasks(this.board) && labOn('kanban')) tidyKanbans(this.board);
   }
 
   /** «Канбан» (src/labs): a new task where its «Создать задачу» is, under the first stage's cards, typed in;

@@ -1024,7 +1024,7 @@ export const checks = {
     expect([l.menu.x, l.pin, l.buttons].join(), 'its burger at its right, nothing else at its foot').toBe(`${l.w - 35},false,false`);
     await open();
     expect(await p.ev(`[...document.querySelectorAll('.task-pop .menu-row')].map((b) => b.textContent).join()`), 'its menu')
-      .toBe('Закрепить подробности,Описание,Подзадачи,Блок с ответственными,Дата завершения,Кнопки,Тег');
+      .toBe('Закрепить подробности,Описание,Подзадачи,Блок с ответственными,Дата завершения,Кнопки,Тег,Заголовок в одну строку');
     await pick('Закрепить подробности');
     await open();
     await pick('Кнопки');

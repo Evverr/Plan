@@ -4,7 +4,7 @@ import { alignOf, TEXT_COLORS, textPad, textPadR, textPadY, type Item } from '..
 import { fittedSize, fontOf, FONTS, LINE_HEIGHT, textBlockHeight, withList } from '../canvas/text';
 import { FOLD_FS, FOLD_ICON, FOLD_PAD, FOLD_RIGHT, FOLD_TITLE_GAP } from '../model/frame';
 import { center } from '../canvas/geometry';
-import { descLook, TASK_FONT, taskFieldBox } from '../canvas/task';
+import { descLook, oneLineTitle, TASK_FONT, taskFieldBox } from '../canvas/task';
 import { headerFieldBox } from '../labs/header';
 import { addChild, rootTextColor, siblingTints } from '../model/mind';
 import { autoInk } from '../model/color';
@@ -138,7 +138,8 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
         padding: isFrame ? '0 4px' : 0,
         ...(code && { color: 'transparent', caretColor: '#E6E7EC', whiteSpace: 'pre', overflowWrap: 'normal', tabSize: 2 }),
         ...(field && { fontFamily: FONTS[field.family ?? TASK_FONT].css, fontWeight: field.weight, fontStyle: undefined, textAlign: 'left', textDecoration: undefined, color: 'var(--ink)',
-          ...(sub && { whiteSpace: 'pre', overflowWrap: 'normal' }) }),
+          // (Its title on one line, or wrapping as drawn, «Заголовок задачи в три строки».)
+          ...(sub && oneLineTitle(item) && { whiteSpace: 'pre', overflowWrap: 'normal' }) }),
         // Its description as the text panel sets it (see descLook).
         ...(desc && { fontFamily: FONTS[desc.family]?.css, fontStyle: desc.italic ? 'italic' : undefined, textAlign: desc.align,
           textDecoration: [desc.under && 'underline', desc.strike && 'line-through'].filter(Boolean).join(' ') || undefined, color: desc.color ?? 'var(--ink)' }),

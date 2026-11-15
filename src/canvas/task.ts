@@ -4,6 +4,7 @@ import { drawIcon } from '../icons/icons';
 import { font, LINE_HEIGHT, textBlockHeight, withList, wrapText } from './text';
 import { drawnLinks } from '../model/textLinks';
 import { DAY, TL_STEPS } from './timeline';
+import { labOn } from '../labs/labs';
 import type { Point, Rect } from './geometry';
 
 /**
@@ -93,6 +94,17 @@ export function descLook(it: Item) {
   };
 }
 
+/** Its title on one line (ticked so in its menu, or «Заголовок задачи в три строки», src/labs, off). */
+export const oneLineTitle = (it: Item): boolean => !!it.t1 || !labOn('taskLines');
+
+/** Its title's lines: one, or up to three, the last cut off with "…" where there's more. */
+export function titleLines(it: Item, w: number): string[] {
+  const text = it.text || 'Название задачи';
+  if (oneLineTitle(it)) return [titleLine(text, w)];
+  const lines = wrapText(text, w, (t) => widthOf(t, TITLE_FS, 500));
+  return lines.length <= 3 ? lines : [...lines.slice(0, 2), titleLine(lines.slice(2).join(' '), w)];
+}
+
 /** Its title on one line: cut off with "…" where it's wider than there's room for. */
 export function titleLine(text: string, w: number): string {
   if (widthOf(text, TITLE_FS, 500) <= w) return text;
@@ -102,10 +114,11 @@ export function titleLine(text: string, w: number): string {
 }
 
 export function taskLayout(it: Item, w = it.w): TaskLayout {
-  // The title on one line (see titleLine), the header as tall as ever.
+  // The title on one line (see titleLine), or up to three, the header taller by as many more (the ring
+  // and the arrow by its first).
   // (Its "…" up to the arrow's box, a letter more than that 10 short of it, narrowest.)
-  const titleW = Math.max(20, w - TITLE_X - 30), th = lineH(TITLE_FS);
-  const top = MID - th / 2, head = 52;
+  const titleW = Math.max(20, w - TITLE_X - 30), lh = lineH(TITLE_FS), n = titleLines(it, titleW).length, th = lh * n;
+  const top = MID - lh / 2, head = Math.round(52 + lh * (n - 1));
   const out: TaskLayout = { w, h: head, head, title: { x: TITLE_X, y: top, w: titleW, h: th } };
   // (Its description short of its menu, at the top right of what's under its header.)
   const descW = Math.max(80, w - LEFT - 44), dy = head + 16;
@@ -183,8 +196,8 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
     if (on(15 + STATUS / 2, STATUS / 2)) return 'status';
     // Its right corner all opens or closes it: the arrow's column, and its «ЗАДАЧА» pill along the top edge.
     if (q.x >= l.w - 47 || (!it.ntag && q.y <= 10 && q.x >= l.w - 16 - PILL_W)) return 'arrow';
-    const line = titleLine(it.text || 'Название задачи', l.title.w);
-    return q.y >= l.title.y && q.y <= l.title.y + l.title.h && q.x >= l.title.x && q.x <= l.title.x + widthOf(line, TITLE_FS, 500) ? 'title' : 'head';
+    const wide = Math.max(...titleLines(it, l.title.w).map((t) => widthOf(t, TITLE_FS, 500)));
+    return q.y >= l.title.y && q.y <= l.title.y + l.title.h && q.x >= l.title.x && q.x <= l.title.x + wide ? 'title' : 'head';
   }
   // (Its menu and its pin first, whatever row they're level with.)
   if (l.menu && inRect(q, l.menu, 4)) return 'menu';
@@ -492,7 +505,7 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     });
     ctx.globalAlpha = 1;
   };
-  if (typing !== null) lines(titleLine(it.text || 'Название задачи', l.title.w), { ...l.title, w: Infinity }, TITLE_FS, 500, it.text ? look.ink : look.muted);
+  if (typing !== null) lines(titleLines(it, l.title.w).join('\n'), { ...l.title, w: Infinity }, TITLE_FS, 500, it.text ? look.ink : look.muted);
   if (!it.tv) return;
   // (Its description not shown, «Описание» unticked in its menu: none.)
   if (!l.desc) { /* nothing */ }
