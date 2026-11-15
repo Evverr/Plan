@@ -829,6 +829,11 @@ export const checks = {
     expect(await p.ev(`document.querySelector('.bar.panel button')?.title`), 'its icon first').toBe('Другая иконка');
     await p.click(await p.at('.bar.panel button[title="Другая иконка"]'));
     expect(await p.ev(`swapped.join()`), 'clicked: its icon to swap').toBe(h.id);
+    // Its colours: its icon's and how opaque, no outline nor text.
+    await p.click(await p.at('.bar.panel [data-key="colors"] button, .bar.panel button[aria-label="Цвет"]'));
+    await sleep(200);
+    expect(await p.ev(`[...document.querySelectorAll('.paint-target button')].map((b) => b.getAttribute('aria-label')).join() || 'none'`), 'its icon only').toBe('Иконка');
+    await p.escape();
     await p.escape();
     await p.ev(`planx.editor.setSelection([])`);
     await dbl(h.x + 80, h.y + 15);

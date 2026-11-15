@@ -503,7 +503,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       // A header («Титул в объектах», src/labs): its icon in its colour, its title and description.
       if (it.hd) {
         const c = it.color ?? 'blue', ink = c.startsWith('#') ? shade(c, theme.dim) : ICON_COLORS[c] || FILLS[c] ? shade(ICON_COLORS[c] || FILLS[c], theme.dim) : theme.ink;
-        drawHeader(ctx, it, theme.ink, (name, x, y, size) => drawIcon(ctx, name, x, y, size, ink), editing ? s.editingCell : undefined);
+        // (Its icon as opaque as set on its panel.)
+        drawHeader(ctx, it, theme.ink, (name, x, y, size) => { ctx.globalAlpha = fillOpacity(it); drawIcon(ctx, name, x, y, size, ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
         break;
       }
       // A poll («Голосование», src/labs), the part under the pointer lit.
