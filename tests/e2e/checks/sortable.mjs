@@ -63,6 +63,17 @@ export const checks = {
     expect(t, 'a task, opened, typed in').toBe('desc,494,true');
   },
 
+  async 'the audio note\'s button dragged off the rail onto the board: its recorder opens where it\'s let go'(p) {
+    // (Tall enough for its button on the rail.)
+    await p.cdp('Emulation.setDeviceMetricsOverride', { width: 1200, height: 1100, deviceScaleFactor: 1, mobile: false });
+    await sleep(300);
+    await carry(p, await p.at('.tools [data-key="audio"]'), [[600, 380], [700, 400]]);
+    await sleep(300);
+    const r = await p.ev(`(() => { const r = document.querySelector('.recorder')?.getBoundingClientRect(); return r && [Math.round(r.x + r.width / 2), Math.round(r.y + r.height / 2)].join(); })()`);
+    await p.cdp('Emulation.setDeviceMetricsOverride', { width: 1200, height: 800, deviceScaleFactor: 1, mobile: false });
+    expect(r, 'round where it was let go').toBe('700,400');
+  },
+
   async 'holding the shapes button opens its variants, a click picks the tool'(p) {
     const oval = await p.at('.tools [data-key="oval"]');
     await p.mouse('mouseMoved', ...oval);

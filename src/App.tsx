@@ -163,6 +163,8 @@ export function App({ boardId }: { boardId: string }) {
   const [bare, setBare] = useState(false);
   useEffect(() => { document.documentElement.dataset.ui = bare ? 'bare' : ''; }, [bare]);
   const [recorder, setRecorder] = useState(false);
+  // (The audio note's button dropped on the board: where, on the screen.)
+  const [recAt, setRecAt] = useState<{ x: number; y: number } | null>(null);
   // Buttons in the top bar and the zoom panel can be rearranged by holding them.
   const topSort = useSortable('planx-order-top2', ['logo', 'sep', 'title', 'menu', 'new', 'clear', 'sep3', 'undo', 'redo'], 'x');
   // (The theme's button is in "Настройки" now; the link dots' switch has its place.)
@@ -460,9 +462,10 @@ export function App({ boardId }: { boardId: string }) {
       </header>
 
       <Toolbar editor={editor} tool={ui.tool} pens={ui.pens} zoom={ui.cam.z} docked={docked} iconsOpen={pop === 'icons'} onToggleIcons={() => { toggle('icons'); setRecorder(false); }}
-        recorderOpen={recorder} onToggleRecorder={() => { setRecorder(!recorder); setPop(null); }} />
+        recorderOpen={recorder} onToggleRecorder={() => { setRecorder(!recorder); setRecAt(null); setPop(null); }}
+        onRecordAt={(at) => { setRecAt(at); setRecorder(true); setPop(null); }} />
       {/* Not a popover: a click on the board mustn't cut a recording short. */}
-      {recorder && <AudioRecorder onClose={() => setRecorder(false)} onAdd={(note) => { editor.addAudio(note); setRecorder(false); }} />}
+      {recorder && <AudioRecorder at={recAt} onClose={() => setRecorder(false)} onAdd={(note) => { editor.addAudio(note, recAt ?? undefined); setRecorder(false); }} />}
       {pop === 'icons' && <IconPicker zoom={ui.cam.z} onPick={(kind, id, at) => {
         setPop(null);
         // A line picked: dropped on its middle, what's made goes into it ("Узел на линии", src/labs).

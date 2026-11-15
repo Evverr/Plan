@@ -19,7 +19,8 @@ const METER = 32;
  * the three-minute limit), listen back, then put it on the board or record again. Closing the
  * panel throws away a recording in progress.
  */
-export function AudioRecorder({ onAdd, onClose }: { onAdd: (note: AudioNote) => void; onClose: () => void }) {
+/** (`at`: the rail's button dropped on the board there, a screen point: it opens round it, kept on the screen.) */
+export function AudioRecorder({ onAdd, onClose, at }: { onAdd: (note: AudioNote) => void; onClose: () => void; at?: { x: number; y: number } | null }) {
   const [state, setState] = useState<State>({ kind: 'idle' });
   const [, redraw] = useReducer((n: number) => n + 1, 0);
   const levels = useRef<number[]>(Array(METER).fill(0));
@@ -65,7 +66,8 @@ export function AudioRecorder({ onAdd, onClose }: { onAdd: (note: AudioNote) => 
 
   const elapsed = state.kind === 'recording' ? (performance.now() - state.since) / 1000 : 0;
   return (
-    <div className="pop recorder" role="dialog" aria-label="Аудиозаметка">
+    <div className="pop recorder" role="dialog" aria-label="Аудиозаметка"
+      style={at ? { left: Math.min(Math.max(at.x, 167), innerWidth - 167), top: Math.min(Math.max(at.y, 80), innerHeight - 80), right: 'auto', transform: 'translate(-50%, -50%)' } : undefined}>
       <div className="recorder-head">
         <h3>Аудиозаметка</h3>
         <button className="rec-close" aria-label="Закрыть" title="Закрыть" onClick={onClose}><img src={crossIcon} alt="" width={24} height={24} /></button>

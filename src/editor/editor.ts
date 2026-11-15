@@ -1069,9 +1069,9 @@ export class Editor {
     this.setSelection(items.map((i) => i.id));
   }
 
-  /** Puts a recorded audio note in the middle of the screen, selected. */
-  addAudio(note: AudioNote): void {
-    const c = this.toWorld(this.width / 2, this.height / 2), d = DEFAULTS.audio;
+  /** Puts a recorded audio note in the middle of the screen (or round screen point `at`), selected. */
+  addAudio(note: AudioNote, at?: Point): void {
+    const c = this.toWorld(at?.x ?? this.width / 2, at?.y ?? this.height / 2), d = DEFAULTS.audio;
     const it = this.newItem('audio', c.x - d.w / 2, c.y - d.h / 2, { src: note.src, dur: Math.round(note.dur * 10) / 10, peaks: note.peaks });
     this.addItem(it);
     this.setTool('select');

@@ -67,9 +67,11 @@ function savedDraw(): Tool {
   return t && isDrawTool(t) && (t !== 'nib' || labOn('nib')) ? t : 'pen';
 }
 
-export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleIcons, recorderOpen, onToggleRecorder }: {
+export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleIcons, recorderOpen, onToggleRecorder, onRecordAt }: {
   editor: Editor; tool: Tool; pens: Pens; zoom: number; docked: boolean; iconsOpen: boolean; onToggleIcons: () => void;
   recorderOpen: boolean; onToggleRecorder: () => void;
+  /** The audio note's button dropped on the board: its recorder there, the note put there. */
+  onRecordAt: (at: { x: number; y: number }) => void;
 }) {
   // The drawing button brings back whichever of pen, highlighter, eraser and "Перо" was used last, and
   // shows it, the next time too.
@@ -142,6 +144,7 @@ export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleI
       else if (t) editor.dropItem(t, at);
       if (t && line) joinDropped(editor, line, editor.selectedItems()[0]);
       else if (key === 'image') { pictureAt.current = at; filePicker.current?.click(); }
+      else if (key === 'audio') onRecordAt(at);
     },
   };
 
