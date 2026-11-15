@@ -805,6 +805,12 @@ export const checks = {
     };
     await dbl(h.x + 18, h.y + 18);
     expect(await p.ev(`swapped.join()`), 'its icon to swap').toBe(h.id);
+    // Its icon first on its panel, a click there the same.
+    await p.ev(`(() => { window.swapped = []; planx.editor.setSelection(['${h.id}']); })()`);
+    await sleep(300);
+    expect(await p.ev(`document.querySelector('.bar.panel button')?.title`), 'its icon first').toBe('Другая иконка');
+    await p.click(await p.at('.bar.panel button[title="Другая иконка"]'));
+    expect(await p.ev(`swapped.join()`), 'clicked: its icon to swap').toBe(h.id);
     await p.escape();
     await p.ev(`planx.editor.setSelection([])`);
     await dbl(h.x + 80, h.y + 15);

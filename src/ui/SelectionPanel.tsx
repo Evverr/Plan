@@ -5,6 +5,8 @@ import { fillable, FILLS, ICON_COLORS, MARKER_OPACITY, INK_COLORS, strokable as 
 import { fillOpacity, MIND_PALETTE, mindDepth } from '../model/mind';
 import { colsOf, rowsOf } from '../model/table';
 import { PanelIcon, type PanelIconName } from './PanelIcon';
+import { Glyph } from './glyphs';
+import { openSwap } from '../labs/swap';
 import { useSortable } from './sortable';
 import { ColorPicker } from './ColorPicker';
 import { crowds, EDGE, fitPopovers, shownRects } from '../layout';
@@ -24,7 +26,7 @@ const same = (vals: Array<string | undefined>): string | null => (vals.length &&
 /** Rearrangeable buttons; the bin comes last until moved. */
 /** "2 объекта", "5 объектов", "21 объект". */
 const objects = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'объект' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'объекта' : 'объектов'}`;
-const ORDER = ['fold', 'grouped', 'lang', 'sepLang', 'docSave', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'rows', 'cols', 'crop', 'lines', 'component', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
+const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'rows', 'cols', 'crop', 'lines', 'component', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
 
 /**
  * A palette button and the popover of colour controls it opens above it, centred on the button and
@@ -464,6 +466,11 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
       }}>
       {sort.renderFit({
         // A block of code's language ("Код", src/labs).
+        // A header («Титул», src/labs/header.ts): its icon first, a click on it (as a double click there) its neighbours to take.
+        hdIcon: items.length === 1 && items[0].hd ? (
+          <button className="ib" title="Другая иконка" aria-label="Другая иконка" onClick={() => openSwap(items[0].id)}><Glyph id={items[0].icon ?? 'kanban'} /></button>
+        ) : undefined,
+        sepHd: items.length === 1 && items[0].hd ? <div className="sep" /> : undefined,
         lang: labs.codeBlock && items.length === 1 && items[0].code ? <CodeLang key={items[0].id} editor={editor} item={items[0]} /> : undefined,
         sepLang: labs.codeBlock && items.length === 1 && items[0].code ? <div className="sep" /> : undefined,
         // A document saved as a file ("Документ", src/labs).
