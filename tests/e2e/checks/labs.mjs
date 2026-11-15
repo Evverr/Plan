@@ -939,12 +939,15 @@ export const checks = {
     await p.ev(`(async () => { (await import('/src/labs/align.ts')).alignItems(planx.editor, 'right'); })()`);
     await sleep(300);
     expect(await p.ev(`planx.board.get('c').x - planx.board.get('${kid}').x`), 'aligned: its card along').toBe(before);
-    // Boxed whole: what's in it picked, not it.
+    // Boxed whole: it, not what's in it; in part: what's in it.
     await p.ev(`(() => { const e = planx.editor, k = planx.board.get('${kid}'); e.cam = { x: 100 - k.x * 0.5, y: 150 - k.y * 0.5, z: 0.5 }; e.camChanged(); e.setSelection([]); })()`);
     await sleep(200);
     const kb = await p.ev(`(() => { const k = planx.board.get('${kid}'); return [k.w * 0.5, k.h * 0.5]; })()`);
     await p.drag([90, 140], [100 + kb[0] + 10, 150 + kb[1] + 10]);
-    expect(await p.ev(`[planx.editor.selection.has('c'), planx.editor.selection.has('${kid}')].join()`), 'boxed: its card, not it').toBe('true,false');
+    expect(await p.ev(`[planx.editor.selection.has('c'), planx.editor.selection.has('${kid}')].join()`), 'boxed whole: it, not its card').toBe('false,true');
+    await p.ev(`planx.editor.setSelection([])`);
+    await p.drag([90, 140], [100 + 200, 150 + 100]);
+    expect(await p.ev(`[planx.editor.selection.has('c'), planx.editor.selection.has('${kid}')].join()`), 'boxed in part: its card, not it').toBe('true,false');
     await p.ev(`(() => { const e = planx.editor; e.setSelection(['${kid}']); e.duplicate(); })()`);
     await sleep(300);
     expect(await p.ev(`planx.board.list().filter((i) => i.type === 'task').length`), 'copied: its card too').toBe(2);

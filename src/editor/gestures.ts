@@ -419,15 +419,18 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         const up = !any && it.type === 'mind' && it.parent ? board.get(it.parent) : undefined;
         if (inside(it) || (up && branchCrosses(up, it, rect))) next.add(it.id);
       }
-      // («Кучки», src/labs: a header tied to one never by a box; a frame, kanban or timeline not when it takes
-      // in what's in it, that alone: its content's easily boxed so.)
+      // («Кучки», src/labs: a header tied to one never by a box. A frame, kanban or timeline the box takes in
+      // whole: it, not what's in it; taken in part: what's in it, not it, its content easily boxed so.)
       if (labOn('piles')) {
-        for (const id of [...next]) {
-          const it = board.get(id);
-          if (g.base.has(id) || !it) continue;
-          if (it.tie) next.delete(id);
-          else if (it.type === 'frame' && !it.inst && !it.comp && [...ed.carried([it]).keys()].some((k) => k !== id && next.has(k) && !board.get(k)?.host)) next.delete(id);
+        const piles = [...next].map((id) => board.get(id)).filter((it): it is Item => !!it && !g.base.has(it.id) && it.type === 'frame' && !it.inst && !it.comp)
+          .sort((a, b) => b.w * b.h - a.w * a.h);
+        for (const f of piles) {
+          if (!next.has(f.id)) continue;
+          const held = [...ed.carried([f]).keys()].filter((k) => k !== f.id && !board.get(k)?.host);
+          if (rectContains(rect, boxOf(f))) held.forEach((k) => { if (!g.base.has(k)) next.delete(k); });
+          else if (held.some((k) => next.has(k))) next.delete(f.id);
         }
+        for (const id of [...next]) if (!g.base.has(id) && board.get(id)?.tie) next.delete(id);
       }
       // And the links it runs into.
       for (const l of ed.shownLinks()) {
