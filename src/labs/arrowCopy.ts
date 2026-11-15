@@ -11,22 +11,25 @@ import { columnOf, columns, snaps } from './kanban';
  */
 const GAP = 24;
 
-/** Where the copy's middle goes (`copied`: what's picked, as copied), or none. */
+/** Where the copy's middle goes (`copied`: what's picked, as copied, its bounds' middle), or none. */
 export function arrowCopyAt(all: Item[], copied: Item[], picked: Item[], dx: number, dy: number): Point | null {
-  const b = boundsOf(copied);
-  if (!b || !picked.length) return null;
+  const whole = boundsOf(copied);
+  if (!whole || !picked.length) return null;
+  // (Instances by what they show, not their frames, unseen and wider: the gap between what's seen.)
+  const b = boundsOf(copied.filter((i) => !(i.inst && copied.some((c) => c.host === i.id)))) ?? whole;
+  const at = (x: number, y: number): Point => ({ x: whole.x + whole.w / 2 + x - b.x, y: whole.y + whole.h / 2 + y - b.y });
   const k = picked.every(snaps) ? kanbanOf(all, picked[0].id) : undefined;
   if (k && picked.every((p) => kanbanOf(all, p.id)?.id === k.id)) {
     // (By their tops, a step off theirs: next to them as the kanban lays them out.)
-    if (dy) return { x: b.x + b.w / 2, y: b.y + b.h / 2 + dy };
+    if (dy) return at(b.x, b.y + dy);
     const i = columnOf(k, b.x + b.w / 2) + dx, col = columns(k)[i];
-    return col ? { x: col.x + b.w / 2, y: b.y + b.h / 2 } : null;
+    return col ? at(col.x, b.y) : null;
   }
   const ids = new Set(picked.map((p) => p.id));
   const others = all.filter((o) => !ids.has(o.id) && !o.host && o.type !== 'frame' && o.type !== 'ink');
   for (let n = 1; n < 100; n++) {
     const x = b.x + dx * n * (b.w + GAP), y = b.y + dy * n * (b.h + GAP);
-    if (!others.some((o) => o.x < x + b.w && x < o.x + o.w && o.y < y + b.h && y < o.y + o.h)) return { x: x + b.w / 2, y: y + b.h / 2 };
+    if (!others.some((o) => o.x < x + b.w && x < o.x + o.w && o.y < y + b.h && y < o.y + o.h)) return at(x, y);
   }
   return null;
 }
