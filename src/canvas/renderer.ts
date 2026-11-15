@@ -545,9 +545,9 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
     case 'frame': {
       if (it.tl) {
         drawTimeline(ctx, it, { card: theme.surface, ink: theme.ink }, cam.z);
-        // Its «Создать задачу» («Создать задачу на таймлайне», src/labs), half seen.
+        // Its «Создать задачу» («Создать задачу на таймлайне», src/labs), three quarters seen.
         const nb = newCardBox(it, s.get);
-        if (nb) { ctx.globalAlpha = 0.5; drawNewCard(ctx, nb, theme, s.hotPlus === `kb:${it.id}:new`); ctx.globalAlpha = 1; }
+        if (nb) { ctx.globalAlpha = 0.75; drawNewCard(ctx, nb, theme, s.hotPlus === `kb:${it.id}:new`); ctx.globalAlpha = 1; }
         break;
       }
       // A kanban («Канбан», src/labs): its stages and columns.
