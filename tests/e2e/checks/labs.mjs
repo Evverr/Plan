@@ -806,10 +806,19 @@ export const checks = {
     await p.ev(`(() => { const t = document.querySelector('.text-edit'); t.value = 'Очень длинный заголовок, который не поместится в одну строку и перейдёт на вторую'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
     await p.escape();
     await sleep(200);
-    const taller = await p.ev(`planx.board.get('${h.id}').h`);
+    let taller = await p.ev(`planx.board.get('${h.id}').h`);
     expect(taller > h.h + 25, 'two lines of title: its description pushed down').toBe(true);
     await p.ev(`(async () => { const l = await import('/src/labs/header.ts'), it = planx.board.get('${h.id}'); window.descY = l.headerLayout(it).desc.y; })()`);
     expect(await p.ev('descY') > 60, 'the description under the second line').toBe(true);
+    // Its description double clicked: typed in, not its title.
+    await p.ev(`planx.editor.setSelection([])`);
+    await dbl(h.x + 80, h.y + (await p.ev('descY')) + 10);
+    expect(await p.ev(`[planx.editor.editingId, planx.editor.editingCell].join()`), 'its description typed in').toBe(`${h.id},0`);
+    await p.ev(`(() => { const t = document.querySelector('.text-edit'); t.value = 'Новое описание'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await p.escape();
+    await sleep(200);
+    expect(await p.ev(`[planx.board.get('${h.id}').desc, planx.board.get('${h.id}').text.slice(0, 5)].join()`), 'the description changed, the title kept').toBe('Новое описание,Очень');
+    taller = await p.ev(`planx.board.get('${h.id}').h`);
     // Stretched taller by its corner: kept so; pulled up past what's in it, no shorter than that.
     await p.ev(`planx.editor.setSelection(['${h.id}'])`);
     await sleep(200);

@@ -1699,7 +1699,7 @@ export class Editor {
     if (it.type === 'task' && this.editingId === id && this.editingCell !== (cell ?? null)) window.dispatchEvent(new Event('planx:commit-edit'));
     this.editCaret = caret;
     this.editingId = id;
-    this.editingCell = it.type === 'table' ? cell ?? 0 : it.type === 'task' ? cell ?? null : null;
+    this.editingCell = it.type === 'table' ? cell ?? 0 : it.type === 'task' || it.hd ? cell ?? null : null;
     // An empty cell goes on as the last one was set ("Таблица помнит формат", src/labs).
     if (it.type === 'table' && labOn('tableLook')) carryCellFormat(this, it, this.editingCell!);
     this.selection = new Set([id]);

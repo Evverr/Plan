@@ -12,7 +12,7 @@ import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
 export const HEADER_NAME = 'Заголовок';
 export const HEADER_DESC = 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.';
 /** Its parts, as Женя's component: the icon at its top left, the title and the description right of it. */
-const ICON = 36, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
+const ICON = 36, ICON_Y = -2, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
 export const HEADER_GAP = 24;
@@ -31,7 +31,7 @@ export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect;
   const a = { ...it, ...patch }, w = Math.max(40, a.w - TEXT_X);
   const th = textBlockHeight(titleOf(a) || ' ', w, TITLE_FS, { weight: 700 }), dy = TITLE_Y + th + DESC_GAP;
   const dh = textBlockHeight(descOf(a) || ' ', w, DESC_FS);
-  return { icon: { x: 0, y: 0, w: ICON, h: ICON }, title: { x: TEXT_X, y: TITLE_Y, w, h: th }, desc: { x: TEXT_X, y: dy, w, h: dh }, h: Math.ceil(Math.max(ICON, dy + dh)) };
+  return { icon: { x: 0, y: ICON_Y, w: ICON, h: ICON }, title: { x: TEXT_X, y: TITLE_Y, w, h: th }, desc: { x: TEXT_X, y: dy, w, h: dh }, h: Math.ceil(Math.max(ICON, dy + dh)) };
 }
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
 /** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
