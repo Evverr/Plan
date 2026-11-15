@@ -2738,14 +2738,17 @@ export const checks = {
     for (const x of [q, r, t]) await x.close();
   },
 
-  async '"Замена двойным кликом": an emoji or icon picked, it first on the panel, a click there its neighbours'(p) {
-    const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; const m = e.newItem('emoji', 0, 0, { w: 64, h: 64, emoji: 'emoji-u1f600' }); b.add(m); const i = e.newItem('icon', 200, 0, { w: 64, h: 64, icon: 'kanban' }); b.add(i); e.setSelection([m.id]); return [m.id, i.id]; })()`);
+  async '"Замена двойным кликом": an emoji, or a frame with one in it, picked: a flag first on the panel, a click there its neighbours'(p) {
+    const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; const m = e.newItem('emoji', 40, 40, { w: 64, h: 64, emoji: 'emoji-u1f600' }); b.add(m); const i = e.newItem('icon', 140, 40, { w: 64, h: 64, icon: 'kanban' }); b.add(i); const f = e.newItem('frame', 0, 0, { w: 120, h: 120, members: [m.id] }); b.add(f); e.setSelection([m.id]); return [m.id, i.id, f.id]; })()`);
     await sleep(400);
-    expect(await p.ev(`!!document.querySelector('button[aria-label="Другой эмодзи"] .pick-emoji')`), 'the emoji on the panel').toBe(true);
-    await p.ev(`planx.editor.setSelection(['${ids[1]}'])`);
+    expect(await p.ev(`!!document.querySelector('button[aria-label="Заменить"]')`), 'the emoji: the flag').toBe(true);
+    await p.ev(`planx.editor.setSelection(['${ids[0]}', '${ids[1]}'])`);
     await sleep(400);
-    await p.click(await p.at('button[aria-label="Другая иконка"]'));
+    expect(await p.ev(`!!document.querySelector('button[aria-label="Заменить"]')`), 'two: none').toBe(false);
+    await p.ev(`planx.editor.setSelection(['${ids[2]}'])`);
     await sleep(400);
-    expect(await p.ev(`!!document.querySelector('.icon-grid')`), 'its neighbours').toBe(true);
+    await p.click(await p.at('button[aria-label="Заменить"]'));
+    await sleep(400);
+    expect(await p.ev(`!!document.querySelector('.emoji-grid')`), 'the frame\'s emoji\'s neighbours').toBe(true);
   },
 };
