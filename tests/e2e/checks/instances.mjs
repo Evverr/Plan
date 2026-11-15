@@ -316,4 +316,16 @@ export const checks = {
     const ys = await p.ev(`[...new Set(planx.board.list().filter((i) => i.inst).map((i) => i.y))].join()`);
     expect(ys, 'all at one height').toBe('-20');
   },
+
+  async 'a picked instance framed by its contents, its dots there: a line drawn from its right one'(p) {
+    const inst = await p.ev(`(() => { const e = planx.editor, b = planx.board; const s = e.newItem('sticky', 0, 0, { w: 160, h: 160 }); b.add(s); e.setSelection([s.id]); e.makeComponent(); e.finishComponent(); const r = e.newItem('rect', 400, 30, { w: 120, h: 100 }); b.add(r); e.cam = { x: 400, y: 320, z: 1 }; e.camChanged(); return b.list().find((x) => x.inst).id; })()`);
+    await sleep(300);
+    await p.escape();
+    await p.ev(`planx.editor.setSelection(['${inst}'])`);
+    await sleep(400);
+    // Its contents at (400, 320) to (560, 480) on the screen: its right dot just past their right side.
+    await p.drag([574, 400], [850, 400]);
+    await sleep(300);
+    expect(await p.ev(`JSON.stringify(planx.board.linkList().map((l) => [l.from === '${inst}', l.fromSide]))`), 'a line from it').toBe('[[true,"right"]]');
+  },
 };

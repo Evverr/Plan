@@ -258,6 +258,9 @@ function hiddenUnder(ctx: CanvasRenderingContext2D, it: Item, s: Scene, view: Re
   }
 }
 
+/** What's framed when it's picked: an instance by its contents (its own frame unseen, wider). */
+const framedBox = (it: Item, s: Scene): Item => (it.inst ? { ...it, ...instanceBounds(it, s.items) } : it);
+
 /** However narrow a frame or an instance, this much room for its name over it (past its edge, then). */
 const TITLE_ROOM = 120;
 /** Text cut off with "…" to fit `max` wide at the context's font, on one line (a frame's or an instance's
@@ -1601,9 +1604,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
   if (s.live) pickedAlone = s.selection.size === 1 && s.showHandle && !s.dragging ? [...s.selection][0] : null;
   if (s.live) for (const [id, u] of unpicked) {
     // (A task gliding open or closed, as it's drawn now.)
-    const k = (now - u.at) / PICK_OUT, got = s.get(id), it = got && taskShown(got);
+    const k = (now - u.at) / PICK_OUT, got = s.get(id), it = got && framedBox(taskShown(got), s);
     if (k >= 1 || !it) { unpicked.delete(id); continue; }
-    if (it.type === 'mind' || it.inst || it.host) continue;
+    if (it.type === 'mind' || it.host) continue;
     ctx.globalAlpha = PICK_FRAME * (1 - k);
     outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
     if (u.dots) {
@@ -1625,8 +1628,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
   if (s.live && s.dragMoved) dragged = [...s.selection];
   const dragLit = s.live ? dotLit(dragTurn, now, dragTurn.hot ? DRAG_IN : DRAG_OUT) : 1;
   if (s.live && !s.dragging && dragLit > 0) for (const id of dragged) {
-    const got = s.selection.has(id) ? undefined : s.get(id), it = got && taskShown(got);
-    if (!it || it.type === 'mind' || it.inst || it.host) continue;
+    const got = s.selection.has(id) ? undefined : s.get(id), it = got && framedBox(taskShown(got), s);
+    if (!it || it.type === 'mind' || it.host) continue;
     ctx.globalAlpha = DRAG_FRAME * dragLit;
     outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
     ctx.globalAlpha = 1;
@@ -1643,12 +1646,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     ctx.globalAlpha = 1;
   }
   for (const id of s.selection) {
-    const got = s.get(id), it = got && taskShown(got);
+    const got = s.get(id), it = got && framedBox(taskShown(got), s);
     // («Канбан»: a card taken up, tilted, shows no frame: the column lit and the blue line show where it goes.)
     if (!it || s.nodesOf === id || (s.live && s.lifted?.includes(id))) continue;
     // A mind map node shows it's picked by its "+" buttons alone, which a few picked together don't get.
-    // An instance keeps its red title alone, without a selection frame.
-    if ((it.type !== 'mind' || s.selection.size > 1) && !it.inst) {
+    // (An instance framed by its contents, its red title over them.)
+    if (it.type !== 'mind' || s.selection.size > 1) {
       ctx.globalAlpha = s.dragging ? DRAG_FRAME * dragLit : PICK_FRAME;
       ctx.save();
       hiddenUnder(ctx, it, s, view);
@@ -1680,6 +1683,11 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       ctx.fill();
       ctx.stroke();
       ctx.globalAlpha = 1;
+      // Its dots, round its contents, for links.
+      ctx.save();
+      hiddenUnder(ctx, it, s, view);
+      if (!s.linkTool) drawDots(ctx, it, s);
+      ctx.restore();
     } else if (s.showHandle && s.editingId !== id) {
       // (Not over what lies over its corner: see coveredAt.)
       const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z, hidden = !it.rot && coveredAt(s.items, it, { x: it.x + it.w, y: it.y + it.h });

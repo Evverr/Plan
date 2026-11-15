@@ -196,8 +196,9 @@ export function onRotate(ed: Editor, it: Item, w: Point): boolean {
 /** The link dot under the point, if any. */
 export function dotAt(ed: Editor, it: Item, w: Point): Side | null {
   // ("Связи инструментом", src/labs: only with «Связи» on.)
-  if (it.type === 'mind' || it.inst || it.host || (labOn('linkTool') && !dotsOn())) return null;
-  return anyDotAt(ed, it, w);
+  if (it.type === 'mind' || it.host || (labOn('linkTool') && !dotsOn())) return null;
+  // (An instance's round its contents.)
+  return anyDotAt(ed, it.inst ? { ...it, ...instanceBounds(it, ed.board.list()) } : it, w);
 }
 
 /** The same, for any item (with the line tool, every item has its dots). */
