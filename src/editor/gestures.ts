@@ -88,6 +88,21 @@ function timelineSides(ed: Editor, moved: string[]): void {
 }
 
 /** The timeline an item is on: the one holding it, else one its middle is over. */
+/** A line led over a timeline, kanban or frame (`t`, under point `w`): what's on it near the pointer (within
+ *  40 px on the screen, the nearest) rather than it, its edge maybe far off; not `from`, the line's other end. */
+function heldNear(ed: Editor, t: Item | null | undefined, w: Point, from?: string): Item | null | undefined {
+  if (!t || t.type !== 'frame' || !t.members?.length) return t;
+  const shown = new Map(ed.shown().map((i) => [i.id, i])), reach = 40 / ed.cam.z;
+  let best: Item | undefined, bd = reach;
+  for (const id of t.members) {
+    const o = shown.get(id);
+    if (!o || o.id === from || o.host) continue;
+    const b = boxOf(o), dx = Math.max(b.x - w.x, 0, w.x - b.x - b.w), dy = Math.max(b.y - w.y, 0, w.y - b.y - b.h), d = Math.hypot(dx, dy);
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best ?? t;
+}
+
 /** A kanban («Канбан», src/labs) the item `id` is a card of, or a timeline it's on: no line from it goes
  *  to its edge (one from anything else does, as to what's on it). */
 const ownKanban = (t: Item, id: string | undefined): boolean => !!(t.kb || t.tl) && !!id && !!t.members?.includes(id);
@@ -328,7 +343,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
     }
     case 'link': {
       // (What's in an instance: the instance.)
-      const hit = hitItem(ed.shown(), w, ed.cam.z), t = hit?.host ? board.get(hit.host) : hit;
+      const hit = heldNear(ed, hitItem(ed.shown(), w, ed.cam.z), w, g.from), t = hit?.host ? board.get(hit.host) : hit;
       g.to = w;
       // (Not the kanban it's led out of a card of, nor the timeline it's led out of something on: its own.)
       // (Nor a header tied to a kanban or timeline, src/labs/header.ts.)
@@ -364,7 +379,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         g.going = true;
       }
       // Over the item it went to, nothing's lit until it's been taken off it once (more than a twitch).
-      const l = board.getLink(g.id), t = hitItem(ed.shown(), w, ed.cam.z);
+      const l = board.getLink(g.id), t = heldNear(ed, hitItem(ed.shown(), w, ed.cam.z), w, l && (g.start ? l.to : l.from));
       // (Moved along it further than a twitch, the end's to go somewhere else on it.)
       const held = g.start ? l?.from : l?.to, other = g.start ? l?.to : l?.from, far = Math.hypot(w.x - g.from.x, w.y - g.from.y) * ed.cam.z > 12;
       if (t?.id !== held && far) g.away = true;

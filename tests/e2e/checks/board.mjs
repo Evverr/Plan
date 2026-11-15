@@ -931,6 +931,14 @@ export const checks = {
     await p.drag([268, 380], [800, 500]);
     await sleep(300);
     expect(await p.ev(`planx.board.linkList().map((l) => l.from + '>' + l.to).join()`), 'from off it: to it').toBe('s>tl');
+    // Over it near what's on it (not on it): to that, not to its edge.
+    await p.ev(`planx.editor.setSelection(['s'])`);
+    await sleep(200);
+    await p.mouse('mouseMoved', 180, 468);
+    await sleep(200);
+    await p.drag([180, 468], [640, 245]);
+    await sleep(300);
+    expect(await p.ev(`planx.board.linkList().map((l) => l.from + '>' + l.to).join()`), 'near what is on it: to that').toBe('s>tl,s>t');
     await p.ev(`planx.editor.setSelection(['t'])`);
     await sleep(300);
     const dot = await p.ev(`(() => { const t = planx.board.get('t'), s = planx.editor.toScreen({ x: t.x + t.w + 8, y: t.y + t.h / 2 }); return [s.x, s.y]; })()`);

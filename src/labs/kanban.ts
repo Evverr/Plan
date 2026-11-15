@@ -152,7 +152,7 @@ export function dropTarget(items: Item[], it: Item | undefined, skip: Set<string
 /** «Создать задачу» under the first stage's cards (as they stand now: a card dragged off it, not under it);
  *  on a timeline, from today («Создать задачу на таймлайне», src/labs). */
 export function newCardBox(f: Item, get: (id: string) => Item | undefined): { x: number; y: number; w: number; h: number } | null {
-  if (f.tl) return labOn('tlNewTask') ? tlNewCardBox(f) : null;
+  if (f.tl) return labOn('tlNewTask') ? tlNewCardBox(f, get) : null;
   if (!f.kb || !labOn('kanban')) return null;
   const c = columns(f)[0];
   if (!c) return null;

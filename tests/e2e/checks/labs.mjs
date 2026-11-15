@@ -987,6 +987,10 @@ export const checks = {
     await p.click([b.sx, b.sy]);
     await sleep(300);
     expect(await p.ev(`(() => { const t = planx.board.get(planx.editor.editingId), f = planx.board.list().find((i) => i.tl); return [t?.type, t?.x === ${b.x}, f.members.includes(t?.id)].join(); })()`), 'a task there, typed in').toBe('task,true,true');
+    await p.escape();
+    await sleep(200);
+    const b2 = await p.ev(`(async () => { const k = await import('/src/labs/kanban.ts'), t = planx.board.list().find((i) => i.tl); return k.newCardBox(t, (id) => planx.board.get(id)); })()`);
+    expect(b2.y >= b.y + 52 + 12, 'it under the new one, not hidden by it').toBe(true);
   },
 
   async '"Канбан в объектах": «Создать задачу» under the first stage\'s cards: a click, a task there, typed in; it goes on under it'(p) {
