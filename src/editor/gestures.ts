@@ -426,7 +426,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       // A frame is taken in whole; a timeline (wide as it is) just touched, by a box started off it (one
       // started on it picks what lies on it).
       // («Кучки», src/labs: any frame, kanban or timeline so, as a timeline; a component whole all the same.)
-      const whole = (it: Item) => it.type === 'frame' && !((it.tl || (labOn('piles') && !it.inst && !it.comp)) && !pointInRect(g.start, it));
+      // (A component or an instance: just touched, taken whole: see below.)
+      const whole = (it: Item) => it.type === 'frame' && !it.inst && !it.comp && !((it.tl || labOn('piles')) && !pointInRect(g.start, it));
       const inside = (it: Item) => (whole(it) ? rectContains(rect, boxOf(it)) : rectsIntersect(rect, boxOf(it)));
       const shown = ed.shown(), any = shown.some(inside);
       for (const it of shown) {
@@ -448,7 +449,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         }
         for (const id of [...next]) if (!g.base.has(id) && board.get(id)?.tie) next.delete(id);
       }
-      // A component or an instance the box takes in (whole, as it must be): it, not what's in it.
+      // A component or an instance the box touches, even in part: all of it, not what's in it.
       for (const id of [...next]) {
         const c = board.get(id);
         if (!c || g.base.has(id) || !(c.comp || c.inst)) continue;
