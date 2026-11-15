@@ -448,6 +448,13 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         }
         for (const id of [...next]) if (!g.base.has(id) && board.get(id)?.tie) next.delete(id);
       }
+      // A component or an instance the box takes in (whole, as it must be): it, not what's in it.
+      for (const id of [...next]) {
+        const c = board.get(id);
+        if (!c || g.base.has(id) || !(c.comp || c.inst)) continue;
+        const held = c.inst ? shown.filter((i) => i.host === c.id).map((i) => i.id) : [...ed.carried([c]).keys()].filter((k) => k !== c.id);
+        held.forEach((k) => { if (!g.base.has(k)) next.delete(k); });
+      }
       // And the links it runs into.
       for (const l of ed.shownLinks()) {
         const shape = linkShape(l, (id) => board.get(id));

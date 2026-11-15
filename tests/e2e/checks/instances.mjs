@@ -328,4 +328,14 @@ export const checks = {
     await sleep(300);
     expect(await p.ev(`JSON.stringify(planx.board.linkList().map((l) => [l.from === '${inst}', l.fromSide]))`), 'a line from it').toBe('[[true,"right"]]');
   },
+
+  async 'a box round a component and its instances picks them, not what is in them'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; const s = e.newItem('sticky', 0, 0, { w: 160, h: 160 }); b.add(s); e.setSelection([s.id]); e.makeComponent(); e.finishComponent(); const i = b.list().find((x) => x.inst); e.setSelection([i.id]); e.duplicate(); e.duplicate(); e.editComponentAt(i.id); e.cam = { x: 300, y: 300, z: 0.7 }; e.camChanged(); })()`);
+    await sleep(300);
+    await p.escape();
+    await sleep(200);
+    await p.drag([150, 150], [1100, 650]);
+    await sleep(300);
+    expect(await p.ev(`[...planx.editor.selection].map((id) => { const i = planx.board.get(id); return i.comp ? 'C' : i.inst ? 'I' : 'in'; }).sort().join()`), 'the component and its instances alone').toBe('C,I,I');
+  },
 };
