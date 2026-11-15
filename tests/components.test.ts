@@ -155,6 +155,15 @@ describe('a stretched instance', () => {
     expect(at('low')).toEqual([0, 143, 400, 117]);
   });
 
+  it('keeps what is not rubber as big as in the component: a sticker over most of it, kept to its side', () => {
+    const note = item('note', 0, 0, { type: 'sticky', w: 200, h: 200 });
+    const c = { ...comp, members: ['note'] };
+    const ops = syncOps([c, note, inst], [], (it) => it.h);
+    const x = ops.add.find((i) => i.id === 'i~note')!;
+    // (All of the box: its middle in the middle third, half the grown each way.)
+    expect([x.x - 1000, x.y, x.w, x.h]).toEqual([50, 30, 200, 200]);
+  });
+
   it('text that wraps anew as the instance is stretched takes the text just under it along', () => {
     const head = item('head', 20, 20, { type: 'text', w: 220, h: 40 }), sub = item('sub', 20, 70, { type: 'text', w: 100, h: 20 });
     const far = item('far', 20, 150, { type: 'text', w: 100, h: 20 });

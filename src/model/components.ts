@@ -42,6 +42,11 @@ export const around = (rs: Item[]) => {
   return { x, y, w: Math.max(...rs.map((r) => r.x + r.w)) - x, h: Math.max(...rs.map((r) => r.y + r.h)) - y };
 };
 
+/** What doesn't stretch with an instance («нерезиновое»): it keeps the size it has in the component, only
+ *  keeping to its side. Icons, emoji, stickers and game stickers; anything else is rubber (shapes, text
+ *  drawn as a box…). */
+export const rubber = (it: Item): boolean => !(it.type === 'icon' || it.type === 'emoji' || it.type === 'sticky' || (it.type === 'image' && !!it.doodle));
+
 /** How big, of what a component holds, something about half its size is (to half): it grows in step. */
 const HALF_ISH = 0.4;
 
@@ -52,12 +57,12 @@ const HALF_ISH = 0.4;
  * and mind maps, sized by what's in them). One about half as wide (or tall) grows in step with it, as
  * far from the side in step too. Otherwise it keeps its size and keeps to a side: text to the one it's
  * aligned to, anything else to the side or middle it's nearest to (by the thirds of the box). Text drawn
- * as a box («Текст рамкой», src/labs) goes as a rectangle does.
+ * as a box («Текст рамкой», src/labs) goes as a rectangle does. What isn't rubber (see rubber) keeps its size.
  */
 export function stretched(it: Item, box: { x: number; y: number; w: number; h: number }, grow: { w: number; h: number }): Pick<Item, 'x' | 'y' | 'w' | 'h'> {
   // Text stretches across (wrapping anew), not down.
   const text = it.type === 'text' && !it.tb;
-  const fixed = it.type === 'task' || it.type === 'table' || it.type === 'mind', fixedDown = fixed || text;
+  const fixed = it.type === 'task' || it.type === 'table' || it.type === 'mind' || !rubber(it), fixedDown = fixed || text;
   const along = (at: number, size: number, from: number, all: number, more: number) => {
     const c = at + size / 2 - from;
     return at + (c < all / 3 ? 0 : c > (all * 2) / 3 ? more : more / 2);
