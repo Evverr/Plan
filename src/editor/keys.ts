@@ -8,6 +8,7 @@ import { cancelNib, finishNib, nibPoints, undoNibCorner } from '../labs/nib';
 import { nodeEditing, stopNodeEdit } from '../labs/paths';
 import { cutLines } from '../labs/tableCut';
 import { toggleDots } from '../labs/linkTool';
+import { withTies } from '../labs/header';
 
 /** Keys a tool is picked with. */
 const TOOL_KEYS: Record<string, Tool> = { KeyV: 'select', KeyH: 'hand', KeyN: 'sticky', KeyS: 'sticky', KeyT: 'text', KeyR: 'rect', KeyO: 'ellipse', KeyC: 'link', KeyL: 'link', KeyF: 'frame', KeyP: 'pen', KeyM: 'marker', KeyE: 'eraser' };
@@ -90,7 +91,9 @@ export function onKeyDown(ed: Editor, e: KeyboardEvent): void {
     if (e.altKey && labOn('arrowCopy')) { ed.duplicateArrow(dx, dy); return; }
     // (No panel then, its frame faint, as dragged: see Editor.nudged.)
     ed.setNudged(true);
-    ed.board.transact(() => ed.selectedItems().filter((it) => !heldInPlace(it, ed.board.list())).forEach((it) => ed.board.update(it.id, { x: it.x + dx, y: it.y + dy })));
+    // (A header tied to one, src/labs/header.ts, with it.)
+    const all = ed.board.list(), moved = withTies(all, ed.selection);
+    ed.board.transact(() => all.filter((it) => moved.has(it.id) && !heldInPlace(it, all)).forEach((it) => ed.board.update(it.id, { x: it.x + dx, y: it.y + dy })));
     return;
   }
   if (e.code === 'KeyI') { window.dispatchEvent(new CustomEvent('planx:toggle-icons')); return; }

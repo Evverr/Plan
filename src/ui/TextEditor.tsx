@@ -222,7 +222,8 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
           commit();
           const it = editor.board.get(id);
           if (cell && typed && it) editor.startEditing(id, addSub(editor.board, it, cell - 1) + 1, 'end');
-        } else if (e.key === 'Escape' || (e.key === 'Enter' && isFrame)) {
+        } else if (e.key === 'Escape' || (e.key === 'Enter' && (isFrame || item.tie))) {
+          // (A header tied to a kanban or timeline: a line of title, Enter done with it.)
           e.preventDefault();
           commit();
         } else if (item.type === 'mind' && item.parent && (e.metaKey || e.ctrlKey) && !e.shiftKey && e.code === 'KeyZ' && !e.currentTarget.value) {

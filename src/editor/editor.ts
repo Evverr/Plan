@@ -15,7 +15,7 @@ import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoo
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
-import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, withTies } from '../labs/header';
+import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, pickedTies, withTies } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -971,8 +971,8 @@ export class Editor {
     if (groups && labOn('groups')) {
       this.selection = withGroups(this.board.list(), this.selection);
     }
-    // A header and the kanban or timeline it's tied to (src/labs/header.ts), as one (but a double click in).
-    if (groups) this.selection = withTies(this.board.list(), this.selection);
+    // A header tied to a kanban or timeline (src/labs/header.ts): never picked, that instead.
+    this.selection = pickedTies(this.board.list(), this.selection);
     // (Something else picked: moved by the arrow keys no longer, see `nudged`.)
     if (this.nudged && (was.length !== this.selection.size || was.some((id) => !this.selection.has(id)))) this.nudged = false;
     // The component being changed here is the last one worked in; someone else's stays theirs.
@@ -1753,10 +1753,12 @@ export class Editor {
     const cell = this.editingCell;
     if (this.editingId === id) { this.editingId = null; this.editingCell = null; }
     if (it) {
-      const value = text.replace(/\s+$/, '');
+      let value = text.replace(/\s+$/, '');
       if (it.hd) {
-        // «Титул в объектах» (src/labs): its title or its description, as tall as they then take.
+        // «Титул в объектах» (src/labs): its title or its description, as tall as they then take (tied to
+        // a kanban or timeline, a line of title).
         setHeaderTyping(null);
+        if (it.tie) value = value.replace(/\s*\n\s*/g, ' ');
         const patch: Partial<Item> = cell === 0 ? { desc: value } : { text: value }, h = headerFit(it, patch);
         if (value !== (cell === 0 ? it.desc ?? '' : it.text ?? '') || h !== it.h) this.board.update(id, { ...patch, h });
       } else if (it.type === 'task') {

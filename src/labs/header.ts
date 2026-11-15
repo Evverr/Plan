@@ -8,7 +8,8 @@ import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
  * wide as it's stretched, as tall as they take: the description stands right under the title, pushed
  * down as the title takes more lines. A double click on the icon takes another, on the title or the
  * description types in it. A new timeline or kanban has one over it, its title and icon theirs, no
- * description, tied to it (`tie`): one with it, never apart.
+ * description, a line of title, tied to it (`tie`): moved, copied and deleted with it, but never picked
+ * (a click or box on it picks what it's tied to), only its title typed in on a double click.
  */
 export const HEADER_NAME = 'Заголовок';
 export const HEADER_DESC = 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.';
@@ -16,7 +17,7 @@ export const HEADER_DESC = 'Здесь идет описание заголов�
 const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
-export const HEADER_GAP = 24;
+export const HEADER_GAP = 4;
 /** Narrowest it's stretched to. */
 export const HEADER_MIN_W = TEXT_X + 120;
 
@@ -38,6 +39,12 @@ export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect;
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
 /** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
 export const headerFit = (it: Item, patch: Partial<Item> = {}): number => Math.max(headerHeight(it, patch), it.hdH ? it.h : 0);
+
+/** These ids, a header tied to a kanban or timeline among them (`tie`) for that: it's never picked. */
+export function pickedTies(items: Item[], ids: Set<string>): Set<string> {
+  if (!items.some((i) => i.tie)) return ids;
+  return new Set([...ids].map((id) => items.find((i) => i.id === id)?.tie ?? id));
+}
 
 /** These ids with what each is tied to (a header and its kanban or timeline, `tie`). */
 export function withTies(items: Item[], ids: Set<string>): Set<string> {
