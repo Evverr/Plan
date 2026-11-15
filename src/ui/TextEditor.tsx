@@ -170,7 +170,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
       } : undefined}
       onInput={(e) => {
         if (code) { setLiveCode(id, e.currentTarget.value); editor.previewText(id, e.currentTarget.value); editor.requestRender(); return; }
-        if (item.type === 'text' || item.type === 'task' || item.type === 'mind') editor.previewText(id, e.currentTarget.value);
+        if (item.type === 'text' || item.type === 'task' || item.type === 'mind' || item.hd) editor.previewText(id, e.currentTarget.value);
         if (field) {
           if (!sub) e.currentTarget.style.height = `${textBlockHeight(e.currentTarget.value, width, fs, { weight: field.weight, family: desc?.family ?? field.family ?? TASK_FONT, italic: desc?.italic })}px`;
         } else if (item.type !== 'text' && !isFrame) {
@@ -184,8 +184,9 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
       onBlur={commit}
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (item.hd && editor.editingCell === null && (e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey) {
-          // A header's title done with on Enter or Tab: its description typed in next.
+        if (item.hd && editor.editingCell === null && e.key === 'Tab' && !e.shiftKey) {
+          // A header's title done with on Tab: its description typed in next (Enter a new line in it, the
+          // description pushed down).
           e.preventDefault();
           commit();
           editor.startEditing(id, 0, 'end');
