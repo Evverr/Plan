@@ -12,7 +12,7 @@ import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
 export const HEADER_NAME = 'Заголовок';
 export const HEADER_DESC = 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.';
 /** Its parts, as Женя's component: the icon at its top left, the title and the description right of it. */
-const ICON = 36, ICON_Y = -2, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
+const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
 export const HEADER_GAP = 24;
