@@ -7,7 +7,7 @@ import { readJSON, readText, writeJSON, writeText } from '../storage';
  * browser. Everything they need lives in this folder; the app only asks labOn() where a feature
  * changes what it does, so one that isn't kept comes out by deleting its file and those few lines.
  */
-export type LabId = 'export' | 'pdf' | 'tidy' | 'lock' | 'search' | 'timer' | 'reactions' | 'laser' | 'follow' | 'cursors' | 'swap' | 'textPush' | 'wishlist' | 'clickThrough' | 'multi' | 'textLink' | 'objects' | 'contextMenu' | 'lineTool' | 'boardImport' | 'comments' | 'zoomBox' | 'align' | 'nib' | 'softEraser' | 'layers' | 'solidTool' | 'history' | 'panelOver' | 'zoomFade' | 'zoomKeys' | 'tableMove' | 'textButton' | 'tableCut' | 'linkJoint' | 'tableLook' | 'imageCrop' | 'boardGrid' | 'linkTool' | 'customize' | 'codeBlock' | 'taskFull' | 'sideNav' | 'discussion' | 'groups' | 'subDrag' | 'nearGuides' | 'textBox' | 'sideTabs' | 'lineEnd' | 'tlLinks' | 'call' | 'panelGlide' | 'formObject' | 'quickCreate' | 'docx' | 'pollObject' | 'kanban' | 'docPage' | 'arrowCopy' | 'frameAround' | 'headerObject' | 'hideItem';
+export type LabId = 'export' | 'pdf' | 'tidy' | 'lock' | 'search' | 'timer' | 'reactions' | 'laser' | 'follow' | 'cursors' | 'swap' | 'textPush' | 'wishlist' | 'clickThrough' | 'multi' | 'textLink' | 'objects' | 'contextMenu' | 'lineTool' | 'boardImport' | 'comments' | 'zoomBox' | 'align' | 'nib' | 'softEraser' | 'layers' | 'solidTool' | 'history' | 'panelOver' | 'zoomFade' | 'zoomKeys' | 'tableMove' | 'textButton' | 'tableCut' | 'linkJoint' | 'tableLook' | 'imageCrop' | 'boardGrid' | 'linkTool' | 'customize' | 'codeBlock' | 'taskFull' | 'sideNav' | 'discussion' | 'groups' | 'subDrag' | 'nearGuides' | 'textBox' | 'sideTabs' | 'lineEnd' | 'tlLinks' | 'call' | 'panelGlide' | 'quickCreate' | 'docx' | 'pollObject' | 'kanban' | 'docPage' | 'arrowCopy' | 'frameAround' | 'headerObject' | 'hideItem';
 
 export interface Lab { id: LabId; label: string; icon: string; hint: string }
 
@@ -73,7 +73,6 @@ export const LABS: Lab[] = [
   { id: 'docPage', label: 'Документ', icon: 'file', hint: 'Кнопка «Документ» на левой панели: лист A4 с полями по ГОСТу. Текст печатается как в стикере и переходит на следующую страницу; под листом переключатель страниц, до десяти' },
   { id: 'kanban', label: 'Канбан в объектах', icon: 'kanban', hint: 'В «Объектах» — канбан: стадии сверху и колонки под ними. Задачи и прямоугольники встают в колонку, куда их отпустили, друг под другом; раскрытая задача раздвигает соседей' },
   { id: 'pollObject', label: 'Голосование в объектах', icon: 'poll', hint: 'В «Объектах» — голосование: вопрос и варианты; каждый выбирает один или несколько, и сразу видно, сколько у какого. Поставивший может его отредактировать' },
-  { id: 'formObject', label: 'Форма в объектах', icon: 'form', hint: 'В «Объектах» — форма: два поля и кнопка «Заполнить». Заполнил — значения остаются текстом, кнопка становится «Редактировать»' },
   { id: 'docx', label: 'Документы Word', icon: 'file', hint: 'Перетащите .docx на доску или выберите его кнопкой картинки: на доске видна первая страница, двойной клик открывает документ целиком (только просмотр)' },
   { id: 'swap', label: 'Замена двойным кликом', icon: 'repeat', hint: 'Двойной клик по эмодзи или иконке: выбрать другую на её место, и в копии компонента тоже' },
 ];
