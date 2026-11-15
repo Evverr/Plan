@@ -28,6 +28,12 @@ export function relatedAt(links: Link[], it: Item | null, link: Link | null): { 
   return { links: new Set(ls.map((l) => l.id)), items: new Set(ls.flatMap((l) => [l.from, l.to])) };
 }
 
+/** With it on: the picked lines, lit as under the pointer, what they join framed. */
+export function pickedRelated(links: Link[]): { links: Set<string>; items: Set<string> } | null {
+  if (!links.length) return null;
+  return { links: new Set(links.map((l) => l.id)), items: new Set(links.flatMap((l) => [l.from, l.to])) };
+}
+
 export function toggleDots(ed: Editor): void {
   on = !on;
   ed.linkDots = null;

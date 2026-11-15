@@ -571,6 +571,15 @@ export const checks = {
     await p.mouse('mouseMoved', ...(await mid(b)));
     await sleep(100);
     expect(await p.ev(`planx.editor.related ? 'lit' : 'none'`), 'nothing lit off its lines').toBe('none');
+    // The line clicked: picked, it and what it joins stay lit with the pointer elsewhere, till something else is.
+    const line = await p.ev(`planx.board.linkList()[0].id`);
+    await p.ev(`planx.editor.setSelection(['${line}'])`);
+    await p.mouse('mouseMoved', 1000, 700);
+    await sleep(100);
+    const lit = () => p.ev(`(async () => { const m = await import('/src/labs/linkTool.ts'), e = planx.editor; const r = e.related ?? m.pickedRelated(e.shownLinks().filter((l) => e.selection.has(l.id))); return r ? [...r.items].sort().join() : 'none'; })()`);
+    expect(await lit(), 'picked: kept lit').toBe([a, c].sort().join());
+    await p.ev(`planx.editor.setSelection([])`);
+    expect(await lit(), 'picked no more: away').toBe('none');
     // A mind map node keeps its buttons with it on.
     await p.mouse('mouseMoved', 560, 625);
     await sleep(100);

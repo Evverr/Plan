@@ -33,7 +33,7 @@ import { arrowCopyAt } from '../labs/arrowCopy';
 import { holdZoomBox } from '../labs/zoomBox';
 import { rejoined } from '../labs/linkJoint';
 import { croppingId } from '../labs/imageCrop';
-import { dotsOn } from '../labs/linkTool';
+import { dotsOn, pickedRelated } from '../labs/linkTool';
 import { showGrips } from '../labs/tableMove';
 import { carryCellFormat, noteCellFormat } from '../labs/tableLook';
 import { holds as mindTidyOn, mindTidyKept, restartMindTidy, resumeMindTidy } from '../labs/tidyMind';
@@ -788,7 +788,8 @@ export class Editor {
       hotHandle: this.hotHandle,
       linkDots: this.tool === 'link' && !this.gesture ? this.linkDots : null,
       linkTool: labOn('linkTool') && !dotsMode,
-      related: dotsMode && !this.gesture ? this.related : null,
+      // (Nothing under the pointer: those of the picked lines, kept till something else is picked.)
+      related: dotsMode && !this.gesture ? this.related ?? pickedRelated(this.shownLinks().filter((l) => this.selection.has(l.id))) : null,
       hotPlus: this.hotPlus,
       plusFade,
       plusOn,
