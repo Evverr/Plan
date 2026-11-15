@@ -302,7 +302,7 @@ export const checks = {
       await new Promise(requestAnimationFrame);
       e.setSelection(['instance']);
       const ctx = e.canvas.getContext('2d'), fillText = ctx.fillText; let y = null;
-      ctx.fillText = function(t, x, atY, ...rest) { if (t === 'Повернутый') y = atY; return fillText.call(this, t, x, atY, ...rest); };
+      ctx.fillText = function(t, x, atY, ...rest) { if (String(t).startsWith('Пов')) y = atY; return fillText.call(this, t, x, atY, ...rest); };
       try { e.render(); } finally { ctx.fillText = fillText; }
       return y;
     })()`);
