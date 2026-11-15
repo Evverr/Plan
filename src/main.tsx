@@ -26,7 +26,8 @@ function Root() {
   }, []);
   const labs = useLabs(), sideOn = useSideOpen(), side = labs.sideNav && sideOn;
   // A board beside the side: pushed over by it (see labs/sideViewport.ts).
-  useEffect(() => setSideOffset(side && boardId ? 200 : 0), [side, boardId]);
+  // (As wide as the side, --side-w in labs.css.)
+  useEffect(() => setSideOffset(side && boardId ? 250 : 0), [side, boardId]);
   // (A page of the side's, without a board: the theme the board keeps.)
   useEffect(() => { if (page && !boardId) document.documentElement.dataset.theme = readText('planx-theme') === 'dark' ? 'dark' : 'light'; }, [page, boardId]);
   const content = boardId ? <App key={boardId} boardId={boardId} /> : page ? <SidePageView page={page} /> : <ShelfPage />;

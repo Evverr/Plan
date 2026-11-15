@@ -5,7 +5,7 @@ import { readJSON, readText, writeJSON, writeText } from '../storage';
 import { navigate } from '../route';
 
 /**
- * "Боковая панель": a dark side down the left edge, 200 wide, opened by the board's logo (its own leading
+ * "Боковая панель": a dark side down the left edge, 250 wide, opened by the board's logo (its own leading
  * to the start, a hero; its cross, by the board or the boards, putting it away for them to fill the window), kept open
  * whatever's beside it: the board worked on («Работа»), the boards (the shelf, its folders), the profile, the settings and, at its
  * foot, the help, each a page beside it on this one page (see main.tsx), the board put away.

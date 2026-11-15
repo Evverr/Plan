@@ -336,11 +336,14 @@
 .bar.panel .code-lang .tf-menu { top: auto; bottom: calc(100% + var(--s18)); --in-y: var(--slide); }
 .bar.panel.opens-down .code-lang .tf-menu { top: calc(100% + var(--s18)); bottom: auto; --in-y: calc(-1 * var(--slide)); }
 
-/* "Боковая панель" (SideNav.tsx): dark, 200 wide down the left edge, kept open whatever's beside it,
+/* "Боковая панель" (SideNav.tsx): dark, 250 wide (--side-w) down the left edge, kept open whatever's beside it,
    over the board (its panels keep to the window), pushing a page over (the shelf, the settings…). */
-.side-nav { position: fixed; z-index: 45; left: 0; top: 0; bottom: 0; width: 200px; box-sizing: border-box; padding: 12px 10px 14px;
+.side-nav { position: fixed; z-index: 45; left: 0; top: 0; bottom: 0; width: var(--side-w); box-sizing: border-box; padding: 12px 10px 14px;
   display: flex; flex-direction: column; gap: 2px; background: #1C1F26; color: #E6E7EC; box-shadow: 4px 0 16px rgba(0, 0, 0, .2);
-  --in-x: calc(-1 * var(--slide)); --in-y: 0px; animation: fade-in .16s ease-out, come-in .16s ease-out; animation-composition: replace, add; }
+  animation: side-in .24s cubic-bezier(.2, .8, .2, 1); }
+/* (Sliding out from behind the window's left edge, whole.) */
+@keyframes side-in { from { transform: translateX(-100%); } }
+:root { --side-w: 250px; }
 /* Its top: the logo, leading to the start; the cross putting it away by the board or the boards. */
 .side-nav-top { display: flex; align-items: center; justify-content: space-between; margin: 0 0 12px; }
 .side-nav-logo { height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: inherit;
@@ -364,7 +367,7 @@
 .side-nav-help { width: 32px; height: 32px; margin-left: 4px; border: 1.5px solid rgba(255, 255, 255, .35); border-radius: 50%; background: none;
   color: inherit; font: 600 15px "Inter", var(--ui); cursor: pointer; }
 .side-nav-help:hover, .side-nav-help.on { background: rgba(255, 255, 255, .12); }
-.app-shell.side-open:not(.on-board) > .app-content { margin-left: 200px; }
+.app-shell.side-open:not(.on-board) > .app-content { margin-left: var(--side-w); }
 /* A page of the side's: its title, then what's in it, as in its window. */
 .page-view { max-width: 640px; margin: 0 auto; padding: 48px 32px; color: var(--ink); }
 .page-view h1 { margin: 0 0 24px; font: 700 28px "Inter", var(--ui); }
@@ -377,16 +380,16 @@
 .logo.side-nav-logo-btn.open::before { margin-left: -6px; transform: rotate(-135deg); }
 .logo.side-nav-logo-btn:hover::before { opacity: .8; }
 /* (The shelf fills the window by itself: beside the side, from its edge.) */
-.app-shell.side-open:not(.on-board) .shelf-page { left: 200px; }
+.app-shell.side-open:not(.on-board) .shelf-page { left: var(--side-w); }
 /* A board beside the side: its own area right of it, the frame for all that's fixed in it (see sideViewport.ts). */
-.app-shell.side-open.on-board > .app-content { position: fixed; top: 0; bottom: 0; left: 200px; right: 0; transform: translateZ(0); overflow: hidden; }
+.app-shell.side-open.on-board > .app-content { position: fixed; top: 0; bottom: 0; left: var(--side-w); right: 0; transform: translateZ(0); overflow: hidden; }
 /* The shelf's logo in place of «Мои доски», opening the side (ShelfPage.tsx). */
 .shelf-page .shelf-logo { align-self: center; height: 34px; margin-left: -8px; padding: 0 8px; border: 0; border-radius: 8px; background: none;
   color: inherit; font: 700 20px "Inter", var(--ui); letter-spacing: -0.01em; cursor: pointer; }
 /* A page of the side's fills the rest of the window, scrolled when it's longer; the settings in four
    columns (fewer as the window narrows). */
 .app-shell:not(.on-board) > .app-content:has(> .page-view) { position: fixed; inset: 0; overflow-y: auto; }
-.app-shell.side-open:not(.on-board) > .app-content:has(> .page-view) { left: 200px; margin-left: 0; }
+.app-shell.side-open:not(.on-board) > .app-content:has(> .page-view) { left: var(--side-w); margin-left: 0; }
 .page-view.settings { max-width: 1200px; }
 .page-view.settings .settings-list { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 1280px) { .page-view.settings .settings-list { grid-template-columns: repeat(3, 1fr); } }
