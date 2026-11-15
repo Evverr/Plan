@@ -201,7 +201,8 @@ function ItemColors({ editor, items }: { editor: Editor; items: Item[] }) {
   return (
     <Palette label="Цвет">
       {colorable.length > 0 && <>
-        <PaintSwitch paint={targets} pick={pick} fill={fill} stroke={strokable.length ? stroke : undefined} fillLabel={colorable.length && colorable.every((i) => i.hd) ? "Иконка" : "Заливка"} strokeLabel="Обводка" text={texted ? text : undefined} />
+        {/* (Nothing but a fill to colour, a kanban's or a «Титул»'s icon: no switch, the colour picked shows it.) */}
+        {(strokable.length > 0 || texted) && <PaintSwitch paint={targets} pick={pick} fill={fill} stroke={strokable.length ? stroke : undefined} fillLabel="Заливка" strokeLabel="Обводка" text={texted ? text : undefined} />}
         <Swatches editor={editor} swatches={swatches} current={target === 'fill' ? fill : target === 'stroke' ? stroke : text} onPick={setColor}
           label={target === 'fill' ? 'Цвет' : target === 'stroke' ? 'Цвет обводки' : 'Цвет текста'} noneLabel={target === 'fill' ? 'Без заливки' : 'Без обводки'} />
         <OpacitySlider editor={editor} value={opacity} onChange={(v) => targets.forEach((t) => t !== 'down' && editor.setOpacity(t, v))} />
@@ -468,7 +469,7 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
         // A block of code's language ("Код", src/labs).
         // A header («Титул», src/labs/header.ts): its icon first, a click on it (as a double click there) its neighbours to take.
         hdIcon: items.length === 1 && items[0].hd ? (
-          <button className="ib" title="Другая иконка" aria-label="Другая иконка" onClick={() => openSwap(items[0].id)}><Glyph id={items[0].icon ?? 'kanban'} /></button>
+          <button className="ib" title="Другая иконка" aria-label="Другая иконка" onClick={() => openSwap(items[0].id)}><Glyph id={items[0].icon ?? 'kanban'} className="pi-glyph" /></button>
         ) : undefined,
         sepHd: items.length === 1 && items[0].hd ? <div className="sep" /> : undefined,
         lang: labs.codeBlock && items.length === 1 && items[0].code ? <CodeLang key={items[0].id} editor={editor} item={items[0]} /> : undefined,

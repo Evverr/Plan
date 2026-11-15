@@ -832,7 +832,7 @@ export const checks = {
     // Its colours: its icon's and how opaque, no outline nor text.
     await p.click(await p.at('.bar.panel [data-key="colors"] button, .bar.panel button[aria-label="Цвет"]'));
     await sleep(200);
-    expect(await p.ev(`[...document.querySelectorAll('.paint-target button')].map((b) => b.getAttribute('aria-label')).join() || 'none'`), 'its icon only').toBe('Иконка');
+    expect(await p.ev(`[...document.querySelectorAll('.paint-target button')].map((b) => b.getAttribute('aria-label')).join() || 'none'`), 'its icon only, no switch').toBe('none');
     await p.escape();
     await p.escape();
     await p.ev(`planx.editor.setSelection([])`);

@@ -19,12 +19,14 @@ export function drawIcon(ctx: CanvasRenderingContext2D, id: string, x: number, y
   const icon = ICON_BY_ID.get(id);
   if (!icon) return;
   ctx.save();
+  // (As seen through as it's drawn: each part's own opacity on top of that.)
+  const seen = ctx.globalAlpha;
   ctx.translate(x, y);
   ctx.scale(size / GRID, size / GRID);
   for (const p of icon.paths) {
     let path = pathCache.get(p.d);
     if (!path) { path = new Path2D(p.d); pathCache.set(p.d, path); }
-    ctx.globalAlpha = p.opacity ?? 1;
+    ctx.globalAlpha = seen * (p.opacity ?? 1);
     ctx.fillStyle = p.fill === 'current' ? color : p.fill;
     ctx.fill(path, p.evenodd ? 'evenodd' : 'nonzero');
   }
