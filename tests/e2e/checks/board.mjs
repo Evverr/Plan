@@ -922,6 +922,17 @@ export const checks = {
     expect(await p.ev(`JSON.stringify(planx.board.linkList().map((l) => [l.from, l.to]))`), 'dragged: a link').toBe('[["s","r"]]');
   },
 
+  async 'Cmd+Shift+F: the picked frame taken away, what it held left on the board, picked'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; b.add(e.newItem('frame', 200, 200, { id: 'f', w: 500, h: 400, text: 'Фрейм', members: ['s1', 's2'] }));
+      b.add(e.newItem('sticky', 250, 260, { id: 's1', w: 120, h: 120 })); b.add(e.newItem('sticky', 450, 260, { id: 's2', w: 120, h: 120 })); e.setSelection(['f']); })()`);
+    await sleep(200);
+    await p.key('f', 'KeyF', 70, 4 | 8);
+    await sleep(200);
+    expect(await p.ev(`[!!planx.board.get('f'), !!planx.board.get('s1') && !!planx.board.get('s2'), [...planx.editor.selection].sort().join()].join(' ')`), 'gone, what it held kept and picked').toBe('false true s1,s2');
+    await p.ev(`planx.editor.undo()`);
+    expect(await p.ev(`!!planx.board.get('f')`), 'undone: back').toBe(true);
+  },
+
   async 'a line led onto a timeline from off it goes to it; from what\'s on it, not to its edge (let go there, its end stays)'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('sticky', 100, 300, { id: 's', w: 160, h: 160 }));
       b.add(e.newItem('frame', 500, 200, { id: 'tl', w: 600, h: 380, tl: '2026-11-01', members: ['t'], text: 'Таймлайн' })); b.add(e.newItem('task', 540, 260, { id: 't', w: 200, h: 52 })); e.setSelection(['s']); })()`);

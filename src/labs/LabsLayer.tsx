@@ -95,7 +95,7 @@ export function Labs({ editor, conn, docked, tool }: { editor: Editor; conn: Con
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       const typing = !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
-      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF' && labOn('search')) { e.preventDefault(); setPop('search'); return; }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.code === 'KeyF' && labOn('search')) { e.preventDefault(); setPop('search'); return; }
       if (typing) return;
       if (e.code === 'KeyK' && !e.ctrlKey && !e.metaKey && !e.altKey && labOn('laser')) { setLaserOn((v) => !v); return; }
       if (e.key === 'Escape') { setLaserOn(false); presence.stopFollowing(); setPop(null); }

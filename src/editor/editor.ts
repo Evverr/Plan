@@ -1408,6 +1408,19 @@ export class Editor {
 
   /** «Титул в объектах» (src/labs/header.ts), «Отвязать от объекта»: each picked one its icon, title and
    *  description, each an item of its own where it was (the texts as boxes), picked. */
+  /** Cmd+Shift+F: the picked frames (plain ones: not a component, an instance, a kanban or a timeline) taken
+   *  away, what they held left where it is, on the board or in the frame round them, picked; one step to undo. */
+  unframe(): void {
+    const frames = this.selectedItems().filter((i) => i.type === 'frame' && !i.comp && !i.inst && !i.tl && !i.kb && !isLocked(i));
+    if (!frames.length) return;
+    const ids = new Set(frames.map((f) => f.id)), held = frames.flatMap((f) => membersOf(this.board, f, this.board.list())).filter((id) => !ids.has(id));
+    this.board.beginGesture();
+    this.board.remove([...ids]);
+    this.settle(held);
+    this.board.endGesture();
+    this.setSelection(held);
+  }
+
   detachHeaders(): void {
     // (Not one tied to a kanban or timeline: that stays one with it.)
     const heads = this.selectedItems().filter((i) => i.hd && !i.tie);
