@@ -15,7 +15,7 @@ import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoo
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
-import { HEADER_DESC, HEADER_GAP, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, pickedTies, withTies } from '../labs/header';
+import { HEADER_DESC, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, pickedTies, tidyTies, tiedAt, withTies } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -415,6 +415,8 @@ export class Editor {
     const doc = this.board.doc, tidy = (tr: { origin: unknown }) => {
       // (An undo here too: a kanban stretched back, its cards with it.)
       if ((tr.origin === LOCAL || tr.origin === this.board.undoManager) && !this.gesture && labOn('kanban')) queueMicrotask(() => tidyKanbans(this.board));
+      // A header tied to a kanban or timeline (src/labs/header.ts) over its corner, as it's moved too.
+      if (tr.origin === LOCAL || tr.origin === this.board.undoManager) queueMicrotask(() => tidyTies(this.board));
     };
     doc.on('afterTransaction', tidy);
     offs.push(() => doc.off('afterTransaction', tidy));
@@ -678,7 +680,7 @@ export class Editor {
     // (Over one, tied to it, with no description.)
     const look = { hd: true, text: over?.title ?? HEADER_NAME, ...(over ? { tie: over.item.id } : { desc: HEADER_DESC }), icon: over?.icon ?? 'kanban', color: over?.color ?? 'blue', sc: 'none' };
     const h = headerHeight({ id: '', type: 'rect', x: 0, y: 0, w: HEADER_W, h: 0, z: 0, ...look });
-    const x = over ? over.item.x : Math.round(c.x - HEADER_W / 2), y = over ? over.item.y - HEADER_GAP - h : Math.round(c.y - h / 2);
+    const at = over ? tiedAt({ h } as Item, over.item) : null, x = at ? at.x : Math.round(c.x - HEADER_W / 2), y = at ? at.y : Math.round(c.y - h / 2);
     const it = this.newItem('rect', x, y, { ...look, w: HEADER_W, h });
     this.addItem(it);
     if (over) return;
@@ -1719,8 +1721,9 @@ export class Editor {
     this.editingCell = it.type === 'table' ? cell ?? 0 : it.type === 'task' || it.hd ? cell ?? null : null;
     // An empty cell goes on as the last one was set ("Таблица помнит формат", src/labs).
     if (it.type === 'table' && labOn('tableLook')) carryCellFormat(this, it, this.editingCell!);
-    this.selection = new Set([id]);
-    this.presence?.setSelection([id]);
+    // (A header tied to a kanban or timeline, src/labs/header.ts, never picked: typed in, nothing is.)
+    this.selection = new Set(it.tie ? [] : [id]);
+    this.presence?.setSelection([...this.selection]);
     this.emit();
     this.requestRender();
   }

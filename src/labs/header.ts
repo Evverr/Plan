@@ -1,4 +1,5 @@
 import type { Item } from '../model/types';
+import type { Board } from '../model/board';
 import type { Point, Rect } from '../canvas/geometry';
 import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
 
@@ -39,6 +40,25 @@ export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect;
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
 /** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
 export const headerFit = (it: Item, patch: Partial<Item> = {}): number => Math.max(headerHeight(it, patch), it.hdH ? it.h : 0);
+
+/** Where a header tied to `t` stands: over its top left corner (a timeline's, 1 further right and up). */
+export function tiedAt(h: Item, t: Item): { x: number; y: number } {
+  const k = t.tl ? 1 : 0;
+  return { x: t.x + k, y: t.y - HEADER_GAP - h.h - k };
+}
+
+/** Each header tied to a kanban or timeline put back over its corner, however that's moved, stretched or
+ *  aligned (for good: undone, it's put back again). */
+export function tidyTies(board: Board): void {
+  const items = board.list(), moves = new Map<string, { x: number; y: number }>();
+  for (const h of items) {
+    const t = h.tie ? board.get(h.tie) : undefined;
+    if (!t) continue;
+    const at = tiedAt(h, t);
+    if (at.x !== h.x || at.y !== h.y) moves.set(h.id, at);
+  }
+  if (moves.size) board.forGood(() => moves.forEach((p, id) => board.updateForGood(id, p)));
+}
 
 /** These ids, a header tied to a kanban or timeline among them (`tie`) for that: it's never picked. */
 export function pickedTies(items: Item[], ids: Set<string>): Set<string> {

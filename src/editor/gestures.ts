@@ -330,7 +330,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       g.to = w;
       // (Not a timeline: a line led over one goes to what's on it, or stays where it's let go. Nor the kanban
       // it's led out of a card of: its own.)
-      g.target = t && t.id !== g.from && !t.tl && !ownKanban(t, g.from) ? t.id : null;
+      // (Nor a header tied to a kanban or timeline, src/labs/header.ts.)
+      g.target = t && t.id !== g.from && !t.tl && !t.tie && !ownKanban(t, g.from) ? t.id : null;
       // (The panel over what it's led out of fading out meanwhile, as when it's dragged.)
       ed.setLinking(true);
       ed.requestRender();
@@ -368,7 +369,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       if (t?.id !== held && far) g.away = true;
       g.to = w;
       // (On its other end's item too: it turns round, the arrow going into that.)
-      g.target = t && !t.tl && (g.away || far) && (t.id !== other || t.id !== held) && !ownKanban(t, other) ? t.id : null;
+      g.target = t && !t.tl && !t.tie && (g.away || far) && (t.id !== other || t.id !== held) && !ownKanban(t, other) ? t.id : null;
       ed.requestRender();
       return;
     }

@@ -39,7 +39,8 @@ export function resizedFrom(it: Turned, w: number, h: number, dl: number, dt: nu
 }
 
 /** Solid, what's under it hidden there: a task, a sticker, a picture, a table, a shape filled in. */
-export const solid = (o: Item): boolean => !o.rot
+// (Not a header, «Титул», src/labs/header.ts: its colour is its icon's.)
+export const solid = (o: Item): boolean => !o.rot && !o.hd
   && (o.type === 'task' || o.type === 'sticky' || o.type === 'image' || o.type === 'table' || ((o.type === 'rect' || o.type === 'ellipse') && o.color !== 'none'));
 
 /** Whether a point of `it` is under something solid over it (`items` bottom to top): its handle there,
