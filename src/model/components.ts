@@ -25,7 +25,7 @@ export const COMPONENT_COLOR = '#E5484D';
 
 /** The hollow diamond before a picked instance's title, at the top left of its contents `b`, that
  *  leads to its component: where it takes the pointer, a little round it. */
-export const instanceGlyph = (b: { x: number; y: number }) => ({ x: b.x - 6, y: b.y - 28, w: 26, h: 28 });
+export const instanceGlyph = (b: { x: number; y: number }) => ({ x: b.x - 6, y: b.y - 29, w: 26, h: 28 });
 
 /** The "+" right of a picked component that makes an instance of it, level with its top (above its blue dot
  *  for links), 10 off its side: its middle and radius, the same size on screen whatever the zoom. */

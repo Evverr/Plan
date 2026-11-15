@@ -15,10 +15,10 @@ const fixture = (p) => p.ev(`(() => {
 const selected = (p) => p.ev(`[...planx.editor.selection].join(',')`);
 
 /** The component icon before an instance's title (contents at at.x + 40, at.y + 40; the icon 18 across
- *  from 2 left of them and 19 above): 'solid' when it's full under its top corner, 'outline' when only
+ *  from 2 left of them and 20 above): 'solid' when it's full under its top corner, 'outline' when only
  *  its middle is (the solid one has a hole there), or 'none'. */
 const glyph = (p, at) => p.ev(`(() => { const e = planx.editor; e.render(); const ctx = e.canvas.getContext('2d'), k = e.canvas.width / e.canvas.clientWidth;
-  const red = (gx, gy) => { const s = e.toScreen({ x: ${at.x} + 38 + gx * 0.75, y: ${at.y} + 21 + gy * 0.75 }), d = ctx.getImageData(Math.round(s.x * k), Math.round(s.y * k), 1, 1).data; return d[0] > 180 && d[1] < 150; };
+  const red = (gx, gy) => { const s = e.toScreen({ x: ${at.x} + 38 + gx * 0.75, y: ${at.y} + 20 + gy * 0.75 }), d = ctx.getImageData(Math.round(s.x * k), Math.round(s.y * k), 1, 1).data; return d[0] > 180 && d[1] < 150; };
   return red(12, 7.4) ? 'solid' : red(12, 12) ? 'outline' : 'none'; })()`);
 
 export const checks = {
@@ -122,7 +122,7 @@ export const checks = {
       expect(drawing.text.map((t) => t.t).join(' '), 'the title while picked').toBe('Карточка');
       expect(await glyph(p, at), 'after the component icon, solid: its component\'s first instance').toBe('solid');
       expect(drawing.text[0].x, 'title after the icon, flush with the contents on the left').toBe(at.x + 61);
-      expect(drawing.text[0].y, 'title 2 above the contents').toBe(at.y + 38);
+      expect(drawing.text[0].y, 'title 3 above the contents').toBe(at.y + 37);
       expect(drawing.strokes, 'no red instance frame').toBe(0);
     }
     await p.ev('planx.editor.setSelection([])');

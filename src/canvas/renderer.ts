@@ -586,8 +586,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         ctx.fillStyle = COMPONENT_COLOR;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        // 2 above the contents; the component icon solid for its component's first instance, and under the pointer.
-        const y = b.y - 2, gap = GLYPH + 3, comp = s.get(it.inst);
+        // 3 above the contents; the component icon solid for its component's first instance, and under the pointer.
+        const y = b.y - 3, gap = GLYPH + 3, comp = s.get(it.inst);
         const first = !!comp && firstInstance(comp, s.items)?.id === it.id;
         drawIcon(ctx, first || s.hotPlus === `glyph:${it.id}` ? 'component-solid' : 'component', b.x - 2, y - GLYPH + 1, GLYPH, COMPONENT_COLOR);
         // (Its name being typed in, «Переименовать»: the field over it instead.)
