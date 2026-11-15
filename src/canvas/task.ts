@@ -116,8 +116,8 @@ export function titleLine(text: string, w: number): string {
 export function taskLayout(it: Item, w = it.w): TaskLayout {
   // The title on one line (see titleLine), or up to three, the header taller by as many more (the ring
   // and the arrow by its first).
-  // (Its "…" up to the arrow's box, a letter more than that 10 short of it, narrowest.)
-  const titleW = Math.max(20, w - TITLE_X - 30), lh = lineH(TITLE_FS), n = titleLines(it, titleW).length, th = lh * n;
+  // (Its "…" 4 short of the arrow's box, a letter more than that 14 short of it, narrowest.)
+  const titleW = Math.max(20, w - TITLE_X - 34), lh = lineH(TITLE_FS), n = titleLines(it, titleW).length, th = lh * n;
   const top = MID - lh / 2, head = Math.round(52 + lh * (n - 1));
   const out: TaskLayout = { w, h: head, head, title: { x: TITLE_X, y: top, w: titleW, h: th } };
   // (Its description short of its menu, at the top right of what's under its header.)

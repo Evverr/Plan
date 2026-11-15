@@ -91,6 +91,13 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
   const top = field ? field.y : folded ? item.y + (item.h - 26) / 2 : isFrame ? item.y - 30 : item.y + padY;
   const p = editor.toScreen({ x: field ? field.x : item.x + (folded ? FOLD_PAD : isFrame ? 0 : pad), y: top });
 
+  /** A field as tall as what's typed in it takes (a task's title wrapping, «Заголовок задачи в три строки»:
+   *  three lines at most). */
+  const fieldHeight = (v: string): number => {
+    const tall = textBlockHeight(v, width, fs, { weight: field?.weight, family: desc?.family ?? field?.family ?? TASK_FONT, italic: desc?.italic });
+    return sub ? Math.min(tall, fs * LINE_HEIGHT * 3) : tall;
+  };
+
   // Centre the text vertically in stickers and shapes, like the canvas does; and turn it with a
   // turned item, about the item's centre.
   useLayoutEffect(() => {
@@ -98,7 +105,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
     if (!el) return;
     let top = 0;
     if (code) el.style.height = `${Math.max(0, item.h - CODE_TOP - CODE_BOTTOM)}px`;
-    else if (field) el.style.height = `${sub ? field.h : textBlockHeight(el.value, width, fs, { weight: field.weight, family: desc?.family ?? field.family ?? TASK_FONT, italic: desc?.italic })}px`;
+    else if (field) el.style.height = `${sub && oneLineTitle(item) ? field.h : fieldHeight(el.value)}px`;
     else if (item.type !== 'text' && !isFrame) {
       // As tall as the canvas lays the lines out (exactly, not rounded), so they land where it drew them;
       // in a sticker or a shape, at the size it comes out at there (smaller as it fills it).
@@ -173,7 +180,7 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
         if (code) { setLiveCode(id, e.currentTarget.value); editor.previewText(id, e.currentTarget.value); editor.requestRender(); return; }
         if (item.type === 'text' || item.type === 'task' || item.type === 'mind' || item.hd) editor.previewText(id, e.currentTarget.value);
         if (field) {
-          if (!sub) e.currentTarget.style.height = `${textBlockHeight(e.currentTarget.value, width, fs, { weight: field.weight, family: desc?.family ?? field.family ?? TASK_FONT, italic: desc?.italic })}px`;
+          if (!sub || !oneLineTitle(item)) e.currentTarget.style.height = `${fieldHeight(e.currentTarget.value)}px`;
         } else if (item.type !== 'text' && !isFrame) {
           const el = e.currentTarget, size = boxed ? fittedSize(withList(el.value, item.ls), width, item.h - padY * 2, fs, fontOf(item)) : fs;
           el.style.fontSize = `${size}px`;
