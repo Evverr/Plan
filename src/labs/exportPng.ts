@@ -14,7 +14,7 @@ const PAD = 32, MAX_SIDE = 8192, MAX_PIXELS = 40e6;
 /** What goes in the picture: everything in sight, or the selection with what its frames hold. */
 export function exportItems(ed: Editor, what: ExportOptions['what']): { items: Item[]; links: Link[] } {
   const shown = ed.shown();
-  const ids = what === 'all' ? new Set(shown.map((i) => i.id)) : new Set(ed.carried(ed.selectedItems()).keys());
+  const ids = what === 'all' ? new Set(shown.map((i) => i.id)) : new Set([...ed.carried(ed.selectedItems()).keys(), ...ed.pileOf(ed.selectedItems()).map((i) => i.id)]);
   const items = shown.filter((i) => ids.has(i.id));
   return { items, links: ed.shownLinks().filter((l) => ids.has(l.from) && ids.has(l.to)) };
 }

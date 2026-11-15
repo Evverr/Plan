@@ -19,7 +19,7 @@ describe('frames in the stack', () => {
     expect(order([item('t', 1), item('s', 2), outer, inner])).toEqual(['outer', 'inner', 't', 's']);
   });
 
-  it('a frame already under what it holds stays where it is', () => {
-    expect(order([item('f', 0, { type: 'frame', members: ['a'] }), item('x', 1), item('a', 2)])).toEqual(['f', 'x', 'a']);
+  it('a frame and what it holds one pile («Кучки»): what it doesn\'t hold never between them', () => {
+    expect(order([item('f', 0, { type: 'frame', members: ['a'] }), item('x', 1), item('a', 2)])).toEqual(['f', 'a', 'x']);
   });
 });

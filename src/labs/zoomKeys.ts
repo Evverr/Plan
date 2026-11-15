@@ -16,7 +16,8 @@ export function zoomKey(ed: Editor, e: KeyboardEvent): boolean {
     flyTo(ed, { z: 1, x: w / 2 - cx, y: h / 2 - cy });
     return true;
   }
-  const b = boundsOf(e.code === 'Digit1' ? ed.shown() : ed.selectedItems());
+  // (What's picked with all its piles, «Кучки», src/labs.)
+  const b = boundsOf(e.code === 'Digit1' ? ed.shown() : ed.pileOf(ed.selectedItems()));
   if (!b) return true;
   const c = ed.canvas, free = freeArea(c?.clientWidth ?? innerWidth, c?.clientHeight ?? innerHeight, c?.getBoundingClientRect() ?? { left: 0, top: 0 });
   flyTo(ed, e.code === 'Digit1' ? fittedTo(b, free, ed.minZoom()) : fittedTo(b, free, ed.minZoom(), 0.1, MAX_Z));

@@ -13,7 +13,7 @@ import { addChild, descendants, foldedAway, folding, makeRoom, mindDepth, mindRo
 import { readJSON, writeJSON } from '../storage';
 import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoomedAt } from './camera';
 import { copiesOf } from './copies';
-import { carried, hiddenIn, linksIn, membersOf, peekView, settled, stacked, unseen } from './frames';
+import { carried, hiddenIn, linksIn, membersOf, peekView, pileHidden, pileParents, pileOrder, settled, stacked, unseen } from './frames';
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
 import { HEADER_DESC, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, pickedTies, tidyTies, tiedAt, withTies } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
@@ -422,7 +422,8 @@ export class Editor {
     offs.push(() => doc.off('afterTransaction', tidy));
     offs.push(onEmojiLoad(() => this.requestRender()));
     // (Tasks as tall as their titles then come out, «Заголовок задачи в три строки».)
-    offs.push(subscribeLabs(() => { this.refitTasks(); this.requestRender(); }));
+    // (What's in sight worked out anew, «Кучки» turned on or off.)
+    offs.push(subscribeLabs(() => { this.sight = null; this.refitTasks(); this.requestRender(); }));
     offs.push(onPictureLoad(() => this.requestRender()));
     if (this.presence) offs.push(this.presence.subscribe(() => this.requestRender()));
     document.fonts?.ready.then(() => { clearTextCache(); this.requestRender(); });
@@ -1097,7 +1098,8 @@ export class Editor {
   deleteSelection(sure = false): void {
     // Locked items stay (and stay selected), and what's in a locked frame; what's in an instance goes only with it.
     // (A header and what it's tied to, src/labs/header.ts, only together.)
-    const ids = new Set([...withTies(this.board.list(), this.selection)].filter((id) => !heldInPlace(this.board.get(id), this.board.list()) && !this.board.get(id)?.host));
+    // (With all a frame, kanban or timeline holds, «Кучки», src/labs.)
+    const ids = new Set([...this.selection, ...this.pileOf(this.selectedItems()).map((i) => i.id)].filter((id) => !heldInPlace(this.board.get(id), this.board.list()) && !this.board.get(id)?.host));
     if (!ids.size) return;
     // A component's last instance going takes the component with it, once that's been said yes to.
     const all = this.board.list();
@@ -1472,6 +1474,7 @@ export class Editor {
   }
 
   shiftZ(dir: 1 | -1): void {
+    if (labOn('piles')) { this.shiftPiles(dir); return; }
     const list = this.board.list().filter((i) => !i.host), picked = new Set(this.selectedItems().map((i) => i.id));
     if (!picked.size) return;
     const z = list.map((i) => i.z), at = [...list];
@@ -1493,15 +1496,49 @@ export class Editor {
     this.board.transact(() => at.forEach((it, k) => { if (it.z !== z[k]) this.board.update(it.id, { z: z[k] }); }));
   }
 
+  /** These bottom to top, as drawn. */
+  private ranked(items: Item[]): Item[] {
+    const at = new Map(stacked(this.board, this.board.list()).map((it, i) => [it.id, i]));
+    return [...items].sort((a, b) => (at.get(a.id) ?? 0) - (at.get(b.id) ?? 0));
+  }
+
+  /** «Кучки» (src/labs): shiftZ among what's in the same pile (or none), each with all its pile. */
+  private shiftPiles(dir: 1 | -1): void {
+    const list = this.board.list().filter((i) => !i.host), parents = pileParents(this.board, list), picked = new Set(this.selectedItems().map((i) => i.id));
+    if (!picked.size) return;
+    const kids = new Map<string | null, Item[]>();
+    for (const it of pileOrder(this.board, list, parents)) { const p = parents.get(it.id) ?? null; kids.set(p, [...(kids.get(p) ?? []), it]); }
+    const kept = (i: Item) => i.type === 'task' && !!i.tv;
+    const meet = (a: Item, b: Item) => { const p = boxOf(a), q = boxOf(b); return p.x < q.x + q.w && q.x < p.x + p.w && p.y < q.y + q.h && q.y < p.y + p.h; };
+    for (const at of kids.values()) {
+      for (const it of dir > 0 ? [...at].reverse() : [...at]) {
+        if (!picked.has(it.id)) continue;
+        const i = at.indexOf(it);
+        let j = i + dir;
+        while (j >= 0 && j < at.length && (picked.has(at[j].id) || !meet(it, at[j]))) j += dir;
+        if (j < 0 || j >= at.length) { j = i + dir; while (j >= 0 && j < at.length && picked.has(at[j].id)) j += dir; }
+        if (j < 0 || j >= at.length || kept(at[j]) !== kept(it)) continue;
+        at.splice(i, 1);
+        at.splice(j, 0, it);
+      }
+    }
+    // Their places as they're now drawn, each pile together, given the same heights as before.
+    const out: Item[] = [], put = (p: string | null) => (kids.get(p) ?? []).forEach((it) => { out.push(it); put(it.id); });
+    put(null);
+    const z = list.map((i) => i.z).sort((a, b) => a - b);
+    this.board.transact(() => out.forEach((it, k) => { if (it.z !== z[k]) this.board.update(it.id, { z: z[k] }); }));
+  }
+
   bringToFront(): void {
     let z = this.board.maxZ();
-    const items = this.selectedItems().sort((a, b) => a.z - b.z);
+    // (Each with all its pile, «Кучки», src/labs, as they're drawn.)
+    const items = this.ranked(this.pileOf(this.selectedItems()));
     this.board.transact(() => items.forEach((it) => this.board.update(it.id, { z: ++z })));
   }
 
   sendToBack(): void {
     let z = this.board.minZ();
-    const items = this.selectedItems().sort((a, b) => b.z - a.z);
+    const items = this.ranked(this.pileOf(this.selectedItems())).reverse();
     this.board.transact(() => items.forEach((it) => this.board.update(it.id, { z: --z })));
   }
 
@@ -1520,7 +1557,8 @@ export class Editor {
   /** What's picked, with the links among them, as copied. */
   private copyData(): string | null {
     // (A header and what it's tied to, src/labs/header.ts, only together.)
-    const items = this.withCopies([...withTies(this.board.list(), this.selection)].map((id) => this.board.get(id)).filter((i): i is Item => !!i));
+    // (With all a frame, kanban or timeline holds too, «Кучки», src/labs.)
+    const items = this.withCopies(this.pileOf(this.selectedItems()));
     if (!items.length) return null;
     const ids = new Set(items.map((i) => i.id));
     return JSON.stringify({ items, links: this.board.linkList().filter((l) => ids.has(l.from) && ids.has(l.to)) });
@@ -1927,8 +1965,10 @@ export class Editor {
         folded.set(i.id, new Map([...foldedAway(i, items, get)].map(([way, ids]) => [way, ids.length])));
       }
       // (What can't be seen isn't in sight either: not picked, by a click or a box, nor shown all of.)
-      const shown = stacked(this.board, items.filter((i) => !hidden.has(i.id) && !unseen(i)));
-      const links = linksIn(this.board, items, hidden);
+      // (Nor what a hidden pile holds, «Кучки», src/labs, its links neither.)
+      const piled = pileHidden(items, (id) => this.board.get(id));
+      const shown = stacked(this.board, items.filter((i) => !hidden.has(i.id) && !piled.has(i.id) && !unseen(i)));
+      const links = linksIn(this.board, items, hidden).filter((l) => !piled.has(l.from) && !piled.has(l.to));
       this.sight = { version, lv, hidden, folded, shown, links: layered.size ? links.filter((l) => !layered.has(l.from) && !layered.has(l.to)) : links };
     }
     return this.sight;
@@ -1976,6 +2016,13 @@ export class Editor {
   /** Shared: these items with what the frames among them hold and the mind map branches, each with
    *  where it is now. */
   carried(sel: Item[]): Map<string, Point> { return carried(this.board, sel, this.board.list()); }
+
+  /** These with their piles («Кучки», src/labs): all the frames, kanbans and timelines among them hold,
+   *  and the headers tied to them (those always). */
+  pileOf(items: Item[]): Item[] {
+    const ids = labOn('piles') ? new Set(this.carried(items).keys()) : new Set(items.map((i) => i.id));
+    return [...withTies(this.board.list(), ids)].map((id) => this.board.get(id)).filter((i): i is Item => !!i);
+  }
 
   /** Shared: the selected items plus what the selected frames hold (but those locked in place). */
   dragSet(items: Item[]): Map<string, Point> {

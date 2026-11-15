@@ -1,6 +1,6 @@
 import type { Editor } from '../editor/editor';
 import { boxOf } from '../canvas/geometry';
-import { isLocked } from './labs';
+import { isLocked, labOn } from './labs';
 import { noteAlign } from './tidy';
 
 /** How the selected line up: by their left sides, middles or right sides, or their tops, middles or bottoms. */
@@ -19,7 +19,10 @@ export function alignItems(ed: Editor, to: AlignTo): void {
     const b = boxes[i];
     const dx = to === 'left' ? x1 - b.x : to === 'right' ? x2 - b.x - b.w : to === 'center' ? (x1 + x2) / 2 - b.x - b.w / 2 : 0;
     const dy = to === 'top' ? y1 - b.y : to === 'bottom' ? y2 - b.y - b.h : to === 'middle' ? (y1 + y2) / 2 - b.y - b.h / 2 : 0;
-    if (dx || dy) ed.board.update(it.id, { x: Math.round(it.x + dx), y: Math.round(it.y + dy) });
+    if (!dx && !dy) return;
+    // (With all it holds, «Кучки», src/labs: a frame, kanban or timeline with what's on it.)
+    if (labOn('piles')) { for (const [id, o] of ed.carried([it])) if (!isLocked(ed.board.get(id))) ed.board.update(id, { x: Math.round(o.x + dx), y: Math.round(o.y + dy) }); }
+    else ed.board.update(it.id, { x: Math.round(it.x + dx), y: Math.round(it.y + dy) });
   }));
   // Laid out by «Авторасположение»: kept lined up so as its gaps change.
   noteAlign(ed, to);

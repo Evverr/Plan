@@ -882,6 +882,40 @@ export const checks = {
     expect(await p.ev(`(() => { const f = planx.board.get('${k.id}'), t = planx.board.get([...planx.editor.selection][0]); return f.members.includes(t.id) && t.x > planx.board.get('t').x; })()`), 'one in the next column').toBe(true);
   },
 
+  async '"Кучки": a kanban with its cards and header one pile: drawn together, a layer down all of it, hidden, aligned, copied and deleted whole'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addKanban({ x: 900, y: 500 }); const k = b.list().find((i) => i.kb);
+      b.add(e.newItem('task', k.x + 30, k.y + 80, { id: 'c', text: 'Карточка' })); e.settle(['c']);
+      b.add(e.newItem('sticky', k.x + 200, k.y + 100, { id: 's', w: 160, h: 160 })); b.update('c', { z: b.maxZ() + 1 }); e.setSelection([]); })()`);
+    await sleep(300);
+    const order = () => p.ev(`(() => { const ids = planx.editor.shown().map((i) => i.id), k = planx.board.list().find((i) => i.kb && !i.dup); return { k: ids.indexOf(k.id), c: ids.indexOf('c'), s: ids.indexOf('s') }; })()`);
+    let o = await order();
+    expect(o.c === o.k + 1 || o.c > o.k, 'the card in it').toBe(true);
+    expect(o.s > o.c, 'the sticker over all of it, not between').toBe(true);
+    await p.ev(`(() => { planx.editor.setSelection(['s']); planx.editor.shiftZ(-1); })()`);
+    o = await order();
+    expect(o.s < o.k, 'a layer down: under all of it').toBe(true);
+    const kid = await p.ev(`planx.board.list().find((i) => i.kb).id`);
+    await p.ev(`(() => { const e = planx.editor; e.setSelection(['${kid}']); e.setHidden(true); })()`);
+    expect(await p.ev(`planx.editor.shown().some((i) => i.id === 'c' || i.tie === '${kid}')`), 'hidden: its card and header too').toBe(false);
+    await p.ev(`(() => { const e = planx.editor; e.setHidden(false); e.setSelection(['${kid}', 's']); })()`);
+    const before = await p.ev(`planx.board.get('c').x - planx.board.get('${kid}').x`);
+    await p.ev(`(async () => { (await import('/src/labs/align.ts')).alignItems(planx.editor, 'right'); })()`);
+    await sleep(300);
+    expect(await p.ev(`planx.board.get('c').x - planx.board.get('${kid}').x`), 'aligned: its card along').toBe(before);
+    // Boxed whole: what's in it picked, not it.
+    await p.ev(`(() => { const e = planx.editor, k = planx.board.get('${kid}'); e.cam = { x: 100 - k.x * 0.5, y: 150 - k.y * 0.5, z: 0.5 }; e.camChanged(); e.setSelection([]); })()`);
+    await sleep(200);
+    const kb = await p.ev(`(() => { const k = planx.board.get('${kid}'); return [k.w * 0.5, k.h * 0.5]; })()`);
+    await p.drag([90, 140], [100 + kb[0] + 10, 150 + kb[1] + 10]);
+    expect(await p.ev(`[planx.editor.selection.has('c'), planx.editor.selection.has('${kid}')].join()`), 'boxed: its card, not it').toBe('true,false');
+    await p.ev(`(() => { const e = planx.editor; e.setSelection(['${kid}']); e.duplicate(); })()`);
+    await sleep(300);
+    expect(await p.ev(`planx.board.list().filter((i) => i.type === 'task').length`), 'copied: its card too').toBe(2);
+    await p.ev(`(() => { const e = planx.editor; e.setSelection(['${kid}']); e.deleteSelection(); })()`);
+    await sleep(200);
+    expect(await p.ev(`[!!planx.board.get('c'), planx.board.list().some((i) => i.tie === '${kid}')].join()`), 'deleted: its card and header too').toBe('false,false');
+  },
+
   async '"Заголовок задачи в три строки": a long title wraps, three lines at most, the header taller; «Заголовок в одну строку», one as before'(p) {
     await p.ev(`(() => { const e = planx.editor, long = 'Очень длинный заголовок задачи, который переносится на несколько строк и даже больше чем на три строки вот так';
       planx.board.add(e.newItem('task', 100, 100, { id: 'a', text: long })); planx.board.add(e.newItem('task', 100, 300, { id: 'b', text: 'Короткая' })); planx.board.add(e.newItem('task', 500, 300, { id: 'c', text: long, t1: true })); })()`);

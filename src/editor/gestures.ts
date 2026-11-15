@@ -418,6 +418,16 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         const up = !any && it.type === 'mind' && it.parent ? board.get(it.parent) : undefined;
         if (inside(it) || (up && branchCrosses(up, it, rect))) next.add(it.id);
       }
+      // («Кучки», src/labs: a header tied to one never by a box; a frame, kanban or timeline not when it takes
+      // in what's in it, that alone: its content's easily boxed so.)
+      if (labOn('piles')) {
+        for (const id of [...next]) {
+          const it = board.get(id);
+          if (g.base.has(id) || !it) continue;
+          if (it.tie) next.delete(id);
+          else if (it.type === 'frame' && !it.inst && !it.comp && [...ed.carried([it]).keys()].some((k) => k !== id && next.has(k) && !board.get(k)?.host)) next.delete(id);
+        }
+      }
       // And the links it runs into.
       for (const l of ed.shownLinks()) {
         const shape = linkShape(l, (id) => board.get(id));

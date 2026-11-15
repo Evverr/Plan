@@ -5,6 +5,7 @@ import { boxOf, center, nearestSide, pointInRect, rectContains, toLocal } from '
 import type { Scene, Theme } from '../canvas/renderer';
 import { frameButtons, type FrameButton } from '../model/frame';
 import { descendants, foldedAway } from '../model/mind';
+import { labOn } from '../labs/labs';
 
 /** What a frame holds: what was put in it, or, in a frame from before frames kept a list,
  *  everything lying inside. */
@@ -19,6 +20,7 @@ export function membersOf(board: Board, f: Item, items: Item[]): string[] {
  * frame put round things or things put into it never covers them.
  */
 export function stacked(board: Board, items: Item[]): Item[] {
+  if (labOn('piles')) return pileOrder(board, items);
   const frames = items.filter((i) => i.type === 'frame');
   if (!frames.length) return items;
   const rank = new Map(items.map((it, i) => [it.id, i])), held = new Map(frames.map((f) => [f.id, membersOf(board, f, items)]));
@@ -35,6 +37,66 @@ export function stacked(board: Board, items: Item[]): Item[] {
     return memo.get(id)!;
   };
   return [...items].sort((a, b) => place(a.id) - place(b.id));
+}
+
+/**
+ * «Кучки» (src/labs): a frame (a kanban, a timeline) with all it holds and the header tied to it, one
+ * pile: what's in it its own (the smallest frame it's in, a header its kanban's or timeline's; an
+ * opened task none, staying over everything). `items` bottom to top.
+ */
+export function pileParents(board: Board, items: Item[]): Map<string, string> {
+  const ids = new Set(items.map((i) => i.id)), out = new Map<string, string>(), area = (f: Item) => f.w * f.h;
+  for (const f of items) {
+    if (f.type !== 'frame') continue;
+    for (const id of membersOf(board, f, items)) {
+      const was = out.get(id), it = board.get(id);
+      if (id === f.id || !ids.has(id) || (it?.type === 'task' && it.tv)) continue;
+      if (!was || area(f) < area(board.get(was)!)) out.set(id, f.id);
+    }
+  }
+  for (const h of items) if (h.tie && ids.has(h.tie)) out.set(h.id, h.tie);
+  // (Never round in a ring: one that would be is let go.)
+  for (const id of [...out.keys()]) {
+    const seen = new Set([id]);
+    for (let p = out.get(id); p; p = out.get(p)) { if (seen.has(p)) { out.delete(id); break; } seen.add(p); }
+  }
+  return out;
+}
+
+/** The items as piles are drawn (and picked, from the top): each frame, kanban or timeline with all its pile
+ *  right over it, together where the lowest of it is among the rest (see pileParents). */
+export function pileOrder(board: Board, items: Item[], parents = pileParents(board, items)): Item[] {
+  if (!parents.size) return items;
+  const kids = new Map<string | null, Item[]>(), rank = new Map(items.map((it, i) => [it.id, i])), memo = new Map<string, number>();
+  for (const it of items) { const p = parents.get(it.id) ?? null; kids.set(p, [...(kids.get(p) ?? []), it]); }
+  const place = (it: Item): number => {
+    if (!memo.has(it.id)) memo.set(it.id, (kids.get(it.id) ?? []).reduce((r, k) => Math.min(r, place(k)), rank.get(it.id)!));
+    return memo.get(it.id)!;
+  };
+  const out: Item[] = [];
+  const put = (list: Item[]) => [...list].sort((a, b) => place(a) - place(b) || rank.get(a.id)! - rank.get(b.id)!).forEach((it) => { out.push(it); put(kids.get(it.id) ?? []); });
+  put(kids.get(null) ?? []);
+  return out;
+}
+
+/** What's in hidden piles («Скрыть объект» on a frame, kanban or timeline, «Кучки», src/labs): all they hold
+ *  and their headers, not drawn nor picked (the frame itself picked as ever). */
+export function pileHidden(items: Item[], get: (id: string) => Item | undefined): Set<string> {
+  const out = new Set<string>();
+  if (!labOn('piles')) return out;
+  const hid = items.filter((i) => i.hid && (i.type === 'frame' || items.some((h) => h.tie === i.id)));
+  const stack = [...hid];
+  while (stack.length) {
+    const f = stack.pop()!;
+    const held = [...(f.members ?? []), ...items.filter((h) => h.tie === f.id).map((h) => h.id)];
+    for (const id of held) {
+      const it = get(id);
+      if (!it || out.has(id)) continue;
+      out.add(id);
+      if (it.type === 'frame') stack.push(it);
+    }
+  }
+  return out;
 }
 
 /** These items, what the frames among them hold (frames in frames too) and the branches of mind
