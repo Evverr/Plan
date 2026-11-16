@@ -54,7 +54,8 @@ export const onBottomLeft = (ed: Editor, it: Item, w: Point): boolean => onTopLe
 export function sideAt(ed: Editor, it: Item, w: Point): 'w' | 'h' | 'l' | 't' | null {
   if (it.fold || it.host || ed.editingId || ['mind', 'icon', 'emoji', 'ink', 'audio', 'image'].includes(it.type)) return null;
   // Near a ball on the frame («Полукруги на рамке»), it's the ball's, not the side's.
-  if (tabsFor(it, ed.editingId) && nearTab(ed, it, w)) return null;
+  // (Not a timeline's with Cmd held, «Масштаб таймлайна»: none then.)
+  if (tabsFor(it, ed.editingId) && !ed.scalesTimeline(it) && nearTab(ed, it, w)) return null;
   const hug = hugsContents(it), b = hug ? instanceBounds(it, ed.board.list()) : it, p = hug ? w : toLocal(it, w);
   const near = ed.reach(4), corner = ed.reach(10);
   const along = (v: number, from: number, size: number) => v >= from + corner && v <= from + size - corner;
@@ -297,7 +298,7 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   const single = isLocked(picked) ? undefined : picked;
   // («Полукруги на рамке», src/labs: its half circles, before anything else there but its resize handle:
   // on that, they keep still.)
-  const balls = tabsFor(single, ed.editingId) && !onHandle(ed, single, w);
+  const balls = tabsFor(single, ed.editingId) && !ed.scalesTimeline(single) && !onHandle(ed, single, w);
   const tab = balls ? tabAt(ed, single!, w) : null;
   if (tab !== ed.hotTab) { ed.hotTab = tab; ed.requestRender(); }
   const aims = tabsFor(single, ed.editingId) ? (balls ? tabAims(ed, single, w) : tabAims(ed, single, null)) : null;

@@ -1699,7 +1699,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       // (Under what lies over it, as its frame: all of it at its own height.)
       ctx.save();
       hiddenUnder(ctx, it, s, view);
-      if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, pick, PICK_FRAME, s.tabAims ?? null);
+      // (Orange, its step to be changed: none.)
+      if (tabsFor(it, s.editingId ?? null) && s.scaling !== id) drawTabs(ctx, it, cam.z, pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
     }
   }

@@ -83,11 +83,12 @@ export const halfDay = (tl: Item, x: number): number => {
 
 /** «Создать задачу» on it («Создать задачу на таймлайне», src/labs), while nothing's on it yet (`get`:
  *  what it holds): as big as a task, in whole days, from today (its first day, today not on it), under its
- *  days' numbers. */
+ *  days' numbers; on it all the same: as many days back as it'd run past its end, narrower if it's narrower. */
 export function tlNewCardBox(it: Item, get: (id: string) => Item | undefined): { x: number; y: number; w: number; h: number } | null {
   if ((it.members ?? []).some((id) => get(id))) return null;
-  const day = dayOf(it), now = new Date(), i = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - tlStart(it).getTime()) / 864e5);
-  return { x: it.x + TL_PAD + (i >= 0 && i < tlDays(it) ? i : 0) * day, y: it.y + linesY(it.tfs ?? 1) + 16, w: Math.max(1, Math.round(293 / day)) * day, h: 52 };
+  const day = dayOf(it), days = tlDays(it), now = new Date(), i = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - tlStart(it).getTime()) / 864e5);
+  const n = Math.min(days, Math.max(1, Math.round(293 / day))), at = Math.min(i >= 0 && i < days ? i : 0, days - n);
+  return { x: it.x + TL_PAD + at * day, y: it.y + linesY(it.tfs ?? 1) + 16, w: n * day, h: 52 };
 }
 
 export function drawTimeline(ctx: CanvasRenderingContext2D, it: Item, colors: { card: string; ink: string }, z: number): void {

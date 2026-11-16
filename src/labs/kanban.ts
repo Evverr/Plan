@@ -182,7 +182,8 @@ export function drawNewCard(ctx: CanvasRenderingContext2D, b: { x: number; y: nu
   ctx.stroke();
   ctx.font = font(NEW_FS, 400);
   ctx.textBaseline = 'middle';
-  const tw = ctx.measureText(label).width, x0 = b.x + (b.w - (12 + 8 + tw)) / 2, cy = b.y + b.h / 2;
+  // (Too narrow for its words, a narrow timeline's: its «+» alone.)
+  const tw = ctx.measureText(label).width, words = 12 + 8 + tw + 16 <= b.w, x0 = b.x + (b.w - (words ? 12 + 8 + tw : 12)) / 2, cy = b.y + b.h / 2;
   ctx.strokeStyle = ctx.fillStyle = look.muted;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
@@ -190,7 +191,7 @@ export function drawNewCard(ctx: CanvasRenderingContext2D, b: { x: number; y: nu
   ctx.moveTo(x0 + 6, cy - 6); ctx.lineTo(x0 + 6, cy + 6);
   ctx.stroke();
   ctx.textAlign = 'left';
-  ctx.fillText(label, x0 + 20, cy);
+  if (words) ctx.fillText(label, x0 + 20, cy);
   ctx.restore();
 }
 

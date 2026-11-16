@@ -1333,7 +1333,11 @@ export class Editor {
   }
 
   /** Cmd (or Control) held: a timeline picked alone framed orange, its step to be changed by its side («Масштаб таймлайна», src/labs). */
-  private cmdHeld = false;
+  cmdHeld = false;
+  /** Whether `it` is a timeline picked alone, its step to be changed (Cmd held): no half circles then. */
+  scalesTimeline(it: Item | undefined | null): boolean {
+    return !!it?.tl && this.cmdHeld && labOn('tlScale') && this.selection.size === 1 && this.selection.has(it.id);
+  }
   setCmd(on: boolean): void {
     if (on === this.cmdHeld) return;
     this.cmdHeld = on;
