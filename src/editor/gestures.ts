@@ -227,7 +227,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         return;
       }
       // (A component no smaller than what it holds: see below.)
-      const min = it.comp ? 1 : it.type === 'frame' ? 80 : it.type === 'ink' ? 4 : it.type === 'audio' ? 32 : it.type === 'icon' || it.type === 'emoji' || it.type === 'image' ? 16 : 40;
+      const min = it.comp || (it.type === 'task' && labOn('tlDurations')) ? 1 : it.type === 'frame' ? 80 : it.type === 'ink' ? 4 : it.type === 'audio' ? 32 : it.type === 'icon' || it.type === 'emoji' || it.type === 'image' ? 16 : 40;
       // A turned item is stretched along its own sides.
       const { w: w0, h: h0 } = g.orig, d = turn({ x: w.x - g.start.x, y: w.y - g.start.y }, { x: 0, y: 0 }, -angleOf(g.orig));
       // Which way each side goes: by a side one way only, by the top left corner both back (the bottom left
@@ -250,7 +250,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       // half days (Alt, from the middle: as it likes); a sticker keeping its proportions.
       const tl = sx && !e.altKey && !it.rot && SNAPS_TO_DAYS.has(it.type) ? timelineOf(ed, it) : undefined;
       if (tl) {
-        const half = dayOf(tl) / 2, least = it.type === 'task' ? (it.tv ? 360 : TASK_MIN_W) : min;
+        // («Длительности на таймлайне», src/labs: a closed task down to half a day, a bar then.)
+        const half = dayOf(tl) / 2, least = it.type === 'task' ? (it.tv ? 360 : labOn('tlDurations') ? half : TASK_MIN_W) : min;
         const right = g.orig.x + w0, side = halfDay(tl, sx > 0 ? g.orig.x + nw : right - nw);
         nw = sx > 0 ? side - g.orig.x : right - side;
         if (nw < least) nw += Math.ceil((least - nw) / half) * half;
@@ -259,7 +260,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       // (A text drawn as a box, «Текст рамкой»: as stretched, what doesn't fit showing past it.)
       if (it.type === 'text' && !it.tb) nh = itemTextHeight(it, it.text, nw);
       // A task only wider or narrower, as tall as what's in it then (see canvas/task.ts).
-      if (it.type === 'task') { nw = Math.max(it.tv ? 360 : TASK_MIN_W, nw); nh = taskSize(it, nw).h; }
+      // («Длительности на таймлайне», src/labs: on one, closed, as narrow as its days, a bar.)
+      if (it.type === 'task') { nw = Math.max(it.tv ? 360 : tl && labOn('tlDurations') ? 1 : TASK_MIN_W, nw); nh = taskSize(it, nw).h; }
       // A header («Титул в объектах», src/labs): no shorter than its title and description take at its width
       // (stretched taller, kept so: see headerFit).
       if (it.hd) { nw = Math.max(HEADER_MIN_W, nw); nh = Math.max(sy ? nh : it.hdH ? it.h : 0, headerHeight(it, { w: nw })); }

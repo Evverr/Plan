@@ -2766,4 +2766,20 @@ export const checks = {
     expect(await p.ev(`(async () => { const k = await import('/src/canvas/task.ts'); return k.taskLayout(planx.board.get('${id}')).desc.x; })()`), 'its description under its title').toBe(19);
     expect(await p.ev(`(async () => { const k = await import('/src/canvas/task.ts'); return k.taskPartAt(planx.board.get('${id}'), { x: 26, y: 26 }) === 'status'; })()`), 'no ring to click').toBe(false);
   },
+
+  async '"Длительности на таймлайне": a task and a rectangle keep their days as its step changes, a sticker its day and size; a task too narrow, a bar'(p) {
+    // On a timeline at 6x: a task its 3rd to 5th day (2 days), a rectangle its 4th (1 day), a sticker its 2nd.
+    const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl); e.setTimelineStep(t.id, 6);
+      const from = t.x + 19, top = t.y + 60, d = 138;
+      const task = e.newItem('task', from + 2 * d, top, { w: 2 * d, h: 52, text: 'Задача' }); b.add(task);
+      const r = e.newItem('rect', from + 3 * d, top + 80, { w: d, h: 60 }); b.add(r);
+      const s = e.newItem('sticky', from + d, top + 160, { w: 100, h: 100 }); b.add(s);
+      b.update(t.id, { members: [task.id, r.id, s.id] }); return { t: t.id, task: task.id, r: r.id, s: s.id, from }; })()`);
+    const at = () => p.ev(`JSON.stringify(['${ids.task}', '${ids.r}', '${ids.s}'].map((id) => { const i = planx.board.get(id); return [Math.round((i.x - ${ids.from}) * 10) / 10, i.w]; }))`);
+    await p.ev(`planx.editor.setTimelineStep('${ids.t}', 1)`);
+    expect(await at(), 'at 1x: the task 2 days, the rectangle 1, the sticker as big').toBe(JSON.stringify([[46, 46], [69, 23], [23, 100]]));
+    expect(await p.ev(`(async () => (await import('/src/canvas/task.ts')).compactTask(planx.board.get('${ids.task}')))()`), 'the task a bar').toBe(true);
+    await p.ev(`planx.editor.setTimelineStep('${ids.t}', 6)`);
+    expect(await at(), 'back at 6x: as they were').toBe(JSON.stringify([[276, 276], [414, 138], [138, 100]]));
+  },
 };

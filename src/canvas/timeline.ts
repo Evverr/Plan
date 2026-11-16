@@ -65,6 +65,10 @@ const writingAt = (it: Item, z: number): number => {
 };
 export const dayOf = (it: Item): number => DAY * (it.ts ?? 1);
 
+/** What lasts on a timeline («Длительности на таймлайне», src/labs): a task, a plain rectangle (not a
+ *  header, a form, a poll, a block of code or an unseen point); anything else marks a day. */
+export const lastsOnTimeline = (it: Item): boolean => it.type === 'task' || (it.type === 'rect' && !it.hd && !it.form && !it.poll && !it.code && !it.pt);
+
 /** How many days its width holds. */
 export const tlDays = (it: Item): number => Math.max(1, Math.floor((it.w - TL_PAD * 2) / dayOf(it) + 0.01));
 

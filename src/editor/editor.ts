@@ -18,7 +18,7 @@ import { carried, hiddenIn, linksIn, membersOf, peekView, pileHidden, pileParent
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
 import { HEADER_DESC, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, pickedTies, tidyTies, tiedAt, withTies } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
-import { dayKey, TL_PAD, timelineSize } from '../canvas/timeline';
+import { DAY, dayKey, dayOf, lastsOnTimeline, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
 import { shapePatch, shapeStyle } from './shapeStyle';
 import { endGesture, moveGesture, type Gesture } from './gestures';
@@ -619,12 +619,19 @@ export class Editor {
   setTimelineStep(id: string, k: number): void {
     const tl = this.board.get(id);
     if (!tl?.tl) return;
-    const from = tl.x + TL_PAD, r = k / (tl.ts ?? 1);
+    const from = tl.x + TL_PAD, r = k / (tl.ts ?? 1), was = dayOf(tl), now = DAY * k;
+    // «Длительности на таймлайне» (src/labs): a task or a rectangle lasts its days, from the half day it
+    // starts on to the one it ends on, as wide as they are now (a task opened, as wide as it closes to).
+    const halves = (v: number) => Math.round((v / was) * 2) / 2;
     this.board.transact(() => {
       this.board.update(id, { ts: k === 1 ? undefined : k });
       for (const m of tl.members ?? []) {
         const it = this.board.get(m);
-        if (it) this.board.update(m, { x: Math.round(from + (it.x - from) * r) });
+        if (!it) continue;
+        if (labOn('tlDurations') && lastsOnTimeline(it)) {
+          const days = Math.max(0.5, halves(it.type === 'task' && it.tv ? it.cw ?? it.w : it.w)), w = days * now;
+          this.board.update(m, { x: from + halves(it.x - from) * now, ...(it.type === 'task' && it.tv ? { cw: w } : { w }) });
+        } else this.board.update(m, { x: Math.round(from + (it.x - from) * r) });
       }
     });
   }

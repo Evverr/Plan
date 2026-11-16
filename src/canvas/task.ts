@@ -96,7 +96,6 @@ export function descLook(it: Item) {
   };
 }
 
-/** Its title on one line (ticked so in its menu, or «Заголовок задачи в три строки», src/labs, off). */
 /** Whether its ring's shown (see Item.nck); not, its title starts where the ring would. */
 export const hasRing = (it: Item): boolean => !it.nck || !labOn('taskCheck');
 /** How far its title, and what's under its header with it, moves left with no ring: to 4 right of where the
@@ -104,7 +103,14 @@ export const hasRing = (it: Item): boolean => !it.nck || !labOn('taskCheck');
 const off = (it: Item): number => (hasRing(it) ? 0 : 19 - TITLE_X);
 const titleX = (it: Item): number => TITLE_X + off(it);
 
-export const oneLineTitle = (it: Item): boolean => !!it.t1 || !labOn('taskLines');
+/** A closed task narrower than a task goes («Длительности на таймлайне», src/labs: its days few at the
+ *  timeline's step): a bar of its colour, its title in it or, too long for it, right of it. */
+export const compactTask = (it: Item, w = it.w): boolean => labOn('tlDurations') && !it.tv && w < TASK_MIN_W;
+/** Room round its title in the bar. */
+const BAR_PAD = 8;
+
+/** Its title on one line (ticked so in its menu, or «Заголовок задачи в три строки», src/labs, off; a bar). */
+export const oneLineTitle = (it: Item): boolean => !!it.t1 || !labOn('taskLines') || compactTask(it);
 
 /** Its title's lines: one, or up to three, the last cut off with "…" where there's more. */
 export function titleLines(it: Item, w: number): string[] {
@@ -127,6 +133,11 @@ export function oneLine(text: string, w: number, fs: number, weight: number): st
 
 export function taskLayout(it: Item, w = it.w): TaskLayout {
   const ko = off(it);
+  // A bar (see compactTask): its title in it, or right of it.
+  if (compactTask(it, w)) {
+    const lh = lineH(TITLE_FS), tw = widthOf(it.text || 'Название задачи', TITLE_FS, 500), inside = tw + BAR_PAD * 2 <= w;
+    return { w, h: 52, head: 52, title: inside ? { x: BAR_PAD, y: MID - lh / 2, w: w - BAR_PAD * 2, h: lh } : { x: w + BAR_PAD, y: MID - lh / 2, w: Math.min(tw, 300), h: lh } };
+  }
   // The title on one line (see titleLine), or up to three, the header taller by as many more (the ring
   // and the arrow by its first).
   // (Its "…" 4 short of the arrow's box, a letter more than that 14 short of it, narrowest.)
@@ -205,6 +216,8 @@ const near = (p: Point, x: number, y: number, r: number) => Math.hypot(p.x - x, 
 export function taskPartAt(it: Item, p: Point): TaskPart | null {
   const ko = off(it);
   const l = taskLayout(it), q = { x: p.x - it.x, y: p.y - it.y };
+  // A bar (see compactTask): all of it its header (a double click opens it).
+  if (compactTask(it)) return q.y >= 0 && q.y < l.head && q.x >= 0 && q.x <= l.w ? 'head' : null;
   // The header: the ring and the arrow theirs and 5 round them, the title's text the title, the rest
   // of it the header itself (a double click there opens it further).
   if (q.y >= 0 && q.y < l.head && q.x >= 0 && q.x <= l.w) {
@@ -461,6 +474,23 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
   const l = taskLayout(it), { x, y } = it, strong = statusOf(it) === 'done' ? DONE_GREY : strongOf(it.color);
   const bg = look.dark ? '#26272C' : '#FFFFFF', tint = mix(strong, bg, look.dark ? 0.16 : 0.07);
   const edge = `rgba(${rgb(strong.startsWith('#') ? strong : '#003CFF').join(',')}, 0.35)`;
+  // A bar (see compactTask): its tint and edge, round as far as it can be; its title in it, or right of it.
+  if (compactTask(it)) {
+    ctx.beginPath();
+    ctx.roundRect(x + 1, y + 1, Math.max(1, l.w - 2), l.h - 2, Math.max(0, Math.min(TASK_RAD - 1, (l.w - 2) / 2)));
+    ctx.fillStyle = tint;
+    ctx.fill();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    if (TITLE_FS * look.z < 2.5 || typing === null) return;
+    ctx.font = font(TITLE_FS, 500, FAMILY);
+    ctx.fillStyle = it.text ? look.ink : look.muted;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(titleLine(it.text || 'Название задачи', l.title.w), x + l.title.x, y + MID);
+    return;
+  }
   // The card, its edge 2 wide inside it; its header tinted, the whole of it when closed. Opened, it
   // lies over the board with a shadow.
   ctx.beginPath();
