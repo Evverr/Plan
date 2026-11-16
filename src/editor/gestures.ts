@@ -32,7 +32,7 @@ import { editablePath, moveNode, startNodeEdit } from '../labs/paths';
 import { openDoc } from '../labs/docx';
 import { openSwap, swapKind } from '../labs/swap';
 import { pushedBelow } from '../labs/textPush';
-import { dayKey, dayOf, halfDay, TL_PAD, tlDays, tlStart } from '../canvas/timeline';
+import { dayKey, dayOf, halfDay, TL_LEAST, TL_MOST, TL_PAD, TL_PULL, TL_STEPS, tlDays, tlStart } from '../canvas/timeline';
 import { under } from '../labs/clickThrough';
 
 /** What a press on the board has started, followed till it's let go. */
@@ -40,7 +40,8 @@ export type Gesture =
   | { type: 'pan'; sx: number; sy: number; cx: number; cy: number; tap?: boolean; moved?: boolean }
   | { type: 'pinch'; d0: number; z0: number; anchor: Point }
   | { type: 'drag'; start: Point; orig: Map<string, Point>; moved: boolean; id: string; dbl: boolean; fresh?: boolean; was?: string[]; sub?: number; subTo?: number; pulled?: boolean; guides?: Guide[]; cell?: boolean; enter?: boolean; again?: boolean; vias?: Map<string, Point[]>; url?: string; tap?: Point; mindTo?: string | null; mindWay?: Way }
-  | { type: 'resize'; id: string; start: Point; orig: Item; box?: Rect; only?: 'w' | 'h' | 'l' | 't' | 'tl' | 'bl' }
+  /** (`scale`: a timeline stretched by its right side or corner with Cmd, its step as it goes: what was on it as it was.) */
+  | { type: 'resize'; id: string; start: Point; orig: Item; box?: Rect; only?: 'w' | 'h' | 'l' | 't' | 'tl' | 'bl'; scale?: Item[] }
   | { type: 'rotate'; id: string; c: Point; a0: number; rot0: number; held: Array<{ id: string; c: Point; rot0: number }> }
   | { type: 'create'; id: string; origin: Point; last?: Point }
   | { type: 'tab'; id: string; side: Side; start: Point }
@@ -218,6 +219,16 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         const nw = g.only === 'h' ? b.w : Math.max(20, Math.round(b.w + w.x - g.start.x)), nh = g.only === 'w' ? b.h : Math.max(20, Math.round(b.h + w.y - g.start.y));
         const grow = { w: g0.w + nw - b.w, h: g0.h + nh - b.h };
         board.update(g.id, { grow: grow.w || grow.h ? grow : undefined });
+        return;
+      }
+      // A timeline stretched with Cmd by its right side or corner: its step, as far as it's wider (as many days, each
+      // wider), from half to 8 times the usual, a little drawn to 1x, 2x, 4x and 6x; what's on it along.
+      if (g.scale && g.orig.tl) {
+        const inner = g.orig.w - TL_PAD * 2, k0 = g.orig.ts ?? 1;
+        let k = Math.max(TL_LEAST, Math.min(TL_MOST, k0 * Math.max(1, inner + w.x - g.start.x) / inner));
+        const near = TL_STEPS.find((s) => Math.abs(k - s) <= s * TL_PULL);
+        k = near ?? Math.round(k * 100) / 100;
+        ed.scaleTimeline(g.orig, g.scale, k, true);
         return;
       }
       // A timeline's left side moves where it starts, a whole day at a time, what's on it staying.

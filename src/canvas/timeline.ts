@@ -46,6 +46,9 @@ export function timelineSize(start: Date): { w: number; h: number } {
 
 /** The steps a timeline can have (see `ts`), and a day across at its own. */
 export const TL_STEPS = [1, 2, 4, 6];
+/** Stretched with Cmd (a step of its own): no less than this, no more, and drawn to one of TL_STEPS this
+ *  near it (of it). */
+export const TL_LEAST = 0.5, TL_MOST = 8, TL_PULL = 0.06;
 /** How many times the usual size its writing may be (see Item.tfs). */
 export const TL_FONTS = [1, 2, 3, 4];
 /** «Адаптивный текст» (Item.tfa): zoomed out, its writing grows by 1/zoom to the POWER (1: as big on the

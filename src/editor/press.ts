@@ -1,3 +1,4 @@
+import type { Item } from '../model/types';
 import type { TableLine } from '../model/table';
 import { colsOf, rowsOf } from '../model/table';
 import { center, hitItem, hitLink, instanceBounds, linkShape, onAudioButton } from '../canvas/geometry';
@@ -257,7 +258,10 @@ export function press(ed: Editor, e: PointerEvent): void {
     // A component stretched by hand gets room of its own, its frame first as it's seen: round what it holds.
     if (single.comp && !single.air) ed.reframeComponent(single.id, instanceBounds(single, items), true);
     const orig = board.get(single.id) ?? single;
-    ed.gesture = { type: 'resize', id: single.id, start: w, orig: { ...orig }, box: single.inst ? instanceBounds(single, items) : undefined, only: side ?? (topLeft ? 'tl' : bottomLeft ? 'bl' : undefined) };
+    // A timeline by its right side or corner with Cmd: its step («Масштаб таймлайна», src/labs), what's on it as it is now.
+    const scale = single.tl && labOn('tlScale') && (e.metaKey || e.ctrlKey) && (side === 'w' || (!side && !topLeft && !bottomLeft))
+      ? (single.members ?? []).map((m) => board.get(m)).filter((i): i is Item => !!i).map((i) => ({ ...i })) : undefined;
+    ed.gesture = { type: 'resize', id: single.id, start: w, orig: { ...orig }, box: single.inst ? instanceBounds(single, items) : undefined, only: side ?? (topLeft ? 'tl' : bottomLeft ? 'bl' : undefined), scale };
     ed.setMoving(true);
     return;
   }

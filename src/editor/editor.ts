@@ -619,19 +619,24 @@ export class Editor {
   setTimelineStep(id: string, k: number): void {
     const tl = this.board.get(id);
     if (!tl?.tl) return;
+    this.scaleTimeline(tl, (tl.members ?? []).map((m) => this.board.get(m)).filter((i): i is Item => !!i), k, false);
+  }
+
+  /** A timeline (`tl`, as it was) at step `k`, what was on it (`held`, as it was) along: each keeping its
+   *  day; with `wide`, as many days as it had, the card as much wider («Масштаб таймлайна», Cmd and its right
+   *  side), else the card as wide (fewer days, or more). */
+  scaleTimeline(tl: Item, held: Item[], k: number, wide: boolean): void {
     const from = tl.x + TL_PAD, r = k / (tl.ts ?? 1), was = dayOf(tl), now = DAY * k;
     // «Длительности на таймлайне» (src/labs): a task or a rectangle lasts its days, from the half day it
     // starts on to the one it ends on, as wide as they are now (a task opened, as wide as it closes to).
     const halves = (v: number) => Math.round((v / was) * 2) / 2;
     this.board.transact(() => {
-      this.board.update(id, { ts: k === 1 ? undefined : k });
-      for (const m of tl.members ?? []) {
-        const it = this.board.get(m);
-        if (!it) continue;
+      this.board.update(tl.id, { ts: k === 1 ? undefined : k, ...(wide && { w: TL_PAD * 2 + (tl.w - TL_PAD * 2) * r }) });
+      for (const it of held) {
         if (labOn('tlDurations') && lastsOnTimeline(it)) {
           const days = Math.max(0.5, halves(it.type === 'task' && it.tv ? it.cw ?? it.w : it.w)), w = days * now;
-          this.board.update(m, { x: from + halves(it.x - from) * now, ...(it.type === 'task' && it.tv ? { cw: w } : { w }) });
-        } else this.board.update(m, { x: Math.round(from + (it.x - from) * r) });
+          this.board.update(it.id, { x: from + halves(it.x - from) * now, ...(it.type === 'task' && it.tv ? { cw: w } : { w }) });
+        } else this.board.update(it.id, { x: Math.round(from + (it.x - from) * r) });
       }
     });
   }

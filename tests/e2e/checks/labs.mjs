@@ -2782,4 +2782,19 @@ export const checks = {
     await p.ev(`planx.editor.setTimelineStep('${ids.t}', 6)`);
     expect(await at(), 'back at 6x: as they were').toBe(JSON.stringify([[276, 276], [414, 138], [138, 100]]));
   },
+
+  async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
+    const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
+      b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;
+      const task = e.newItem('task', from + 2 * 23, t.y + 60, { w: 3 * 23, h: 52, text: 'Задача' }); b.add(task);
+      b.update(t.id, { members: [task.id] }); e.cam = { x: 100 - t.x, y: 100 - t.y, z: 1 }; e.camChanged(); e.setSelection([t.id]); return { t: t.id, task: task.id, from }; })()`);
+    await sleep(300);
+    // Its right side (10 days, 230 wide inside) at x 100 + 268, clear of its half circle: 228 further, near twice as wide.
+    await p.drag([368, 160], [596, 160], { modifiers: 4 });
+    await sleep(200);
+    const r = await p.ev(`(() => { const t = planx.board.get('${ids.t}'), k = planx.board.get('${ids.task}'); return [t.ts, t.w, k.x - ${ids.from}, k.w].join(); })()`);
+    expect(r, '2x: twice as wide, the task on its days').toBe([2, 19 * 2 + 460, 92, 138].join());
+    await p.ev('planx.editor.undo()');
+    expect(await p.ev(`(() => { const t = planx.board.get('${ids.t}'); return [t.ts ?? 1, t.w].join(); })()`), 'one undo').toBe([1, 268].join());
+  },
 };
