@@ -2,6 +2,7 @@ import type { Item } from '../model/types';
 import type { Board } from '../model/board';
 import type { Point, Rect } from '../canvas/geometry';
 import { font, LINE_HEIGHT, textBlockHeight, wrapText } from '../canvas/text';
+import { labOn } from './labs';
 
 /**
  * «Титул в объектах»: an icon, a title right of it and a description under that, one item (a
@@ -75,10 +76,25 @@ export function withTies(items: Item[], ids: Set<string>): Set<string> {
 }
 
 /** The part of it at board point `p`: its icon, title or description. */
-export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | null {
+export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | 'more' | null {
   const l = headerLayout(it), x = p.x - it.x, y = p.y - it.y;
   const on = (r: Rect) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  const more = moreBox(it);
+  if (more && x >= more.x - 4 && x <= more.x + more.w + 4 && y >= more.y - 4 && y <= more.y + more.h + 4) return 'more';
   return on(l.icon) ? 'icon' : on(l.title) ? 'title' : !it.tie && y >= l.desc.y && x >= l.desc.x ? 'desc' : null;
+}
+
+/** «Троеточие у титула» (src/labs): a «…» after a kanban's or timeline's title (from its top left), opening its panel. */
+const MORE = 24, MORE_GAP = 8;
+export const MORE_ICON = 'more-l';
+let measure: CanvasRenderingContext2D | null = null;
+export function moreBox(it: Item): Rect | null {
+  if (!it.tie || !labOn('headerMore')) return null;
+  measure ??= document.createElement('canvas').getContext('2d');
+  if (!measure) return null;
+  measure.font = font(TITLE_FS, 700);
+  const tw = Math.min(measure.measureText(titleOf(it)).width, Math.max(40, it.w - TEXT_X - MORE - MORE_GAP)), lh = TITLE_FS * LINE_HEIGHT;
+  return { x: TEXT_X + tw + MORE_GAP, y: TITLE_Y + (lh - MORE) / 2, w: MORE, h: MORE };
 }
 
 /** Where a part's typed in (null its title, 0 its description), for the text overlay. */
@@ -101,4 +117,7 @@ export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string,
   };
   if (cell !== null) lines(it.text ?? '', l.title, TITLE_FS, 700);
   if (cell !== 0 && !it.tie) lines(it.desc ?? '', l.desc, DESC_FS, 400);
+  // Its «…» («Троеточие у титула»), but while its title's typed in.
+  const more = cell === null ? null : moreBox(it);
+  if (more) icon(MORE_ICON, it.x + more.x, it.y + more.y, MORE);
 }

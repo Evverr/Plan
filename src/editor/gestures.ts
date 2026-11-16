@@ -651,6 +651,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       if (it.type === 'mind') Object.assign(it, mindSize(it), { x: Math.round(g.at.x - mindSize(it).w / 2) });
       if (it.type === 'task') Object.assign(it, freshTask(board, it, g.at));
       ed.addItem(it);
+      // A new table has a title over it, as a kanban or a timeline («Титул в объектах», src/labs).
+      if (it.type === 'table') ed.addTableHeader(it);
       ed.setTool('select');
       ed.setSelection([it.id]);
       // A new table comes with its pills out ("Перестановка в таблице", src/labs), as one dropped off the

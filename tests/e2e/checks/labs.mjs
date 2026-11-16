@@ -2790,6 +2790,23 @@ export const checks = {
     expect(await p.ev(`!!planx.board.get('${ids.task}').tv`), 'opened by a click').toBe(true);
   },
 
+  async '"Троеточие у титула": the «…» by a timeline\'s title picks it, its panel half seen; a new table has a title too'(p) {
+    const at = await p.ev(`(async () => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl), h = b.list().find((i) => i.tie === t.id);
+      e.cam = { x: 150 - t.x * 0.7, y: 200 - t.y * 0.7, z: 0.7 }; e.camChanged(); e.setSelection([]);
+      const m = (await import('/src/labs/header.ts')).moreBox(h), s = e.toScreen({ x: h.x + m.x + m.w / 2, y: h.y + m.y + m.h / 2 }); return [s.x, s.y]; })()`);
+    await sleep(300);
+    await p.click(at);
+    await sleep(400);
+    expect(await p.ev(`JSON.stringify([[...planx.editor.selection].map((id) => !!planx.board.get(id).tl), getComputedStyle(document.querySelector('.bar.panel')).opacity])`), 'the timeline picked, its panel half seen').toBe('[[true],"0.5"]');
+    await p.ev(`(() => { const e = planx.editor; e.setSelection([e.selection.values().next().value]); })()`);
+    await sleep(300);
+    expect(await p.ev(`getComputedStyle(document.querySelector('.bar.panel')).opacity`), 'picked as ever: all of it').toBe('1');
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setTool('table'); })()`);
+    await p.click([500, 400]);
+    await sleep(300);
+    expect(await p.ev(`(() => { const t = planx.board.list().find((i) => i.type === 'table'); return planx.board.list().find((i) => i.tie === t?.id)?.text; })()`), 'a table, its title').toBe('Таблица');
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

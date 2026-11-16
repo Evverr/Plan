@@ -715,6 +715,11 @@ export class Editor {
     this.startEditing(it.id);
   }
 
+  /** A new table's title over it, «Таблица», as a kanban's or a timeline's («Титул в объектах», src/labs). */
+  addTableHeader(it: Item): void {
+    if (labOn('headerObject')) this.addHeader(center(it), { item: it, title: 'Таблица', icon: 'table', color: 'purple' });
+  }
+
   /** «Титул в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its
    *  left, its title and icon theirs (as Женя's over a timeline or kanban), what's picked left as it is. */
   addHeader(c: Point, over?: { item: Item; title: string; icon: string; color: string }): void {
@@ -1008,9 +1013,11 @@ export class Editor {
     this.emit();
   }
 
-  setSelection(ids: Iterable<string>, groups = true): void {
+  setSelection(ids: Iterable<string>, groups = true, quiet = false): void {
     const was = [...this.selection];
     this.selection = new Set(ids);
+    // (Picked by the «…» by its title, «Троеточие у титула»: its panel faint till the pointer's on it.)
+    this.quietPanel = quiet ? [...this.selection][0] ?? null : null;
     // («Полукруги на рамке», src/labs: worked out afresh for what's picked now, as the pointer next moves.)
     this.tabAims = null;
     this.hotTab = null;
@@ -1287,6 +1294,7 @@ export class Editor {
     if (type === 'text') it.h = itemTextHeight(it);
     if (type === 'task') Object.assign(it, freshTask(this.board, it, c));
     this.addItem(it);
+    if (type === 'table') this.addTableHeader(it);
     this.setTool('select');
     this.setSelection([it.id]);
     // A new table comes with its pills out ("Перестановка в таблице", src/labs).
@@ -1334,6 +1342,8 @@ export class Editor {
 
   /** Cmd (or Control) held: a timeline picked alone framed orange, its step to be changed by its side («Масштаб таймлайна», src/labs). */
   cmdHeld = false;
+  /** What was picked by the «…» by its title («Троеточие у титула», src/labs): its panel half seen. */
+  quietPanel: string | null = null;
   /** Whether `it` is a timeline picked alone, its step to be changed (Cmd held): no half circles then. */
   scalesTimeline(it: Item | undefined | null): boolean {
     return !!it?.tl && this.cmdHeld && labOn('tlScale') && this.selection.size === 1 && this.selection.has(it.id);

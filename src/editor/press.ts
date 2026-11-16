@@ -9,6 +9,7 @@ import { copyCode, onCodeCopy } from '../labs/codeBlock';
 import { onFormButton } from '../labs/formObject';
 import { pollPartAt, pressPoll } from '../labs/poll';
 import { addStage, headerAt, newCardAt } from '../labs/kanban';
+import { headerPartAt } from '../labs/header';
 import { pagerAt, turnPage } from '../labs/docPage';
 import { toggleAudio } from '../canvas/audio';
 import { anyDotAt, dotAt, inFirstHalf, linkHandleAt, foldBadgeAt, frameButtonUnder, offComponent, sideAt, linkEndAt, onHandle, onInstanceGlyph, onRotate, onTopLeft, onBottomLeft, plusAt, ringAt, tickAt, pickedUnder } from './hover';
@@ -320,6 +321,8 @@ export function press(ed: Editor, e: PointerEvent): void {
   // (On a timeline too, «Создать задачу на таймлайне»; not under something put over it.)
   const nc = e.button === 0 && !e.shiftKey ? newCardAt(ed.board.list(), w, hit) : null;
   if (nc) { ed.gesture = { type: 'newCard', id: nc.id }; return; }
+  // The «…» by a kanban's or timeline's title («Троеточие у титула», src/labs): it picked, its panel faint.
+  if (e.button === 0 && hit?.hd && hit.tie && labOn('headerMore') && headerPartAt(hit, w) === 'more') { ed.setSelection([hit.tie], true, true); return; }
   const head = e.button === 0 && !e.shiftKey && labOn('kanban') ? headerAt(ed.board.list(), w) : null;
   if (head) {
     if (head.part === 'add') { addStage(ed.board, head.f); return; }

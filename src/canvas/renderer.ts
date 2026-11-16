@@ -18,7 +18,7 @@ import { gripsOn } from '../labs/tableMove';
 import { gridKind } from '../labs/boardGrid';
 import { drawCode } from '../labs/codeBlock';
 import { drawForm } from '../labs/formObject';
-import { drawHeader } from '../labs/header';
+import { drawHeader, MORE_ICON } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
 import { drawDocPage, drawPager, pageCount, pageShown } from '../labs/docPage';
@@ -523,7 +523,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       if (it.hd) {
         const c = it.color ?? 'blue', ink = c.startsWith('#') ? shade(c, theme.dim) : ICON_COLORS[c] || FILLS[c] ? shade(ICON_COLORS[c] || FILLS[c], theme.dim) : theme.ink;
         // (Its icon as opaque as set on its panel.)
-        drawHeader(ctx, it, theme.ink, (name, x, y, size) => { ctx.globalAlpha = fillOpacity(it); drawIcon(ctx, name, x, y, size, ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
+        // (Its «…», «Троеточие у титула»: muted, as a button.)
+        drawHeader(ctx, it, theme.ink, (name, x, y, size) => { ctx.globalAlpha = name === MORE_ICON ? 1 : fillOpacity(it); drawIcon(ctx, name, x, y, size, name === MORE_ICON ? theme.muted : ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
         break;
       }
       // A poll («Голосование», src/labs), the part under the pointer lit.

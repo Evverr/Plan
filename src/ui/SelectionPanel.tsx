@@ -469,7 +469,7 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
     <button className={`ib ${icon === 'trashcan' ? 'danger' : ''}`} title={title} aria-label={title} onClick={fn}><PanelIcon name={icon} /></button>
   );
   return (
-    <div ref={sort.ref as React.RefObject<HTMLDivElement>} className={`bar panel sortable ${over ? `panel-over ${down ? 'opens-down' : ''} ${wait.current ? 'after-gone' : ''}` : docked ? 'docked' : ''} ${!over && place.bottom !== null ? 'raised' : ''} ${sort.sorting ? 'sorting' : ''}`}
+    <div ref={sort.ref as React.RefObject<HTMLDivElement>} className={`bar panel sortable ${over ? `panel-over ${down ? 'opens-down' : ''} ${wait.current ? 'after-gone' : ''}` : docked ? 'docked' : ''} ${!over && place.bottom !== null ? 'raised' : ''} ${sort.sorting ? 'sorting' : ''} ${items.length === 1 && editor.quietPanel === items[0].id ? 'quiet' : ''}`}
       style={over ? undefined : { transform: `translateX(calc(-50% + ${place.left}px))`, ...(place.bottom !== null && { bottom: place.bottom }) }}
       role="toolbar" aria-label="Выделенное" {...sort.container}
       // (Over what's picked it comes in a moment after: once it starts to, it's been seen, and fades out
