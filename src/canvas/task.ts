@@ -104,7 +104,7 @@ const off = (it: Item): number => (hasRing(it) ? 0 : 19 - TITLE_X);
 const titleX = (it: Item): number => TITLE_X + off(it);
 
 /** A closed task narrower than a task goes («Длительности на таймлайне», src/labs: its days few at the
- *  timeline's step): a bar of its colour, its title in it or, too long for it, right of it. */
+ *  timeline's step): a bar of its colour, its title in it, cut off with «…», too narrow, none. */
 export const compactTask = (it: Item, w = it.w): boolean => labOn('tlDurations') && !it.tv && w < TASK_MIN_W;
 /** Room round its title in the bar. */
 const BAR_PAD = 8;
@@ -133,10 +133,10 @@ export function oneLine(text: string, w: number, fs: number, weight: number): st
 
 export function taskLayout(it: Item, w = it.w): TaskLayout {
   const ko = off(it);
-  // A bar (see compactTask): its title in it, or right of it.
+  // A bar (see compactTask): its title in it, cut off with "…" (none, too narrow even for that).
   if (compactTask(it, w)) {
-    const lh = lineH(TITLE_FS), tw = widthOf(it.text || 'Название задачи', TITLE_FS, 500), inside = tw + BAR_PAD * 2 <= w;
-    return { w, h: 52, head: 52, title: inside ? { x: BAR_PAD, y: MID - lh / 2, w: w - BAR_PAD * 2, h: lh } : { x: w + BAR_PAD, y: MID - lh / 2, w: Math.min(tw, 300), h: lh } };
+    const lh = lineH(TITLE_FS);
+    return { w, h: 52, head: 52, title: { x: BAR_PAD, y: MID - lh / 2, w: Math.max(0, w - BAR_PAD * 2), h: lh } };
   }
   // The title on one line (see titleLine), or up to three, the header taller by as many more (the ring
   // and the arrow by its first).
@@ -474,7 +474,7 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
   const l = taskLayout(it), { x, y } = it, strong = statusOf(it) === 'done' ? DONE_GREY : strongOf(it.color);
   const bg = look.dark ? '#26272C' : '#FFFFFF', tint = mix(strong, bg, look.dark ? 0.16 : 0.07);
   const edge = `rgba(${rgb(strong.startsWith('#') ? strong : '#003CFF').join(',')}, 0.35)`;
-  // A bar (see compactTask): its tint and edge, round as far as it can be; its title in it, or right of it.
+  // A bar (see compactTask): its tint and edge, round as far as it can be; its title in it, cut off.
   if (compactTask(it)) {
     ctx.beginPath();
     ctx.roundRect(x + 1, y + 1, Math.max(1, l.w - 2), l.h - 2, Math.max(0, Math.min(TASK_RAD - 1, (l.w - 2) / 2)));
@@ -488,7 +488,9 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     ctx.fillStyle = it.text ? look.ink : look.muted;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(titleLine(it.text || 'Название задачи', l.title.w), x + l.title.x, y + MID);
+    // (A letter and its "…" at least; narrower, the bar alone.)
+    const t = titleLine(it.text || 'Название задачи', l.title.w);
+    if (!t.startsWith('…')) ctx.fillText(t, x + l.title.x, y + MID);
     return;
   }
   // The card, its edge 2 wide inside it; its header tinted, the whole of it when closed. Opened, it
