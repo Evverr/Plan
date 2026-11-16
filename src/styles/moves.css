@@ -27,6 +27,8 @@
 
 /* How far a popup slides as it comes in (two thirds of the 8px it was). */
 :root { --slide: 5.33px; }
+/* «Панели без сдвига» (src/labs), for now: no slide, only the fade. */
+:root[data-pops="still"] { --slide: 0px; }
 /* How every popup comes in (menus, the panels opening from others, popovers, notes, windows): out of
    nothing, --slide on the way there, from where it opens: falling from the top, rising from the bottom and
    in the middle of the screen, from the side beside a rail or a menu. (The slide is added to their own

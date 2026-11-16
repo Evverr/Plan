@@ -249,6 +249,8 @@ export function App({ boardId }: { boardId: string }) {
   // (Not a «Титул», src/labs/header.ts: its title and description look as they're set there, no text panel.)
   const textItem = selItems.length === 1 && (['text', 'sticky', 'table', 'rect', 'ellipse', 'polygon', 'page'].includes(selItems[0].type) && !selItems[0].code && !selItems[0].hd || taskDesc) ? selItems[0] : asOne(selItems) ?? undefined;
   const labs = useLabs();
+  // «Панели без сдвига» (src/labs): popups come in by fading alone (styles/moves.css, data-pops).
+  useEffect(() => { document.documentElement.dataset.pops = labs.stillPops ? 'still' : ''; }, [labs.stillPops]);
   // "Кнопка T" (src/labs): the text panel instead of the selection panel, asked for by its T, till the
   // next press on the board (or something else picked).
   // (Standing where the selection panel stood when that was at the bottom.)

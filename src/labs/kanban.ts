@@ -27,7 +27,7 @@ export const FIRST_STAGES: Stage[] = [{ n: 'Постановка', c: 'blue' }, 
 const { PAD, LEFT, HEAD, IN, GAP: COL_GAP, ADD: ADD_W } = KB, CARD_GAP = 12, MIN_H = 240;
 /** A stage's pill: its middle's height in the header, how tall (its ends round), its text's size and the
  *  room round its text. */
-const PILL_Y = 28, PILL_H = 28, PILL_FS = 15, PILL_PAD = 12;
+const PILL_Y = 30, PILL_H = 28, PILL_FS = 15, PILL_PAD = 12;
 /** Room kept right of a stage's pill for how many are in it. */
 const COUNT_W = 36;
 /** «Создать задачу»: as tall as a new task; its text's size. */

@@ -6,6 +6,9 @@ const cursor = (p, q) => p.ev(`getComputedStyle(document.querySelector('${q}')).
 
 export const checks = {
   async 'menus come in out of nothing, sliding 5.33px from where they open'(p) {
+    // (Not with «Панели без сдвига» on, for now: only the fade then.)
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('stillPops', false))()`);
+    await sleep(100);
     await p.click(await p.at('.topbar button[aria-label="Меню"]'));
     const r = await p.ev(`(() => { const m = document.querySelector('.board-menu'), cs = getComputedStyle(m);
       // (The slide as it works out, in px.)

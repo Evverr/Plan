@@ -18,8 +18,8 @@ export const HEADER_DESC = 'Здесь идет описание заголов�
 /** Its parts, as Женя's component: the icon at its top left, the title and the description right of it. */
 const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
 /** Tied to a kanban, timeline or table: smaller, its icon and title, the title semibold. */
-const TIED = { icon: 32, iconY: -6, textX: 36, fs: 18, weight: 600 };
-const sizes = (it: Item) => (it.tie ? TIED : { icon: ICON, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
+const TIED = { icon: 30, iconX: 2, iconY: -4, textX: 36, fs: 18, weight: 600 };
+const sizes = (it: Item) => (it.tie ? TIED : { icon: ICON, iconX: 0, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
 export const HEADER_GAP = 4;
@@ -39,7 +39,7 @@ export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect;
   const th = textBlockHeight(titleOf(a) || ' ', w, s.fs, { weight: s.weight }), dy = TITLE_Y + th + DESC_GAP;
   // (Tied to a kanban, timeline or table: no description.)
   const dh = a.tie ? 0 : textBlockHeight(descOf(a) || ' ', w, DESC_FS);
-  return { icon: { x: 0, y: s.iconY, w: s.icon, h: s.icon }, title: { x: s.textX, y: TITLE_Y, w, h: th }, desc: { x: s.textX, y: dy, w, h: dh }, h: Math.ceil(Math.max(s.icon + s.iconY, a.tie ? TITLE_Y + th : dy + dh)), fs: s.fs, weight: s.weight };
+  return { icon: { x: s.iconX, y: s.iconY, w: s.icon, h: s.icon }, title: { x: s.textX, y: TITLE_Y, w, h: th }, desc: { x: s.textX, y: dy, w, h: dh }, h: Math.ceil(Math.max(s.icon + s.iconY, a.tie ? TITLE_Y + th : dy + dh)), fs: s.fs, weight: s.weight };
 }
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
 /** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
