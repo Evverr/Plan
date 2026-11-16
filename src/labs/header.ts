@@ -90,7 +90,7 @@ export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | 'm
 }
 
 /** «Троеточие у титула» (src/labs): a «…» after a kanban's or timeline's title (from its top left), opening its panel. */
-const MORE = 20, MORE_GAP = 6;
+const MORE = 20, MORE_GAP = 7;
 export const MORE_ICON = 'more-l';
 let measure: CanvasRenderingContext2D | null = null;
 export function moreBox(it: Item): Rect | null {

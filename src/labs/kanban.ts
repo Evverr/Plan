@@ -317,13 +317,15 @@ export function drawKanban(ctx: CanvasRenderingContext2D, f: Item, get: (id: str
     ctx.globalAlpha = 1;
   });
   for (const id of f.members ?? []) { const it = get(id); if (it && snaps(it)) counts[columnOf(f, it.x + it.w / 2)]++; }
-  // The line under the stages, across it.
+  // The line under the stages, across it: light, half seen.
   ctx.beginPath();
   ctx.moveTo(f.x + LEFT, f.y + HEAD);
   ctx.lineTo(f.x + f.w - PAD, f.y + HEAD);
   ctx.strokeStyle = look.line;
   ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.5;
   ctx.stroke();
+  ctx.globalAlpha = 1;
   ctx.textBaseline = 'middle';
   (f.kb ?? []).forEach((s, i) => {
     // (The columns aren't drawn: all on the white, the stages over them show where they are.)
