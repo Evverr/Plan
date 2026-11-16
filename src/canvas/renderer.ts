@@ -1408,12 +1408,15 @@ function drawLinks(ctx: CanvasRenderingContext2D, s: Scene, view: Rect) {
       gc.globalAlpha = 1;
     }
     // (Held in some: only by those drawn over the lowest of them, not those under it.)
-    const own = new Set(key ? key.split(',') : []), cut = new Path2D(items);
+    // (Under a frame, kanban or timeline over theirs, a pile over theirs: not seen at all.)
+    const own = new Set(key ? key.split(',') : []), cut = new Path2D(items), over = new Path2D();
     const low = Math.min(...[...own].map((id) => drawnAt.get(id) ?? Infinity));
-    for (const f of frames) if (!own.has(f.id) && (!own.size || (drawnAt.get(f.id) ?? 0) > low)) outlineOn(cut, f);
+    for (const f of frames) if (!own.has(f.id)) { if (!own.size) outlineOn(cut, f); else if ((drawnAt.get(f.id) ?? 0) > low) outlineOn(over, f); }
     gc.globalCompositeOperation = 'destination-out';
     gc.globalAlpha = 0.92;
     gc.fill(cut);
+    gc.globalAlpha = 1;
+    gc.fill(over);
     lc.drawImage(groupLayer, 0, 0);
   }
   ctx.save();

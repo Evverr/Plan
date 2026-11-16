@@ -2827,6 +2827,23 @@ export const checks = {
     expect(await p.ev(`(() => { const z = (id) => planx.board.get(id).z; return Math.min(z('${ids.u}'), z('${ids.c}')) > Math.max(z('${ids.t}'), z('${ids.a}')); })()`), 'the one dragged, all of it, over the other').toBe(true);
   },
 
+  async '"Тихая панель": a click on something, its panel half seen; the pointer once on it, all of it till something else is picked'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('sticky', 300, 300, { id: 'q', w: 150, h: 150 })); b.add(e.newItem('sticky', 600, 300, { id: 'r', w: 150, h: 150 })); e.setSelection([]); })()`);
+    const seen = () => p.ev(`getComputedStyle(document.querySelector('.bar.panel')).opacity`);
+    await p.click([375, 375]);
+    await sleep(400);
+    expect(await seen(), 'half seen').toBe('0.5');
+    const panel = await p.at('.bar.panel');
+    await p.mouse('mouseMoved', panel[0], panel[1]);
+    await sleep(300);
+    await p.mouse('mouseMoved', 900, 600);
+    await sleep(300);
+    expect(await seen(), 'once on it: all of it').toBe('1');
+    await p.click([675, 375]);
+    await sleep(400);
+    expect(await seen(), 'another picked: half seen again').toBe('0.5');
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

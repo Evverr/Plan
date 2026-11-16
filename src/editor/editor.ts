@@ -1023,7 +1023,9 @@ export class Editor {
     const was = [...this.selection];
     this.selection = new Set(ids);
     // (Picked by the «…» by its title, «Троеточие у титула»: its panel faint till the pointer's on it.)
-    this.quietPanel = quiet ? [...this.selection][0] ?? null : null;
+    // («Тихая панель», src/labs: so whatever's picked, by a click as well.)
+    const was1 = was.length === this.selection.size && was.every((id) => this.selection.has(id));
+    if (!was1 || quiet) this.quietPanel = quiet || labOn('quietPanel') ? [...this.selection].sort().join() || null : null;
     // («Полукруги на рамке», src/labs: worked out afresh for what's picked now, as the pointer next moves.)
     this.tabAims = null;
     this.hotTab = null;
@@ -1349,7 +1351,8 @@ export class Editor {
 
   /** Cmd (or Control) held: a timeline picked alone framed orange, its step to be changed by its side («Масштаб таймлайна», src/labs). */
   cmdHeld = false;
-  /** What was picked by the «…» by its title («Троеточие у титула», src/labs): its panel half seen. */
+  /** What was picked (its ids, sorted, joined) by the «…» by its title («Троеточие у титула», src/labs), or by
+   *  anything with «Тихая панель» on: its panel half seen till the pointer's once on it. */
   quietPanel: string | null = null;
   /** Whether `it` is a timeline picked alone, its step to be changed (Cmd held): no half circles then. */
   scalesTimeline(it: Item | undefined | null): boolean {
