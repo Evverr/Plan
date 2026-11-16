@@ -403,10 +403,10 @@ export class Editor {
     window.addEventListener('gesturestart', still);
     window.addEventListener('gesturechange', still);
     offs.push(() => { window.removeEventListener('gesturestart', still); window.removeEventListener('gesturechange', still); });
-    on(window, 'keydown', (e) => onKeyDown(this, e));
+    on(window, 'keydown', (e) => { this.setCmd(e.metaKey || e.ctrlKey); onKeyDown(this, e); });
     on(window, 'paste', (e) => onPaste(this, e));
-    on(window, 'keyup', (e) => { if (e.code === 'Space') this.setSpace(false); if (e.code === 'KeyZ') holdZoomBox(false); });
-    on(window, 'blur', () => { this.setSpace(false); holdZoomBox(false); });
+    on(window, 'keyup', (e) => { this.setCmd(e.metaKey || e.ctrlKey); if (e.code === 'Space') this.setSpace(false); if (e.code === 'KeyZ') holdZoomBox(false); });
+    on(window, 'blur', () => { this.setCmd(false); this.setSpace(false); holdZoomBox(false); });
     on(window, 'resize', () => this.resize());
     const mq = matchMedia('(prefers-color-scheme: dark)');
     const onTheme = () => { this.theme = readTheme(); this.requestRender(); };
@@ -814,7 +814,7 @@ export class Editor {
       linkDots: this.tool === 'link' && !this.gesture ? this.linkDots : null,
       linkTool: labOn('linkTool') && !dotsMode,
       // (Nothing under the pointer: those of the picked lines, kept till something else is picked.)
-      scaling: g?.type === 'resize' && g.scale ? g.id : null,
+      scaling: g?.type === 'resize' && g.scale ? g.id : this.cmdHeld && !g && labOn('tlScale') && this.selection.size === 1 && this.board.get([...this.selection][0])?.tl ? [...this.selection][0] : null,
       related: dotsMode && !this.gesture ? this.related ?? pickedRelated(this.shownLinks().filter((l) => this.selection.has(l.id))) : null,
       hotPlus: this.hotPlus,
       plusFade,
@@ -1330,6 +1330,14 @@ export class Editor {
       return true;
     }
     return this.frameSelection({ comp: true, text: 'Компонент' }, 20);
+  }
+
+  /** Cmd (or Control) held: a timeline picked alone framed orange, its step to be changed by its side («Масштаб таймлайна», src/labs). */
+  private cmdHeld = false;
+  setCmd(on: boolean): void {
+    if (on === this.cmdHeld) return;
+    this.cmdHeld = on;
+    if (this.selection.size === 1 && labOn('tlScale')) this.requestRender();
   }
 
   /** A component's frame set to `r`, what it holds staying put; its instances along, each as far as its
