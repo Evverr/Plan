@@ -109,6 +109,8 @@ export interface Scene {
   allDots?: boolean;
   /** «Связи» on ("Связи инструментом", src/labs): the links the pointer's on, blue, and what they join, framed. */
   related?: { links: Set<string>; items: Set<string> } | null;
+  /** «Масштаб таймлайна» (src/labs): the timeline whose step is being changed (Cmd and its side), framed orange. */
+  scaling?: string | null;
   /** The mind map node button under the pointer, drawn full size and strength; the others are smaller and faint. */
   hotPlus: string | null;
   /** How far the node buttons have faded in, 0…1: they come a moment after the node is picked. */
@@ -273,6 +275,8 @@ function fitText(ctx: CanvasRenderingContext2D, text: string, max: number): stri
 
 /** Selection outlines and handles, the link dots and selected links. */
 const SELECT_COLOR = '#4DA3FF';
+/** A timeline's frame while its step's changed by hand («Масштаб таймлайна», src/labs). */
+const SCALE_COLOR = '#FF8A00';
 
 /** Runs `draw` with the board turned about the item's centre by the item's own turn, so the item
  *  can be drawn square. Paths added meanwhile keep the turn after it's undone. */
@@ -1640,11 +1644,13 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     if (!it || s.nodesOf === id || (s.live && s.lifted?.includes(id))) continue;
     // A mind map node shows it's picked by its "+" buttons alone, which a few picked together don't get.
     // (An instance framed by its contents, its red title over them; a component's red edge is its frame.)
+    // («Масштаб таймлайна»: its step being changed, orange.)
+    const pick = s.scaling === id ? SCALE_COLOR : theme.pick;
     if ((it.type !== 'mind' || s.selection.size > 1) && !it.comp) {
       ctx.globalAlpha = s.dragging ? DRAG_FRAME * dragLit : PICK_FRAME;
       ctx.save();
       hiddenUnder(ctx, it, s, view);
-      outline(ctx, it, cam.z, theme.pick, [], PICK_LINE, PICK_RAD);
+      outline(ctx, it, cam.z, pick, [], PICK_LINE, PICK_RAD);
       ctx.restore();
       ctx.globalAlpha = 1;
     }
@@ -1681,7 +1687,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       // (Not over what lies over its corner: see coveredAt. A component's at its edge, what it holds or its own.)
       const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z, hidden = !it.rot && !it.comp && coveredAt(s.items, it, { x: it.x + it.w, y: it.y + it.h });
       ctx.fillStyle = theme.surface;
-      ctx.strokeStyle = theme.pick;
+      ctx.strokeStyle = pick;
       ctx.lineWidth = PICK_LINE / cam.z;
       ctx.beginPath();
       turned(ctx, it, () => ctx.roundRect(it.x + it.w + off - hs / 2, it.y + it.h + off - hs / 2, hs, hs, 3 / cam.z));
@@ -1693,7 +1699,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       // (Under what lies over it, as its frame: all of it at its own height.)
       ctx.save();
       hiddenUnder(ctx, it, s, view);
-      if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
+      if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
     }
   }

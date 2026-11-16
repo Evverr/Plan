@@ -814,6 +814,7 @@ export class Editor {
       linkDots: this.tool === 'link' && !this.gesture ? this.linkDots : null,
       linkTool: labOn('linkTool') && !dotsMode,
       // (Nothing under the pointer: those of the picked lines, kept till something else is picked.)
+      scaling: g?.type === 'resize' && g.scale ? g.id : null,
       related: dotsMode && !this.gesture ? this.related ?? pickedRelated(this.shownLinks().filter((l) => this.selection.has(l.id))) : null,
       hotPlus: this.hotPlus,
       plusFade,
