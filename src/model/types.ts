@@ -127,6 +127,8 @@ export interface Item {
   ntag?: boolean;
   /** A task's title on one line («Заголовок в одну строку» ticked in its menu); else up to three. */
   t1?: boolean;
+  /** A task without its ring («Чекбокс» unticked in its menu, «Чекбокс у задачи», src/labs): its title in its place. */
+  nck?: boolean;
   /** A task kept open («Не сворачивать»): not closed by Esc, Cmd+Enter or a click elsewhere. */
   keep?: boolean;
   /** A task's description not shown (its menu's «Описание» unticked): kept, only hidden. */

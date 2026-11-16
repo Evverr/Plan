@@ -133,6 +133,8 @@ export function TaskMenu({ editor }: { editor: Editor }) {
       {row('Кнопки', !!it.tbtn, () => set({ tbtn: it.tbtn ? undefined : true }))}
       {/* Its «ВАЖНОЕ» pill at the top right, or not. */}
       {row('Тег', !it.ntag, () => set({ ntag: it.ntag ? undefined : true }))}
+      {/* Its ring on the left, or not: its title in its place then («Чекбокс у задачи», src/labs). */}
+      {labOn('taskCheck') && row('Чекбокс', !it.nck, () => set({ nck: it.nck ? undefined : true }))}
       {/* Its title on one line, or up to three («Заголовок задачи в три строки», src/labs). */}
       {labOn('taskLines') && row('Заголовок в одну строку', !!it.t1, () => set({ t1: it.t1 ? undefined : true }))}
     </div>

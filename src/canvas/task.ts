@@ -97,6 +97,10 @@ export function descLook(it: Item) {
 }
 
 /** Its title on one line (ticked so in its menu, or «Заголовок задачи в три строки», src/labs, off). */
+/** Whether its ring's shown (see Item.nck); not, its title starts where the ring would. */
+export const hasRing = (it: Item): boolean => !it.nck || !labOn('taskCheck');
+const titleX = (it: Item): number => (hasRing(it) ? TITLE_X : 15);
+
 export const oneLineTitle = (it: Item): boolean => !!it.t1 || !labOn('taskLines');
 
 /** Its title's lines: one, or up to three, the last cut off with "…" where there's more. */
@@ -122,9 +126,9 @@ export function taskLayout(it: Item, w = it.w): TaskLayout {
   // The title on one line (see titleLine), or up to three, the header taller by as many more (the ring
   // and the arrow by its first).
   // (Its "…" 4 short of the arrow's box, a letter more than that 14 short of it, narrowest.)
-  const titleW = Math.max(20, w - TITLE_X - 34), lh = lineH(TITLE_FS), n = titleLines(it, titleW).length, th = lh * n;
+  const tx = titleX(it), titleW = Math.max(20, w - tx - 34), lh = lineH(TITLE_FS), n = titleLines(it, titleW).length, th = lh * n;
   const top = MID - lh / 2, head = Math.round(52 + lh * (n - 1));
-  const out: TaskLayout = { w, h: head, head, title: { x: TITLE_X, y: top, w: titleW, h: th } };
+  const out: TaskLayout = { w, h: head, head, title: { x: tx, y: top, w: titleW, h: th } };
   // (Its description short of its menu, at the top right of what's under its header.)
   const descW = Math.max(80, w - LEFT - 44), dy = head + 16;
   // (Its description in a list, as drawn: each paragraph after its bullet or number.)
@@ -200,7 +204,7 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
   // of it the header itself (a double click there opens it further).
   if (q.y >= 0 && q.y < l.head && q.x >= 0 && q.x <= l.w) {
     const on = (cx: number, half: number) => Math.abs(q.x - cx) <= half + AROUND && Math.abs(q.y - MID) <= half + AROUND;
-    if (on(15 + STATUS / 2, STATUS / 2)) return 'status';
+    if (hasRing(it) && on(15 + STATUS / 2, STATUS / 2)) return 'status';
     // Its right corner all opens or closes it: the arrow's column, and its «ВАЖНОЕ» pill along the top edge.
     if (q.x >= l.w - 47 || (!it.ntag && q.y <= 10 && q.x >= l.w - 16 - PILL_W)) return 'arrow';
     const wide = Math.max(...titleLines(it, l.title.w).map((t) => widthOf(t, TITLE_FS, 500)));
@@ -490,7 +494,7 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
   const st = statusOf(it);
   // With subtasks, as far round as they're done (2 of 4, half); none yet, 5% (set, it's begun).
   const pr = progressOf(it);
-  drawStatus(ctx, x + 15 + STATUS / 2, y + MID, pr !== null && pr < 1 ? 'doing' : st, look, pr === null ? 0.75 : pr || 0.05);
+  if (hasRing(it)) drawStatus(ctx, x + 15 + STATUS / 2, y + MID, pr !== null && pr < 1 ? 'doing' : st, look, pr === null ? 0.75 : pr || 0.05);
   // The arrows darker under the pointer.
   // (Darker under the pointer, easing there and back.)
   const arrowInk = (part: string) => { const k = litNow(`${it.id}:${part}`, hot === `task:${it.id}:${part}`); return look.dark ? `rgba(255,255,255,${0.45 + 0.4 * k})` : `rgba(0,0,0,${0.35 + 0.4 * k})`; };
