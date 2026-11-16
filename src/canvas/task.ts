@@ -99,7 +99,10 @@ export function descLook(it: Item) {
 /** Its title on one line (ticked so in its menu, or «Заголовок задачи в три строки», src/labs, off). */
 /** Whether its ring's shown (see Item.nck); not, its title starts where the ring would. */
 export const hasRing = (it: Item): boolean => !it.nck || !labOn('taskCheck');
-const titleX = (it: Item): number => (hasRing(it) ? TITLE_X : 15);
+/** How far its title, and what's under its header with it, moves left with no ring: to 4 right of where the
+ *  ring would start. */
+const off = (it: Item): number => (hasRing(it) ? 0 : 19 - TITLE_X);
+const titleX = (it: Item): number => TITLE_X + off(it);
 
 export const oneLineTitle = (it: Item): boolean => !!it.t1 || !labOn('taskLines');
 
@@ -123,6 +126,7 @@ export function oneLine(text: string, w: number, fs: number, weight: number): st
 }
 
 export function taskLayout(it: Item, w = it.w): TaskLayout {
+  const ko = off(it);
   // The title on one line (see titleLine), or up to three, the header taller by as many more (the ring
   // and the arrow by its first).
   // (Its "…" 4 short of the arrow's box, a letter more than that 14 short of it, narrowest.)
@@ -130,13 +134,13 @@ export function taskLayout(it: Item, w = it.w): TaskLayout {
   const top = MID - lh / 2, head = Math.round(52 + lh * (n - 1));
   const out: TaskLayout = { w, h: head, head, title: { x: tx, y: top, w: titleW, h: th } };
   // (Its description short of its menu, at the top right of what's under its header.)
-  const descW = Math.max(80, w - LEFT - 44), dy = head + 16;
+  const descW = Math.max(80, w - (LEFT + ko) - 44), dy = head + 16;
   // (Its description in a list, as drawn: each paragraph after its bullet or number.)
   const dl = descLook(it), dh = textBlockHeight(it.desc ? withList(it.desc, it.ls) : DESC_HINT, descW, dl.fs, { weight: dl.weight, family: dl.family, italic: dl.italic });
   if (!it.tv) return out;
   // (Its description not shown, «Описание» unticked in its menu: what's under its header starts with what
   // comes next, no line over it, as tall as its menu at least.)
-  if (!it.nd) out.desc = { x: LEFT, y: dy, w: descW, h: dh };
+  if (!it.nd) out.desc = { x: (LEFT + ko), y: dy, w: descW, h: dh };
   // Its menu (three dots one over another) at the top right of what's under its header.
   out.menu = { x: w - 35, y: head + 12, w: ARROW, h: ARROW };
   // (What's ticked in its menu shown as soon as it's opened, to its description or in full alike.)
@@ -153,7 +157,7 @@ export function taskLayout(it: Item, w = it.w): TaskLayout {
     line();
     // The subtasks (no heading: they're plain to see), the first 33 under the line, their boxes on the
     // title's line; each as tall as its lines (the row adding one, one), the next 38 on from its first line.
-    const lh = lineH(TEXT_FS), subW = Math.max(40, w - SUB_TEXT_X - PAD);
+    const lh = lineH(TEXT_FS), subW = Math.max(40, w - (SUB_TEXT_X + ko) - PAD);
     out.subH = [...(it.subs ?? []).map((sub) => textBlockHeight(sub.t || 'Подзадача', subW, TEXT_FS, { weight: 400, family: FAMILY })), lh];
     out.subs = [];
     let sy = at + 33 - STATUS / 2;
@@ -164,7 +168,7 @@ export function taskLayout(it: Item, w = it.w): TaskLayout {
   if (keys.length) {
     line();
     // (Too narrow for a name right of its label, a kanban's card say: the circle and the name under it.)
-    const under = w < NAME_X + NAME_ROOM, step = under ? ROW + UNDER : ROW;
+    const under = w < (NAME_X + ko) + NAME_ROOM, step = under ? ROW + UNDER : ROW;
     out.rows = keys.map((key, i) => ({ key, y: at + 33 + step * i, ...(under && { under }) }));
     at = at + 33 + step * (keys.length - 1) + (under ? UNDER : 0) + 33;
   }
@@ -199,6 +203,7 @@ const inRect = (p: Point, r: Rect, pad = 0) => p.x >= r.x - pad && p.x <= r.x + 
 const near = (p: Point, x: number, y: number, r: number) => Math.hypot(p.x - x, p.y - y) <= r;
 
 export function taskPartAt(it: Item, p: Point): TaskPart | null {
+  const ko = off(it);
   const l = taskLayout(it), q = { x: p.x - it.x, y: p.y - it.y };
   // The header: the ring and the arrow theirs and 5 round them, the title's text the title, the rest
   // of it the header itself (a double click there opens it further).
@@ -215,16 +220,16 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
   if ((l.pin ?? l.pinSpot) && inRect(q, (l.pin ?? l.pinSpot)!, 2)) return 'pin';
   if (l.more && near(q, l.more.x + ARROW / 2, l.more.y + ARROW / 2, ARROW / 2 + 4)) return 'more';
   if (l.desc && inRect(q, l.desc)) return 'desc';
-  if (l.rows) for (const r of l.rows) if (r.under ? Math.abs(q.y - r.y - UNDER) <= 14 && q.x >= LEFT - 4 && q.x <= l.w - PAD : Math.abs(q.y - r.y) <= 14 && q.x >= AVATAR_X - 14 && q.x <= l.w - PAD - 24) return r.key;
+  if (l.rows) for (const r of l.rows) if (r.under ? Math.abs(q.y - r.y - UNDER) <= 14 && q.x >= (LEFT + ko) - 4 && q.x <= l.w - PAD : Math.abs(q.y - r.y) <= 14 && q.x >= (AVATAR_X + ko) - 14 && q.x <= l.w - PAD - 24) return r.key;
   if (l.subs) {
     for (let i = 0; i < l.subs.length; i++) {
       if (q.y < l.subs[i] - 6 || q.y > l.subs[i] + STATUS + (l.subH?.[i] ?? 0) - lineH(TEXT_FS) + 6) continue;
       // (The row adding one: its plus and its word, not past them.)
-      if (i === l.subs.length - 1) return q.x >= SUB_X - 4 && q.x <= SUB_TEXT_X - 3 + widthOf(SUB_HINT, TEXT_FS, 400) + 6 ? 'add' : null;
+      if (i === l.subs.length - 1) return q.x >= (SUB_X + ko) - 4 && q.x <= (SUB_TEXT_X + ko) - 3 + widthOf(SUB_HINT, TEXT_FS, 400) + 6 ? 'add' : null;
       // Left of its box, the cross taking it away (shown as the pointer comes over it).
-      if (q.x >= SUB_X - 22 && q.x < SUB_X - 1) return { sub: i, tick: false, del: true };
-      if (near(q, SUB_X + STATUS / 2, l.subs[i] + STATUS / 2, STATUS / 2 + 4)) return { sub: i, tick: true };
-      if (q.x >= SUB_TEXT_X && q.x <= l.w - PAD) return { sub: i, tick: false };
+      if (q.x >= (SUB_X + ko) - 22 && q.x < (SUB_X + ko) - 1) return { sub: i, tick: false, del: true };
+      if (near(q, (SUB_X + ko) + STATUS / 2, l.subs[i] + STATUS / 2, STATUS / 2 + 4)) return { sub: i, tick: true };
+      if (q.x >= (SUB_TEXT_X + ko) && q.x <= l.w - PAD) return { sub: i, tick: false };
     }
   }
   if (l.cancel && inRect(q, l.cancel)) return 'cancel';
@@ -235,11 +240,12 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
 
 /** Where a part's text is typed in (on the board): the title, the description, a subtask. */
 export function taskFieldBox(it: Item, field: number | null): Rect & { fs: number; weight: number } {
+  const ko = off(it);
   const l = taskLayout(it);
   if (field === 0 && l.desc) return { x: it.x + l.desc.x, y: it.y + l.desc.y, w: l.desc.w, h: l.desc.h, fs: descLook(it).fs, weight: descLook(it).weight };
   if (field !== null && field > 0 && l.subs) {
     const y = l.subs[field - 1] + STATUS / 2 - lineH(TEXT_FS) / 2;
-    return { x: it.x + SUB_TEXT_X, y: it.y + y, w: Math.max(40, l.w - SUB_TEXT_X - PAD), h: l.subH?.[field - 1] ?? lineH(TEXT_FS), fs: TEXT_FS, weight: 400 };
+    return { x: it.x + (SUB_TEXT_X + ko), y: it.y + y, w: Math.max(40, l.w - (SUB_TEXT_X + ko) - PAD), h: l.subH?.[field - 1] ?? lineH(TEXT_FS), fs: TEXT_FS, weight: 400 };
   }
   return { x: it.x + l.title.x, y: it.y + l.title.y, w: l.title.w, h: l.title.h, fs: TITLE_FS, weight: 500 };
 }
@@ -450,6 +456,7 @@ export function drawTaskCard(ctx: CanvasRenderingContext2D, it: Item, look: Task
 }
 
 function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typing: number | null | undefined, hot: string | null = null): void {
+  const ko = off(it);
   // Done, it's grey, darker than the grey given to anything (a colour not given to those still to do).
   const l = taskLayout(it), { x, y } = it, strong = statusOf(it) === 'done' ? DONE_GREY : strongOf(it.color);
   const bg = look.dark ? '#26272C' : '#FFFFFF', tint = mix(strong, bg, look.dark ? 0.16 : 0.07);
@@ -560,15 +567,15 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
   if (!l.lines) return;
   // (The lines across half as strong as the panels' line grey.)
   ctx.fillStyle = look.dark ? 'rgba(255,255,255,0.05)' : 'rgba(223,227,230,0.5)';
-  for (const ly of l.lines) ctx.fillRect(x + LEFT, y + ly, l.w - LEFT - PAD, 1);
+  for (const ly of l.lines) ctx.fillRect(x + (LEFT + ko), y + ly, l.w - (LEFT + ko) - PAD, 1);
   const label = (text: string, row: number) => {
     ctx.font = font(TEXT_FS, 400, FAMILY);
     ctx.fillStyle = look.ink;
     ctx.globalAlpha = 0.6;
-    ctx.fillText(text, x + LABEL_X, y + row);
+    ctx.fillText(text, x + (LABEL_X + ko), y + row);
     ctx.globalAlpha = 1;
   };
-  const person = (p: Person | undefined, row: number, ax = AVATAR_X, nx = NAME_X) => {
+  const person = (p: Person | undefined, row: number, ax = (AVATAR_X + ko), nx = (NAME_X + ko)) => {
     ctx.beginPath();
     ctx.arc(x + ax, y + row, 12, 0, Math.PI * 2);
     ctx.fillStyle = p ? p.c : look.dark ? 'rgba(255,255,255,0.15)' : '#DFE3E6';
@@ -589,7 +596,7 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
   };
   for (const { key, y: ry, under } of l.rows ?? []) {
     // (Under its label on a narrow card: from its left edge, a line down.)
-    const vy = under ? ry + UNDER : ry, ax = under ? LEFT + 12 : AVATAR_X, nx = under ? LEFT + 30 : NAME_X;
+    const vy = under ? ry + UNDER : ry, ax = under ? (LEFT + ko) + 12 : (AVATAR_X + ko), nx = under ? (LEFT + ko) + 30 : (NAME_X + ko);
     if (key === 'boss') { label('Постановщик', ry); person(it.boss, vy, ax, nx); }
     else if (key === 'doer') { label('Исполнитель', ry); person(it.doer, vy, ax, nx); }
     else {
@@ -616,17 +623,17 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
   const drag = subDrag?.id === it.id ? subDrag : null, ys = drag && l.subs ? subsMoved(l, drag.from, drag.to) : l.subs;
   (l.subs ?? []).forEach((_, i) => {
     const sy = drag && i === drag.from ? l.subs![i] + drag.dy : ys![i];
-    const mid = sy + STATUS / 2, box = { x: SUB_TEXT_X, y: mid - lineH(TEXT_FS) / 2, w: Math.max(40, l.w - SUB_TEXT_X - PAD), h: l.subH?.[i] ?? lineH(TEXT_FS) };
+    const mid = sy + STATUS / 2, box = { x: (SUB_TEXT_X + ko), y: mid - lineH(TEXT_FS) / 2, w: Math.max(40, l.w - (SUB_TEXT_X + ko) - PAD), h: l.subH?.[i] ?? lineH(TEXT_FS) };
     if (i === subs.length) {
       // (A little smaller than the boxes over it.)
-      drawIcon(ctx, 'plus-s', x + SUB_X + 2, y + sy + 2, 18, look.muted);
+      drawIcon(ctx, 'plus-s', x + (SUB_X + ko) + 2, y + sy + 2, 18, look.muted);
       // (Its word 3 nearer the plus than the subtasks' text to their boxes.)
       lines(SUB_HINT, { ...box, x: box.x - 3 }, TEXT_FS, 400, look.muted);
       return;
     }
     const sub = subs[i];
     // A box as the usual ones (as «Не сворачивать»'s), ticked in a softer blue.
-    drawBox(ctx, x + SUB_X + STATUS / 2 - KEEP_BOX / 2, y + mid - KEEP_BOX / 2, !!sub.done, SOFT_BLUE, look);
+    drawBox(ctx, x + (SUB_X + ko) + STATUS / 2 - KEEP_BOX / 2, y + mid - KEEP_BOX / 2, !!sub.done, SOFT_BLUE, look);
     // Its lines wrapped to its width; done, grey (not struck through).
     if (typing !== i + 1) lines(sub.t || 'Подзадача', box, TEXT_FS, 400, sub.t && !sub.done ? look.ink : look.muted);
     // The pointer on it: left of its box a cross taking it away, darker on it, both easing in and out (the
@@ -635,7 +642,7 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     if (onCross) lit.set(`${it.id}:sub:${i}`, { on: true, from: 1, at: 0 });
     const shown = litNow(`${it.id}:sub:${i}`, !drag && (hot === `task:${it.id}:sub:${i}` || onCross), 480, 300);
     if (shown) {
-      const cx = x + SUB_X - 12, cy = y + mid, d = 4, k = litNow(`${it.id}:del:${i}`, hot === `task:${it.id}:del:${i}`);
+      const cx = x + (SUB_X + ko) - 12, cy = y + mid, d = 4, k = litNow(`${it.id}:del:${i}`, hot === `task:${it.id}:del:${i}`);
       ctx.strokeStyle = look.dark ? `rgba(255,255,255,${(0.4 + 0.45 * k) * shown})` : `rgba(0,0,0,${(0.3 + 0.4 * k) * shown})`;
       ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';

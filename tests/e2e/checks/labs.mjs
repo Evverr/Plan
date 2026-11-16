@@ -2752,14 +2752,18 @@ export const checks = {
     expect(await p.ev(`!!document.querySelector('.emoji-grid')`), 'the frame\'s emoji\'s neighbours').toBe(true);
   },
 
-  async '"Чекбокс у задачи": «Чекбокс» unticked in a task\'s menu, no ring, its title in its place'(p) {
+  async '"Чекбокс у задачи": «Чекбокс» unticked in a task\'s menu, no ring, its title and what\'s under it in its place'(p) {
     const id = await p.ev(`(() => { const e = planx.editor, b = planx.board; const t = e.newItem('task', 0, 0, { w: 293, h: 52, text: 'Задача' }); b.add(t); e.cam = { x: 400, y: 300, z: 1 }; e.camChanged(); return t.id; })()`);
     await sleep(200);
     const title = () => p.ev(`(async () => { const k = await import('/src/canvas/task.ts'); return k.taskLayout(planx.board.get('${id}')).title.x; })()`);
     expect(await title(), 'after its ring').toBe(47);
     await p.ev(`planx.board.update('${id}', { nck: true })`);
     await sleep(200);
-    expect(await title(), 'in its ring\'s place').toBe(15);
+    expect(await title(), 'in its ring\'s place, 4 in').toBe(19);
+    // (What's under its header from there too: its description.)
+    await p.ev(`planx.board.update('${id}', { tv: 'full', desc: 'Описание' })`);
+    await sleep(200);
+    expect(await p.ev(`(async () => { const k = await import('/src/canvas/task.ts'); return k.taskLayout(planx.board.get('${id}')).desc.x; })()`), 'its description under its title').toBe(19);
     expect(await p.ev(`(async () => { const k = await import('/src/canvas/task.ts'); return k.taskPartAt(planx.board.get('${id}'), { x: 26, y: 26 }) === 'status'; })()`), 'no ring to click').toBe(false);
   },
 };
