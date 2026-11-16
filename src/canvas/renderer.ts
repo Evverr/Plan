@@ -1370,7 +1370,19 @@ function drawLinks(ctx: CanvasRenderingContext2D, s: Scene, view: Rect) {
   for (const it of seen) if (!frames.includes(it)) outlineOn(items, it);
   // The frames holding a link's ends (the middle of the item it's from or to inside the frame), not
   // the ends themselves: a line between two timelines fades crossing either.
-  const holding = (id: string) => { const it = s.get(id); if (!it) return []; const c = center(it); return frames.filter((f) => f.id !== id && pointInRect(c, f)).map((f) => f.id); };
+  // (By what holds it, a frame in a frame too; else, held by none, those it's in the middle of: one over
+  // another, a timeline taken over another, holds not what's under it.)
+  const parentOf = new Map<string, string>(), drawnAt = new Map(s.items.map((it, i) => [it.id, i]));
+  for (const f of s.items) if (f.type === 'frame') for (const m of f.members ?? []) parentOf.set(m, f.id);
+  const holding = (id: string) => {
+    const it = s.get(id);
+    if (!it) return [];
+    const up: string[] = [];
+    for (let p = parentOf.get(id); p && !up.includes(p); p = parentOf.get(p)) up.push(p);
+    if (up.length) return up;
+    const c = center(it);
+    return frames.filter((f) => f.id !== id && pointInRect(c, f)).map((f) => f.id);
+  };
   const groups = new Map<string, number[]>();
   for (const [k, l] of s.links.entries()) {
     if (!shapes[k]) continue;
@@ -1395,8 +1407,10 @@ function drawLinks(ctx: CanvasRenderingContext2D, s: Scene, view: Rect) {
       }
       gc.globalAlpha = 1;
     }
+    // (Held in some: only by those drawn over the lowest of them, not those under it.)
     const own = new Set(key ? key.split(',') : []), cut = new Path2D(items);
-    for (const f of frames) if (!own.has(f.id)) outlineOn(cut, f);
+    const low = Math.min(...[...own].map((id) => drawnAt.get(id) ?? Infinity));
+    for (const f of frames) if (!own.has(f.id) && (!own.size || (drawnAt.get(f.id) ?? 0) > low)) outlineOn(cut, f);
     gc.globalCompositeOperation = 'destination-out';
     gc.globalAlpha = 0.92;
     gc.fill(cut);
