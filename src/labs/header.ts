@@ -18,7 +18,7 @@ export const HEADER_DESC = 'Здесь идет описание заголов�
 /** Its parts, as Женя's component: the icon at its top left, the title and the description right of it. */
 const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
 /** Tied to a kanban, timeline or table: smaller, its icon and title, the title semibold. */
-const TIED = { icon: 32, iconY: -3, textX: 36, fs: 18, weight: 600 };
+const TIED = { icon: 32, iconY: -6, textX: 36, fs: 18, weight: 600 };
 const sizes = (it: Item) => (it.tie ? TIED : { icon: ICON, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
@@ -90,7 +90,7 @@ export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | 'm
 }
 
 /** «Троеточие у титула» (src/labs): a «…» after a kanban's or timeline's title (from its top left), opening its panel. */
-const MORE = 17, MORE_GAP = 6;
+const MORE = 20, MORE_GAP = 6;
 export const MORE_ICON = 'more-l';
 let measure: CanvasRenderingContext2D | null = null;
 export function moreBox(it: Item): Rect | null {
