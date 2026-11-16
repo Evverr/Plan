@@ -17,6 +17,9 @@ export const HEADER_NAME = 'Заголовок';
 export const HEADER_DESC = 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.';
 /** Its parts, as Женя's component: the icon at its top left, the title and the description right of it. */
 const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
+/** Tied to a kanban, timeline or table: 30% smaller, its icon and title. */
+const TIED = { icon: 25, iconY: -3, textX: 28, fs: 17 };
+const sizes = (it: Item) => (it.tie ? TIED : { icon: ICON, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS });
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
 export const HEADER_GAP = 4;
@@ -31,12 +34,12 @@ const titleOf = (it: Item) => (typing?.id === it.id && typing.cell === null ? ty
 const descOf = (it: Item) => (typing?.id === it.id && typing.cell === 0 ? typing.text : it.desc ?? '');
 
 /** Where its parts are, from its top left: its title as many lines as it takes, its description under it. */
-export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect; title: Rect; desc: Rect; h: number } {
-  const a = { ...it, ...patch }, w = Math.max(40, a.w - TEXT_X);
-  const th = textBlockHeight(titleOf(a) || ' ', w, TITLE_FS, { weight: 700 }), dy = TITLE_Y + th + DESC_GAP;
-  // (Tied to a kanban or timeline: no description.)
+export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect; title: Rect; desc: Rect; h: number; fs: number } {
+  const a = { ...it, ...patch }, s = sizes(a), w = Math.max(40, a.w - s.textX);
+  const th = textBlockHeight(titleOf(a) || ' ', w, s.fs, { weight: 700 }), dy = TITLE_Y + th + DESC_GAP;
+  // (Tied to a kanban, timeline or table: no description.)
   const dh = a.tie ? 0 : textBlockHeight(descOf(a) || ' ', w, DESC_FS);
-  return { icon: { x: 0, y: ICON_Y, w: ICON, h: ICON }, title: { x: TEXT_X, y: TITLE_Y, w, h: th }, desc: { x: TEXT_X, y: dy, w, h: dh }, h: Math.ceil(Math.max(ICON + ICON_Y, a.tie ? TITLE_Y + th : dy + dh)) };
+  return { icon: { x: 0, y: s.iconY, w: s.icon, h: s.icon }, title: { x: s.textX, y: TITLE_Y, w, h: th }, desc: { x: s.textX, y: dy, w, h: dh }, h: Math.ceil(Math.max(s.icon + s.iconY, a.tie ? TITLE_Y + th : dy + dh)), fs: s.fs };
 }
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
 /** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
@@ -51,12 +54,13 @@ export function tiedAt(h: Item, t: Item): { x: number; y: number } {
 /** Each header tied to a kanban or timeline put back over its corner, however that's moved, stretched or
  *  aligned (for good: undone, it's put back again). */
 export function tidyTies(board: Board): void {
-  const items = board.list(), moves = new Map<string, { x: number; y: number }>();
+  const items = board.list(), moves = new Map<string, { x: number; y: number; h: number }>();
   for (const h of items) {
     const t = h.tie ? board.get(h.tie) : undefined;
     if (!t) continue;
-    const at = tiedAt(h, t);
-    if (at.x !== h.x || at.y !== h.y) moves.set(h.id, at);
+    // (As tall as it takes, its sizes changed since, say.)
+    const hh = headerHeight(h), at = tiedAt({ ...h, h: hh }, t);
+    if (at.x !== h.x || at.y !== h.y || hh !== h.h) moves.set(h.id, { ...at, h: hh });
   }
   if (moves.size) board.forGood(() => moves.forEach((p, id) => board.updateForGood(id, p)));
 }
@@ -80,33 +84,36 @@ export function headerPartAt(it: Item, p: Point): 'icon' | 'title' | 'desc' | 'm
   const l = headerLayout(it), x = p.x - it.x, y = p.y - it.y;
   const on = (r: Rect) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
   const more = moreBox(it);
+  // (Its «…» a little bigger to take than it's drawn.)
   if (more && x >= more.x - 4 && x <= more.x + more.w + 4 && y >= more.y - 4 && y <= more.y + more.h + 4) return 'more';
   return on(l.icon) ? 'icon' : on(l.title) ? 'title' : !it.tie && y >= l.desc.y && x >= l.desc.x ? 'desc' : null;
 }
 
 /** «Троеточие у титула» (src/labs): a «…» after a kanban's or timeline's title (from its top left), opening its panel. */
-const MORE = 24, MORE_GAP = 8;
+const MORE = 17, MORE_GAP = 6;
 export const MORE_ICON = 'more-l';
 let measure: CanvasRenderingContext2D | null = null;
 export function moreBox(it: Item): Rect | null {
   if (!it.tie || !labOn('headerMore')) return null;
   measure ??= document.createElement('canvas').getContext('2d');
   if (!measure) return null;
-  measure.font = font(TITLE_FS, 700);
-  const tw = Math.min(measure.measureText(titleOf(it)).width, Math.max(40, it.w - TEXT_X - MORE - MORE_GAP)), lh = TITLE_FS * LINE_HEIGHT;
-  return { x: TEXT_X + tw + MORE_GAP, y: TITLE_Y + (lh - MORE) / 2, w: MORE, h: MORE };
+  const s = sizes(it);
+  measure.font = font(s.fs, 700);
+  const tw = Math.min(measure.measureText(titleOf(it)).width, Math.max(40, it.w - s.textX - MORE - MORE_GAP)), lh = s.fs * LINE_HEIGHT;
+  return { x: s.textX + tw + MORE_GAP, y: TITLE_Y + (lh - MORE) / 2, w: MORE, h: MORE };
 }
 
 /** Where a part's typed in (null its title, 0 its description), for the text overlay. */
 export function headerFieldBox(it: Item, cell: number | null): Rect & { fs: number; weight: number; family: string } {
   const l = headerLayout(it), r = cell === 0 ? l.desc : l.title;
-  return { x: it.x + r.x, y: it.y + r.y, w: r.w, h: r.h, fs: cell === 0 ? DESC_FS : TITLE_FS, weight: cell === 0 ? 400 : 700, family: 'onest' };
+  return { x: it.x + r.x, y: it.y + r.y, w: r.w, h: r.h, fs: cell === 0 ? DESC_FS : l.fs, weight: cell === 0 ? 400 : 700, family: 'onest' };
 }
 
 /** Draws it: its icon by `icon`, its title and description in `ink`, but the part being typed in (`cell`). */
 export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string, icon: (name: string, x: number, y: number, size: number) => void, cell?: number | null): void {
+  // (Its «…» drawn by `icon` as MORE_ICON: half seen, all of it under the pointer, as its caller has it.)
   const l = headerLayout(it);
-  icon(it.icon ?? 'kanban', it.x + l.icon.x, it.y + l.icon.y, ICON);
+  icon(it.icon ?? 'kanban', it.x + l.icon.x, it.y + l.icon.y, l.icon.w);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = ink;
@@ -115,7 +122,7 @@ export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string,
     const lh = fs * LINE_HEIGHT;
     wrapText(text, r.w, (t) => ctx.measureText(t).width).forEach((line, i) => ctx.fillText(line, it.x + r.x, it.y + r.y + lh * i + lh / 2));
   };
-  if (cell !== null) lines(it.text ?? '', l.title, TITLE_FS, 700);
+  if (cell !== null) lines(it.text ?? '', l.title, l.fs, 700);
   if (cell !== 0 && !it.tie) lines(it.desc ?? '', l.desc, DESC_FS, 400);
   // Its «…» («Троеточие у титула»), but while its title's typed in.
   const more = cell === null ? null : moreBox(it);

@@ -338,6 +338,8 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
     ?? (over?.form && onFormButton(over, w) ? `form:${over.id}` : null)
     ?? (over?.poll ? pollHot(over, w) : null)
     ?? kanbanHot(ed.board.list(), w, over)
+    // (A kanban's, timeline's or table's «…» by its title, «Троеточие у титула».)
+    ?? (over?.hd && over.tie && headerPartAt(over, w) === 'more' ? `more:${over.id}` : null)
     ?? (labOn('docPage') ? pagerHot(ed.board.list(), w) : null);
   if (hot !== ed.hotPlus) { ed.hotPlus = hot; ed.requestRender(); }
   if (hot || frameButtonUnder(ed, w) || foldBadgeAt(ed, w)) cursor = 'pointer';

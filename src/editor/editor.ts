@@ -697,7 +697,8 @@ export class Editor {
   addKanbanTask(f: Item): void {
     const b = newCardBox(f, (id) => this.board.get(id));
     if (!b) return;
-    const it = this.newItem('task', b.x, b.y, { w: b.w, h: b.h });
+    // (In a kanban, with no ring: «Чекбокс у задачи», src/labs.)
+    const it = this.newItem('task', b.x, b.y, { w: b.w, h: b.h, ...(f.kb && { nck: true }) });
     if (f.tl) {
       // On a timeline two, joined: the second from the first's middle, two thirds of a task lower, named; the
       // line out of the first's bottom into its left side.
@@ -713,6 +714,11 @@ export class Editor {
     this.setTool('select');
     this.setSelection([it.id]);
     this.startEditing(it.id);
+  }
+
+  /** A new task put in a kanban: with no ring («Чекбокс у задачи», src/labs). */
+  ringless(it: Item): void {
+    if (it.type === 'task' && kanbanOf(this.board.list(), it.id)) this.board.update(it.id, { nck: true });
   }
 
   /** A new table's title over it, «Таблица», as a kanban's or a timeline's («Титул в объектах», src/labs). */
@@ -1295,6 +1301,7 @@ export class Editor {
     if (type === 'task') Object.assign(it, freshTask(this.board, it, c));
     this.addItem(it);
     if (type === 'table') this.addTableHeader(it);
+    this.ringless(it);
     this.setTool('select');
     this.setSelection([it.id]);
     // A new table comes with its pills out ("Перестановка в таблице", src/labs).

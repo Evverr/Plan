@@ -653,6 +653,7 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       ed.addItem(it);
       // A new table has a title over it, as a kanban or a timeline («Титул в объектах», src/labs).
       if (it.type === 'table') ed.addTableHeader(it);
+      ed.ringless(it);
       ed.setTool('select');
       ed.setSelection([it.id]);
       // A new table comes with its pills out ("Перестановка в таблице", src/labs), as one dropped off the

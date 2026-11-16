@@ -524,7 +524,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         const c = it.color ?? 'blue', ink = c.startsWith('#') ? shade(c, theme.dim) : ICON_COLORS[c] || FILLS[c] ? shade(ICON_COLORS[c] || FILLS[c], theme.dim) : theme.ink;
         // (Its icon as opaque as set on its panel.)
         // (Its «…», «Троеточие у титула»: muted, as a button.)
-        drawHeader(ctx, it, theme.ink, (name, x, y, size) => { ctx.globalAlpha = name === MORE_ICON ? 1 : fillOpacity(it); drawIcon(ctx, name, x, y, size, name === MORE_ICON ? theme.muted : ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
+        drawHeader(ctx, it, theme.ink, (name, x, y, size) => { ctx.globalAlpha = name === MORE_ICON ? (s.hotPlus === `more:${it.id}` ? 1 : 0.5) : fillOpacity(it); drawIcon(ctx, name, x, y, size, name === MORE_ICON ? theme.ink : ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
         break;
       }
       // A poll («Голосование», src/labs), the part under the pointer lit.
