@@ -2781,6 +2781,13 @@ export const checks = {
     expect(await p.ev(`(async () => (await import('/src/canvas/task.ts')).compactTask(planx.board.get('${ids.task}')))()`), 'the task a bar').toBe(true);
     await p.ev(`planx.editor.setTimelineStep('${ids.t}', 6)`);
     expect(await at(), 'back at 6x: as they were').toBe(JSON.stringify([[276, 276], [414, 138], [138, 100]]));
+    // Too narrow for a letter of its title (a day at 1x): a click opens it.
+    await p.ev(`(() => { planx.editor.setTimelineStep('${ids.t}', 1); planx.board.update('${ids.task}', { w: 23 }); })()`);
+    const c = await p.ev(`(() => { const e = planx.editor, i = planx.board.get('${ids.task}'); e.cam = { x: 400 - i.x, y: 300 - i.y, z: 1 }; e.camChanged(); e.setSelection([]); return [400 + i.w / 2, 326]; })()`);
+    await sleep(200);
+    await p.click(c);
+    await sleep(300);
+    expect(await p.ev(`!!planx.board.get('${ids.task}').tv`), 'opened by a click').toBe(true);
   },
 
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {

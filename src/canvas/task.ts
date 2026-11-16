@@ -108,6 +108,8 @@ const titleX = (it: Item): number => TITLE_X + off(it);
 export const compactTask = (it: Item, w = it.w): boolean => labOn('tlDurations') && !it.tv && w < TASK_MIN_W;
 /** Room round its title in the bar. */
 const BAR_PAD = 8;
+/** Its title in its bar, cut off with "…": none, too narrow for a letter and that. */
+const barTitle = (it: Item, l: TaskLayout): string | null => { const t = titleLine(it.text || 'Название задачи', l.title.w); return t.startsWith('…') ? null : t; };
 
 /** Its title on one line (ticked so in its menu, or «Заголовок задачи в три строки», src/labs, off; a bar). */
 export const oneLineTitle = (it: Item): boolean => !!it.t1 || !labOn('taskLines') || compactTask(it);
@@ -216,8 +218,9 @@ const near = (p: Point, x: number, y: number, r: number) => Math.hypot(p.x - x, 
 export function taskPartAt(it: Item, p: Point): TaskPart | null {
   const ko = off(it);
   const l = taskLayout(it), q = { x: p.x - it.x, y: p.y - it.y };
-  // A bar (see compactTask): all of it its header (a double click opens it).
-  if (compactTask(it)) return q.y >= 0 && q.y < l.head && q.x >= 0 && q.x <= l.w ? 'head' : null;
+  // A bar (see compactTask): all of it its header (a double click opens it); too narrow for its title, its
+  // arrow (a click opens it).
+  if (compactTask(it)) return q.y >= 0 && q.y < l.head && q.x >= 0 && q.x <= l.w ? (barTitle(it, l) ? 'head' : 'arrow') : null;
   // The header: the ring and the arrow theirs and 5 round them, the title's text the title, the rest
   // of it the header itself (a double click there opens it further).
   if (q.y >= 0 && q.y < l.head && q.x >= 0 && q.x <= l.w) {
@@ -489,8 +492,8 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     // (A letter and its "…" at least; narrower, the bar alone.)
-    const t = titleLine(it.text || 'Название задачи', l.title.w);
-    if (!t.startsWith('…')) ctx.fillText(t, x + l.title.x, y + MID);
+    const t = barTitle(it, l);
+    if (t) ctx.fillText(t, x + l.title.x, y + MID);
     return;
   }
   // The card, its edge 2 wide inside it; its header tinted, the whole of it when closed. Opened, it
