@@ -17,9 +17,9 @@ export const HEADER_NAME = 'Заголовок';
 export const HEADER_DESC = 'Здесь идет описание заголовка, он может оказаться длинным, в две и более строки.';
 /** Its parts, as Женя's component: the icon at its top left, the title and the description right of it. */
 const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
-/** Tied to a kanban, timeline or table: 30% smaller, its icon and title. */
-const TIED = { icon: 25, iconY: -3, textX: 28, fs: 17 };
-const sizes = (it: Item) => (it.tie ? TIED : { icon: ICON, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS });
+/** Tied to a kanban, timeline or table: smaller, its icon and title, the title semibold. */
+const TIED = { icon: 32, iconY: -3, textX: 36, fs: 18, weight: 600 };
+const sizes = (it: Item) => (it.tie ? TIED : { icon: ICON, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
 export const HEADER_GAP = 4;
@@ -34,12 +34,12 @@ const titleOf = (it: Item) => (typing?.id === it.id && typing.cell === null ? ty
 const descOf = (it: Item) => (typing?.id === it.id && typing.cell === 0 ? typing.text : it.desc ?? '');
 
 /** Where its parts are, from its top left: its title as many lines as it takes, its description under it. */
-export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect; title: Rect; desc: Rect; h: number; fs: number } {
+export function headerLayout(it: Item, patch: Partial<Item> = {}): { icon: Rect; title: Rect; desc: Rect; h: number; fs: number; weight: number } {
   const a = { ...it, ...patch }, s = sizes(a), w = Math.max(40, a.w - s.textX);
-  const th = textBlockHeight(titleOf(a) || ' ', w, s.fs, { weight: 700 }), dy = TITLE_Y + th + DESC_GAP;
+  const th = textBlockHeight(titleOf(a) || ' ', w, s.fs, { weight: s.weight }), dy = TITLE_Y + th + DESC_GAP;
   // (Tied to a kanban, timeline or table: no description.)
   const dh = a.tie ? 0 : textBlockHeight(descOf(a) || ' ', w, DESC_FS);
-  return { icon: { x: 0, y: s.iconY, w: s.icon, h: s.icon }, title: { x: s.textX, y: TITLE_Y, w, h: th }, desc: { x: s.textX, y: dy, w, h: dh }, h: Math.ceil(Math.max(s.icon + s.iconY, a.tie ? TITLE_Y + th : dy + dh)), fs: s.fs };
+  return { icon: { x: 0, y: s.iconY, w: s.icon, h: s.icon }, title: { x: s.textX, y: TITLE_Y, w, h: th }, desc: { x: s.textX, y: dy, w, h: dh }, h: Math.ceil(Math.max(s.icon + s.iconY, a.tie ? TITLE_Y + th : dy + dh)), fs: s.fs, weight: s.weight };
 }
 export const headerHeight = (it: Item, patch: Partial<Item> = {}): number => headerLayout(it, patch).h;
 /** How tall it stands: as what's in it takes, or (stretched taller by hand, `hdH`) as it's set, but no shorter. */
@@ -98,7 +98,7 @@ export function moreBox(it: Item): Rect | null {
   measure ??= document.createElement('canvas').getContext('2d');
   if (!measure) return null;
   const s = sizes(it);
-  measure.font = font(s.fs, 700);
+  measure.font = font(s.fs, s.weight);
   const tw = Math.min(measure.measureText(titleOf(it)).width, Math.max(40, it.w - s.textX - MORE - MORE_GAP)), lh = s.fs * LINE_HEIGHT;
   return { x: s.textX + tw + MORE_GAP, y: TITLE_Y + (lh - MORE) / 2, w: MORE, h: MORE };
 }
@@ -106,7 +106,7 @@ export function moreBox(it: Item): Rect | null {
 /** Where a part's typed in (null its title, 0 its description), for the text overlay. */
 export function headerFieldBox(it: Item, cell: number | null): Rect & { fs: number; weight: number; family: string } {
   const l = headerLayout(it), r = cell === 0 ? l.desc : l.title;
-  return { x: it.x + r.x, y: it.y + r.y, w: r.w, h: r.h, fs: cell === 0 ? DESC_FS : l.fs, weight: cell === 0 ? 400 : 700, family: 'onest' };
+  return { x: it.x + r.x, y: it.y + r.y, w: r.w, h: r.h, fs: cell === 0 ? DESC_FS : l.fs, weight: cell === 0 ? 400 : l.weight, family: 'onest' };
 }
 
 /** Draws it: its icon by `icon`, its title and description in `ink`, but the part being typed in (`cell`). */
@@ -122,7 +122,7 @@ export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string,
     const lh = fs * LINE_HEIGHT;
     wrapText(text, r.w, (t) => ctx.measureText(t).width).forEach((line, i) => ctx.fillText(line, it.x + r.x, it.y + r.y + lh * i + lh / 2));
   };
-  if (cell !== null) lines(it.text ?? '', l.title, l.fs, 700);
+  if (cell !== null) lines(it.text ?? '', l.title, l.fs, l.weight);
   if (cell !== 0 && !it.tie) lines(it.desc ?? '', l.desc, DESC_FS, 400);
   // Its «…» («Троеточие у титула»), but while its title's typed in.
   const more = cell === null ? null : moreBox(it);
