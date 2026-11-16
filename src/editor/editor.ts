@@ -723,7 +723,7 @@ export class Editor {
 
   /** A new table's title over it, «Таблица», as a kanban's or a timeline's («Титул в объектах», src/labs). */
   addTableHeader(it: Item): void {
-    if (labOn('headerObject')) this.addHeader(center(it), { item: it, title: 'Таблица', icon: 'table', color: 'purple' });
+    if (labOn('headerObject')) this.addHeader(center(it), { item: it, title: 'Таблица', icon: 'table', color: 'orange' });
   }
 
   /** «Титул в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its

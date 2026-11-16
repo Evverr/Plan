@@ -2807,6 +2807,19 @@ export const checks = {
     expect(await p.ev(`(() => { const t = planx.board.list().find((i) => i.type === 'table'); return planx.board.list().find((i) => i.tie === t?.id)?.text; })()`), 'a table, its title').toBe('Таблица');
   },
 
+  async '"Кучки": a timeline dragged over another goes over it, with all it holds'(p) {
+    const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
+      const a = e.newItem('task', t.x + 60, t.y + 80, { w: 200, h: 52, text: 'A' }); b.add(a); b.update(t.id, { members: [a.id] });
+      e.addTimeline({ x: 0, y: 600 }); const u = b.list().find((i) => i.tl && i.id !== t.id);
+      const c = e.newItem('task', u.x + 100, u.y + 80, { w: 200, h: 52, text: 'B' }); b.add(c); b.update(u.id, { members: [c.id] });
+      e.cam = { x: 100 - t.x * 0.5, y: 80 - t.y * 0.5, z: 0.5 }; e.camChanged(); e.setSelection([u.id]);
+      const s = e.toScreen({ x: u.x + 30, y: u.y + 300 }); return { t: t.id, u: u.id, a: a.id, c: c.id, at: [s.x, s.y] }; })()`);
+    await sleep(200);
+    await p.drag(ids.at, [ids.at[0] + 100, ids.at[1] - 250]);
+    await sleep(200);
+    expect(await p.ev(`(() => { const z = (id) => planx.board.get(id).z; return Math.min(z('${ids.u}'), z('${ids.c}')) > Math.max(z('${ids.t}'), z('${ids.a}')); })()`), 'the one dragged, all of it, over the other').toBe(true);
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

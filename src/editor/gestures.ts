@@ -157,6 +157,9 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         ed.setMoving(true);
         board.beginGesture();
         if (e.altKey) g.orig = ed.dragCopies(g.orig);
+        // («Кучки», src/labs: a frame, kanban or timeline with what's in it dragged goes over the rest, all its
+        // pile, so it's seen whole over another it's taken across.)
+        else if (labOn('piles') && ed.selectedItems().some((i) => i.type === 'frame' && (i.tl || i.kb || i.members?.length))) ed.bringToFront();
       }
       // ("Узел на линии", src/labs: Cmd or Ctrl held, from the start or on the way, what's in a line comes out of it.)
       if (!g.pulled && !e.altKey && (e.metaKey || e.ctrlKey) && labOn('linkJoint')) {
