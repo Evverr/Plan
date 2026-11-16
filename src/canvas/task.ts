@@ -35,7 +35,7 @@ const PILL_W = 60;
 const PAD = 24;
 /** What's under the header starts where its title does, all of it on that line. */
 const LEFT = TITLE_X;
-const LABEL_X = LEFT, NAME_X = LEFT + 153, AVATAR_X = LEFT + 135, ROW = 33, SUB = 38;
+const LABEL_X = LEFT, NAME_X = LEFT + 153, AVATAR_X = LEFT + 135, ROW = 33, SUB = 36;
 /** How much room a name wants right of its label (narrower, it goes under it), and how far under. */
 const NAME_ROOM = 110, UNDER = 28;
 /** The subtasks under who does it: their rings on its picture's middle, their text where names start. */
@@ -169,7 +169,7 @@ export function taskLayout(it: Item, w = it.w): TaskLayout {
   if (full && (it.tsb || it.subs?.length)) {
     line();
     // The subtasks (no heading: they're plain to see), the first 33 under the line, their boxes on the
-    // title's line; each as tall as its lines (the row adding one, one), the next 38 on from its first line.
+    // title's line; each as tall as its lines (the row adding one, one), the next 36 on from its first line.
     const lh = lineH(TEXT_FS), subW = Math.max(40, w - (SUB_TEXT_X + ko) - PAD);
     out.subH = [...(it.subs ?? []).map((sub) => textBlockHeight(sub.t || 'Подзадача', subW, TEXT_FS, { weight: 400, family: FAMILY })), lh];
     out.subs = [];
@@ -243,7 +243,7 @@ export function taskPartAt(it: Item, p: Point): TaskPart | null {
       // (The row adding one: its plus and its word, not past them.)
       if (i === l.subs.length - 1) return q.x >= (SUB_X + ko) - 4 && q.x <= (SUB_TEXT_X + ko) - 3 + widthOf(SUB_HINT, TEXT_FS, 400) + 6 ? 'add' : null;
       // Left of its box, the cross taking it away (shown as the pointer comes over it).
-      if (q.x >= (SUB_X + ko) - 22 && q.x < (SUB_X + ko) - 1) return { sub: i, tick: false, del: true };
+      if (q.x >= Math.max(0, (SUB_X + ko) - 22) && q.x < (SUB_X + ko) - 1) return { sub: i, tick: false, del: true };
       if (near(q, (SUB_X + ko) + STATUS / 2, l.subs[i] + STATUS / 2, STATUS / 2 + 4)) return { sub: i, tick: true };
       if (q.x >= (SUB_TEXT_X + ko) && q.x <= l.w - PAD) return { sub: i, tick: false };
     }
@@ -677,7 +677,8 @@ function drawCard(ctx: CanvasRenderingContext2D, it: Item, look: TaskLook, typin
     if (onCross) lit.set(`${it.id}:sub:${i}`, { on: true, from: 1, at: 0 });
     const shown = litNow(`${it.id}:sub:${i}`, !drag && (hot === `task:${it.id}:sub:${i}` || onCross), 480, 300);
     if (shown) {
-      const cx = x + (SUB_X + ko) - 12, cy = y + mid, d = 4, k = litNow(`${it.id}:del:${i}`, hot === `task:${it.id}:del:${i}`);
+      // (With no ring, in the middle of the room left of its box.)
+      const cx = x + (ko ? (SUB_X + ko) / 2 : SUB_X - 12), cy = y + mid, d = 4, k = litNow(`${it.id}:del:${i}`, hot === `task:${it.id}:del:${i}`);
       ctx.strokeStyle = look.dark ? `rgba(255,255,255,${(0.4 + 0.45 * k) * shown})` : `rgba(0,0,0,${(0.3 + 0.4 * k) * shown})`;
       ctx.lineWidth = 1.5;
       ctx.lineCap = 'round';
