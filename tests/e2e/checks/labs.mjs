@@ -2798,6 +2798,13 @@ export const checks = {
     await p.click(at);
     await sleep(400);
     expect(await p.ev(`JSON.stringify([[...planx.editor.selection].map((id) => !!planx.board.get(id).tl), getComputedStyle(document.querySelector('.bar.panel')).opacity])`), 'the timeline picked, its panel half seen').toBe('[[true],"0.5"]');
+    // The pointer once on it: all of it, the pointer gone again too.
+    const panel = await p.at('.bar.panel');
+    await p.mouse('mouseMoved', panel[0], panel[1]);
+    await sleep(300);
+    await p.mouse('mouseMoved', 600, 300);
+    await sleep(300);
+    expect(await p.ev(`getComputedStyle(document.querySelector('.bar.panel')).opacity`), 'seen, all of it since').toBe('1');
     await p.ev(`(() => { const e = planx.editor; e.setSelection([e.selection.values().next().value]); })()`);
     await sleep(300);
     expect(await p.ev(`getComputedStyle(document.querySelector('.bar.panel')).opacity`), 'picked as ever: all of it').toBe('1');
