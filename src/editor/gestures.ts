@@ -31,6 +31,7 @@ import { nibDrag, nibRelease } from '../labs/nib';
 import { editablePath, moveNode, startNodeEdit } from '../labs/paths';
 import { openDoc } from '../labs/docx';
 import { openSwap, swapKind } from '../labs/swap';
+import { openUrl } from '../labs/itemLink';
 import { pushedBelow } from '../labs/textPush';
 import { dayKey, dayOf, halfDay, TL_LEAST, TL_MOST, TL_PAD, TL_PULL, TL_STEPS, tlDays, tlStart } from '../canvas/timeline';
 import { under } from '../labs/clickThrough';
@@ -558,8 +559,9 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         // what was picked before (that was let go of as it was taken).
         if (g.fresh) ed.setSelection([]);
       } else if (g.url) {
-        // A link on a part of its text, clicked ("Ссылка в тексте", src/labs): opened in a new tab.
-        window.open(g.url, '_blank', 'noopener');
+        // A link on a part of its text, clicked ("Ссылка в тексте", src/labs): opened in a new tab (to something
+        // on the board, «Ссылка на объект»: there).
+        openUrl(ed, g.url);
       } else if (g.tap) {
         // A task's button, clicked (`tap`: where on screen, for a popup): what it does.
         // (A subtask's text clicked twice: its tick as it was, it typed in.)

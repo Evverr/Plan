@@ -11,6 +11,7 @@ import { fillOpacity, MIND_PALETTE, mindWays } from '../model/mind';
 import { Glyph } from '../ui/glyphs';
 import { ColorPicker } from '../ui/ColorPicker';
 import { Switch } from '../ui/BoardMenu';
+import { copyItemLink } from './itemLink';
 import { labOn } from './labs';
 import { TL_FONTS, TL_STEPS, tlLeast } from '../canvas/timeline';
 import { startTidy } from './tidy';
@@ -237,6 +238,8 @@ export function ContextMenu({ editor, onToast }: { editor: Editor; onToast: (tex
         {/* A frame or a component (not a timeline, kanban or instance: theirs is named elsewhere): its title typed in at once. */}
         {/* (An instance: its component's name, without going into changing it.) */}
         {one?.type === 'frame' && !one.tl && !one.kb && !one.inst?.startsWith('@') && row('edit-l', 'Переименовать', run(() => editor.startEditing(one.id, null, 'all')))}
+        {/* «Ссылка на объект» (src/labs/itemLink.ts): a link to it, to put in a text. */}
+        {one && labOn('itemLinks') && row('link', 'Ссылка на объект', run(() => void copyItemLink(one.id)))}
         {row('copy', 'Скопировать', run(() => { if (editor.copy()) onToast('Скопировано. Вставить: Ctrl+V или правым кликом'); }))}
         {row('arrow-top-l', 'Переместить вверх', run(() => editor.shiftZ(1)))}
         {row('arrow-down-l', 'Переместить вниз', run(() => editor.shiftZ(-1)))}

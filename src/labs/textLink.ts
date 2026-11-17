@@ -3,6 +3,8 @@ import type { Point } from '../canvas/geometry';
 import { linkInTextAt } from '../canvas/renderer';
 import { remapLinks, setLink } from '../model/textLinks';
 import { labOn } from './labs';
+import { openUrl } from './itemLink';
+import type { Editor } from '../editor/editor';
 
 /**
  * "Ссылка в тексте": text, a sticker, a shape or a task can lead to an address. Its text turns blue;
@@ -28,11 +30,12 @@ export function linkPatch(it: Item, typed: string): Partial<Item> {
 
 /** Opens the link in text at the board point, or else the item's address, when the feature is on;
  *  whether it did. */
-export function openLink(it: Item | null | undefined, w: Point): boolean {
+export function openLink(ed: Editor, it: Item | null | undefined, w: Point): boolean {
   if (!labOn('textLink')) return false;
   const url = linkInTextAt(w) ?? it?.url;
   if (!url) return false;
-  window.open(url, '_blank', 'noopener');
+  // (To something on the board, «Ссылка на объект»: there.)
+  openUrl(ed, url);
   return true;
 }
 

@@ -8,6 +8,7 @@ import { SelectionPanel } from './ui/SelectionPanel';
 import { usePanelPlace } from './labs/panelPlace';
 import { TextEditor } from './ui/TextEditor';
 import { TextPanel } from './ui/FormatPanel';
+import { goToItem } from './labs/itemLink';
 import { TaskKeepPop, TaskMenu, TaskPop, TaskTipBubble } from './ui/TaskPop';
 import { noteBoard, setSideOpen, takeSideAway, useSideOpen } from './labs/SideNav';
 import { navigate } from './route';
@@ -72,7 +73,12 @@ export function App({ boardId }: { boardId: string }) {
   useShelfTracking(boardId, board);
   useEffect(() => noteBoard(boardId), [boardId]);
   // Loaded (what's kept here, drawn): the side slid away, if «Работа» led here.
-  useEffect(() => { void conn.local.whenSynced.then(() => requestAnimationFrame(() => requestAnimationFrame(takeSideAway))); }, [conn]);
+  useEffect(() => { void conn.local.whenSynced.then(() => requestAnimationFrame(() => requestAnimationFrame(() => {
+    takeSideAway();
+    // Opened by a link to something on it («Ссылка на объект», src/labs): there.
+    const item = new URLSearchParams(location.search).get('item');
+    if (item && labOn('itemLinks')) goToItem(editor, item);
+  }))); }, [conn]); // eslint-disable-line react-hooks/exhaustive-deps
   const toShelf = () => {
     window.dispatchEvent(new Event('planx:leave'));
     navigate(shelfUrlFor(boardId));
@@ -90,6 +96,12 @@ export function App({ boardId }: { boardId: string }) {
   const sideOpen = useSideOpen();
   // A note at the bottom with a button (see src/labs/tidyMind.ts), sent as "planx:toast".
   const [note, setNote] = useState<{ text: string; action: string; run: () => void; at: number } | null>(null);
+  // Something said at the top a moment ("planx:say": «Ссылка скопирована», say).
+  useEffect(() => {
+    const on = (e: Event) => setToast((e as CustomEvent<{ text: string }>).detail.text);
+    window.addEventListener('planx:say', on);
+    return () => window.removeEventListener('planx:say', on);
+  }, []);
   useEffect(() => {
     const on = (e: Event) => setNote({ ...(e as CustomEvent).detail, at: Date.now() });
     window.addEventListener('planx:toast', on);

@@ -2368,7 +2368,7 @@ export const checks = {
     await sleep(200);
     expect(await p.ev('[...planx.editor.selection].join()'), 'picked').toBe(a[2]);
     expect(await p.ev(`[...document.querySelectorAll('.context-menu .menu-row span')].map((s) => s.textContent).join(', ')`), 'its rows')
-      .toBe('Параметры, Комментарий, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Скрыть объект, Удалить');
+      .toBe('Параметры, Комментарий, Ссылка на объект, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Скрыть объект, Удалить');
     await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.context-menu .menu-row')].find((b) => b.textContent === 'Удалить').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
     expect(await p.ev(`planx.board.get('${a[2]}') ?? null`), 'deleted').toBe(null);
     expect(await p.ev(`document.querySelectorAll('.context-menu').length`), 'and the menu gone').toBe(0);
@@ -2448,7 +2448,7 @@ export const checks = {
     await p.ev(`(() => { const e = planx.editor, { x, y } = e.toWorld(300, 300); planx.board.add(e.newItem('rect', x, y, { id: 'r', w: 200, h: 120, text: 'Фигура' })); })()`);
     const r = await p.ev(`(() => { const i = planx.board.get('r'), s = planx.editor.toScreen({ x: i.x + 30, y: i.y + 30 }); return [s.x, s.y]; })()`);
     await right(r);
-    expect(await rows(), 'parameters first').toBe('Параметры, Комментарий, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Скрыть объект, Удалить');
+    expect(await rows(), 'parameters first').toBe('Параметры, Комментарий, Ссылка на объект, Скопировать, Переместить вверх, Переместить вниз, Сделать компонентом, Скрыть объект, Удалить');
     await pick('Параметры');
     expect(await p.ev(`!!document.querySelector('.params-pop .params-colors')`), 'the popup: colours').toBe(true);
     // In a small window what's in it scrolls inside: the popup itself stays, and its glass with it.
@@ -2851,6 +2851,23 @@ export const checks = {
       const sq = e.newItem('sticky', 0, 0, { w: 160, h: 160 }), long = e.newItem('rect', 0, 0, { w: 200, h: 40 });
       return [t.tabsFor(sq, null, 0.25), t.tabsFor(sq, null, 0.19), t.tabsFor(long, null, 0.6), t.tabsFor(long, null, 0.5)].join(); })()`);
     expect(r, 'a sticker at 40 and 30 across, a long one 24 and 20 tall').toBe('true,false,true,false');
+  },
+
+  async '"Ссылка на объект": copied from an item\'s menu, said so; opened, the board goes to it, picked'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('sticky', 300, 300, { id: 'a', w: 150, h: 150 })); b.add(e.newItem('sticky', 4000, 3000, { id: 'far', w: 150, h: 150 })); e.setSelection([]); })()`);
+    await p.cdp('Browser.grantPermissions', { permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'] }).catch(() => {});
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: 375, y: 375, button: 'right', buttons: 2, clickCount: 1 });
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 375, y: 375, button: 'right', buttons: 0, clickCount: 1 });
+    await sleep(200);
+    await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.context-menu .menu-row')].find((b) => b.textContent === 'Ссылка на объект').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
+    await sleep(300);
+    const said = await p.ev(`document.querySelector('.pop.toast')?.textContent ?? ''`);
+    expect(said === 'Ссылка скопирована' || said.includes('item=a'), `said (${said})`).toBe(true);
+    // A link to the far one opened: the board there, it picked.
+    await p.ev(`(async () => { const l = await import('/src/labs/itemLink.ts'); l.openUrl(planx.editor, l.itemUrl('far')); })()`);
+    await sleep(700);
+    expect(await p.ev(`(() => { const e = planx.editor, s = e.toScreen({ x: 4075, y: 3075 }); return [Math.abs(s.x - e.canvas.clientWidth / 2) < 2, Math.abs(s.y - e.canvas.clientHeight / 2) < 2, [...e.selection].join()].join(); })()`), 'there, in the middle, picked').toBe('true,true,far');
   },
 
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
