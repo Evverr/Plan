@@ -52,6 +52,8 @@ const COPY_KEY = 'planx-copy:';
 type Pop = 'clear' | 'quick' | 'icons' | 'help' | 'name' | null;
 
 
+/** How long a table cell's text panel stays over it once typing in it's ended, for a double click on another (ms). */
+const CELL_HOLD = 350;
 /** How long the text panel takes to fade out (format.css: half its fading in). */
 const PANEL_OUT = 80;
 
@@ -285,11 +287,21 @@ export function App({ boardId }: { boardId: string }) {
   // picked, till something else is picked or typing starts again.
   const [quiet, setQuiet] = useState<string | null>(null);
   const wasEditing = useRef<string | null>(null);
+  // A table's cell typed in no more: its text panel held over it a moment (CELL_HOLD), so a double click on
+  // another cell takes it there, not by the table's panel and back.
+  const lastCell = useRef<Item | null>(null), [heldCell, setHeldCell] = useState<Item | null>(null), holdTimer = useRef(0);
   // (Before it's drawn: the selection panel back is never seen beside it a moment.)
   useLayoutEffect(() => {
     // (Not when typing ended for one of the panel's own fields, the link's address.)
-    if (wasEditing.current && !ui.editingId && !document.activeElement?.closest('.tfmt')) setQuiet(textItem?.id ?? null);
-    else if (ui.editingId) setQuiet(null);
+    if (wasEditing.current && !ui.editingId && !document.activeElement?.closest('.tfmt')) {
+      const ended = textItem?.id ?? null, cell = lastCell.current;
+      lastCell.current = null;
+      clearTimeout(holdTimer.current);
+      if (cell && board.get(wasEditing.current)?.type === 'table') {
+        setHeldCell(cell);
+        holdTimer.current = window.setTimeout(() => { setHeldCell(null); setQuiet(ended); }, CELL_HOLD);
+      } else setQuiet(ended);
+    } else if (ui.editingId) { clearTimeout(holdTimer.current); setHeldCell(null); setQuiet(null); }
     wasEditing.current = ui.editingId;
   }, [ui.editingId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (quiet && quiet !== textItem?.id) setQuiet(null); }, [textItem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -310,7 +322,9 @@ export function App({ boardId }: { boardId: string }) {
   // The text panel: shown as above; once it goes, it fades out (half as long as it fades in), still
   // showing what it showed.
   const panelOn = tMode || (!!textItem && textShown === textItem.id && quiet !== textItem.id);
-  const panelNow = tMode ? tItem! : panelOn && textItem ? (editing?.id === textItem.id && editing.type === 'table' && ui.editingCell !== null ? cellItem(editing, ui.editingCell) : textItem) : null;
+  const typedCell = editing?.id === textItem?.id && editing?.type === 'table' && ui.editingCell !== null ? cellItem(editing, ui.editingCell) : null;
+  if (typedCell) lastCell.current = typedCell;
+  const panelNow = tMode ? tItem! : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : textItem) : null;
   const lastPanel = useRef<Item | null>(null);
   const [, panelGone] = useState(0);
   if (panelNow) lastPanel.current = panelNow;
