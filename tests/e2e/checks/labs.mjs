@@ -2882,6 +2882,19 @@ export const checks = {
     expect(r, 'the title hidden, the table\'s gone').toBe('false,false');
   },
 
+  async 'a table cell typed in: its text up, down or in the middle, from the text panel\'s alignment'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('table', 300, 300, { id: 't', w: 360, h: 240, cols: [120, 120, 120], rows: [80, 80, 80], cells: Array(9).fill('') })); e.setSelection(['t']); e.startEditing('t', 4); })()`);
+    await sleep(300);
+    await p.cdp('Input.insertText', { text: 'Внизу' });
+    await sleep(400);
+    await p.click(await p.at('.tfmt button[aria-label="Выравнивание"]'));
+    await sleep(200);
+    await p.click(await p.at('.tfmt button[aria-label="Прижать книзу"]'));
+    await sleep(200);
+    expect(await p.ev(`JSON.stringify(planx.board.get('t').cellFmt?.[4])`), 'that cell down').toBe('{"va":"bottom"}');
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

@@ -280,8 +280,8 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
           {(['left', 'center', 'right'] as TextAlign[]).map((a) => (
             <Btn key={a} icon={ALIGN_ICONS[a]} label={ALIGN_LABELS[a]} on={align === a} onClick={() => set({ ta: a })} />
           ))}
-          {/* (Up and down, in what has room round its text: a sticker, a shape.) */}
-          {['sticky', 'rect', 'ellipse', 'polygon'].includes(item.type) && !item.code && <>
+          {/* (Up and down, in what has room round its text: a sticker, a shape, a table's cell.) */}
+          {['sticky', 'rect', 'ellipse', 'polygon', 'table'].includes(item.type) && !item.code && <>
             <div className="fsep line" />
             {VALIGNS.map(([v, icon, label]) => (
               <Btn key={label} icon={icon} label={label} on={item.va === v} onClick={() => set({ va: v })} />
