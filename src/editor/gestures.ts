@@ -635,12 +635,10 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       return;
     case 'tableLine': {
       board.endGesture();
-      // A line dragged (one, not picked with Shift): picked no more, waited for again as any other; clicked,
-      // it stays picked.
+      // (A line dragged stays picked, the table's lines alone moved still, see Editor.linesOnly; its lines ready
+      // at once from now, till something else is done, see linesWarm.)
       const t = board.get(g.id), same = (a?: number[], b?: number[]) => (a ?? []).join() === (b ?? []).join();
       const moved = !!t && !(same(t.cols, g.cols0) && same(t.rows, g.rows0));
-      if (moved && g.lines.length === 1) { ed.pickedLines = []; ed.requestRender(); }
-      // (Dragged: the table's lines ready at once from now, till it's picked no more, see linesWarm.)
       if (moved) ed.linesWarm = g.id;
       return;
     }

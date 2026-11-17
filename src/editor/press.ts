@@ -281,6 +281,8 @@ export function press(ed: Editor, e: PointerEvent): void {
   // A table's lines resize the column or row before them, once it's picked (see updateCursor). Shift-clicking
   // picks several lines (or drops one); dragging any picked line moves them all.
   const tl = ed.editingId || entering ? null : grabbableLine(ed, w, hit, e.pointerType);
+  // (Anything else pressed: its lines picked no more, out of moving them alone, see Editor.linesOnly.)
+  if (!tl && ed.pickedLines.length && !e.shiftKey) { ed.pickedLines = []; ed.requestRender(); }
   if (tl) {
     ed.linesWarm = warm;
     // (Only lines moved now: its cells picked no more.)
