@@ -2922,6 +2922,18 @@ export const checks = {
     expect(await lit(), 'across both right; up, they differ: none lit').toBe('["По правому краю"]');
   },
 
+  async 'a table cell picked, a letter pressed: typed into it, not a tool\'s key (F not framing the table)'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('table', 300, 300, { id: 't', w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: ['', 'Был', '', '', '', '', '', '', ''] })); e.setSelection(['t']); e.pickCell(1, 'one'); })()`);
+    await sleep(300);
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'f', code: 'KeyF', windowsVirtualKeyCode: 70, text: 'f' });
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'f', code: 'KeyF', windowsVirtualKeyCode: 70 });
+    await sleep(200);
+    await p.cdp('Input.insertText', { text: 'ункт' }); await sleep(200);
+    await p.escape(); await sleep(200);
+    expect(await p.ev(`JSON.stringify([planx.board.list().filter((i) => i.type === 'frame').length, planx.board.get('t').cells[1]])`), 'no frame; typed into the cell').toBe('[0,"Былfункт"]');
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

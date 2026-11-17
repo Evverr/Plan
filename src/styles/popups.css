@@ -116,7 +116,7 @@ kbd { font-family: var(--ui); font-size: 12px; background: var(--accent-soft); b
 .text-edit.sticky, .text-edit.rect, .text-edit.ellipse, .text-edit.polygon, .text-edit.task { text-align: center; color: var(--sticky-ink); }
 .text-edit.text, .text-edit.table { color: var(--ink); }
 .text-edit.mind { text-align: center; color: var(--ink); }
-.text-edit.frame { color: var(--muted); font-weight: 600; background: var(--surface); border-radius: 4px; }
+.text-edit.frame { color: var(--muted); font-weight: 600; background: color-mix(in srgb, var(--surface) 50%, transparent); border-radius: 4px; }
 .text-edit.frame.folded { color: var(--ink); background: transparent; }
 .text-edit.nofill { color: var(--ink); }
 
