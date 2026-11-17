@@ -334,7 +334,14 @@ export function App({ boardId }: { boardId: string }) {
   // The text panel: shown as above; once it goes, it fades out (half as long as it fades in), still
   // showing what it showed.
   const panelOn = tMode || (!!textItem && textShown === textItem.id && quiet !== textItem.id);
-  const typedCell = editing?.id === textItem?.id && editing?.type === 'table' && ui.editingCell !== null ? cellItem(editing, ui.editingCell) : null;
+  // A table's cell typed in: its text panel over the table's top while that's on the screen (staying there
+  // from cell to cell, only what's on it changing), else over the cell.
+  const overTable = (cell: Item, t: Item | undefined): Item => {
+    if (!t) return cell;
+    const top = editor.toScreen({ x: t.x, y: t.y }), right = editor.toScreen({ x: t.x + t.w, y: t.y });
+    return top.y >= 70 && top.y <= innerHeight - 70 && right.x > 0 && top.x < innerWidth ? { ...cell, x: t.x, y: t.y, w: t.w, h: t.h } : cell;
+  };
+  const typedCell = editing?.id === textItem?.id && editing?.type === 'table' && ui.editingCell !== null ? overTable(cellItem(editing, ui.editingCell), editing) : null;
   if (typedCell) lastCell.current = typedCell;
   const panelNow = tMode ? tItem! : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : textItem) : null;
   const lastPanel = useRef<Item | null>(null);
@@ -367,7 +374,8 @@ export function App({ boardId }: { boardId: string }) {
   const place = usePanelPlace(editor, selItems);
   // (While typing: kept for a mind map node, and a task but its description, see below. Not while the text
   // panel stays for a task's description, its typing gone to the panel's own field: a link's address.)
-  const staysTyping = !editing ? !(taskDesc && panelOn) : editing.type === 'mind' || (editing.type === 'task' && ui.editingCell !== 0)
+  // (Not while a table cell's text panel's held over it, see heldCell: the table's would come and go.)
+  const staysTyping = heldCell ? false : !editing ? !(taskDesc && panelOn) : editing.type === 'mind' || (editing.type === 'task' && ui.editingCell !== 0)
     // (And till the text panel's there for what's typed in: it turns into that, see below.)
     || (textItem?.id === editing.id && !panelOn && freshEdit.current !== editing.id);
   const overOn = labs.panelOver && staysTyping && !tMode, overShown = overOn && place === 'over' && selItems.length > 0;
