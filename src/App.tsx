@@ -553,7 +553,8 @@ export function App({ boardId }: { boardId: string }) {
         </div>,
         // «Аудиозвонок» (src/labs): into the board's call, its popup by it. (In a wrapper, to take the ref.)
         call: labs.call ? <span className="sort-wrap"><CallButton conn={conn} /></span> : undefined,
-        share: <button className="ib" title="Скопировать ссылку на доску" aria-label="Поделиться" onClick={share}><PanelIcon name="ai-two-stars" /></button>,
+        // (Nothing for now: pressed, it does nothing.)
+        share: <button className="ib" title="Скопировать ссылку на доску" aria-label="Поделиться"><PanelIcon name="ai-two-stars" /></button>,
         sep: <div className="sep" />,
         map: <button className={`ib ${minimap ? 'on' : ''}`} title="Карта доски" aria-label="Карта доски" aria-pressed={minimap} data-minimap-toggle
           onClick={() => { setMinimap(!minimap); setPop(null); }}><PanelIcon name="location" /></button>,
