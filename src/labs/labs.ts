@@ -90,7 +90,7 @@ export const LABS: Lab[] = [
 const KEY = 'planx-labs';
 
 /** Those that show up switched off, till they're switched on (which is kept apart, under ON_KEY). */
-const START_OFF: LabId[] = ['panelGlide'];
+const START_OFF: LabId[] = ['panelGlide', 'quietPanel'];
 const ON_KEY = 'planx-labs-on';
 let onFirst = new Set<LabId>(readJSON<LabId[]>(ON_KEY) ?? []);
 /** What's switched off; anything not listed is on, so a new feature shows up switched on (but START_OFF). */

@@ -2828,6 +2828,8 @@ export const checks = {
   },
 
   async '"Тихая панель": a click on something, its panel half seen; the pointer once on it, all of it till something else is picked'(p) {
+    // (Off at first: turned on.)
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('quietPanel', true))()`);
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('sticky', 300, 300, { id: 'q', w: 150, h: 150 })); b.add(e.newItem('sticky', 600, 300, { id: 'r', w: 150, h: 150 })); e.setSelection([]); })()`);
     const seen = () => p.ev(`getComputedStyle(document.querySelector('.bar.panel')).opacity`);
     await p.click([375, 375]);
