@@ -101,7 +101,8 @@ export function onKeyDown(ed: Editor, e: KeyboardEvent): void {
   if (e.code === 'KeyI') { window.dispatchEvent(new CustomEvent('planx:toggle-icons')); return; }
   // ("Связи инструментом", src/labs: C puts the link dots out, or away, instead of the line tool.)
   if (TOOL_KEYS[e.code] === 'link' && labOn('linkTool')) { toggleDots(ed); return; }
-  if (TOOL_KEYS[e.code]) ed.setTool(TOOL_KEYS[e.code]);
+  // (The key itself not typed into what the tool opens for typing: F, what's picked framed, its title.)
+  if (TOOL_KEYS[e.code]) { e.preventDefault(); ed.setTool(TOOL_KEYS[e.code]); }
 }
 
 /** What's copied on a board goes on the system's clipboard as text after this mark, to be pasted on

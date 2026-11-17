@@ -1328,7 +1328,8 @@ export class Editor {
     if (!held.length || !b) return false;
     // Just under the lowest of them, not under everything: a frame they already sit in stays below.
     const z = Math.min(...held.map((i) => i.z)) - 0.5;
-    const it = this.newItem('frame', b.x - pad, b.y - pad, { w: Math.round(b.w + pad * 2), h: Math.round(b.h + pad * 2), z, members: [], ...extra });
+    // (Named «Фрейм», the name picked to be typed over.)
+    const it = this.newItem('frame', b.x - pad, b.y - pad, { w: Math.round(b.w + pad * 2), h: Math.round(b.h + pad * 2), z, members: [], text: 'Фрейм', ...extra });
     // Only these go in: whatever else lies under the new frame stays out of it.
     this.board.beginGesture();
     this.board.add(it);
@@ -1336,7 +1337,7 @@ export class Editor {
     this.board.endGesture();
     this.setTool('select');
     this.setSelection([it.id]);
-    this.startEditing(it.id);
+    this.startEditing(it.id, null, 'all');
     return true;
   }
 
