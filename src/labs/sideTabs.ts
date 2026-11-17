@@ -45,10 +45,18 @@ const radius = (zoom: number) => (BALL_R * Math.sqrt(zoom)) / zoom;
 const reach = (zoom: number) => radius(zoom) * 1.6;
 
 /** Whether what's picked gets them: on trial, not typed in, not a mind map node (its own "+"), nor
- *  what's in an instance, nor a component being changed, nor turned, nor locked. (An instance's on the
- *  frame round its contents.) */
-export const tabsFor = (it: Item | undefined, editing: string | null): it is Item =>
-  !!it && labOn('sideTabs') && !editing && it.type !== 'mind' && !it.host && !it.comp && !it.rot && !it.tie && !isLocked(it);
+ *  what's in an instance, nor a component being changed, nor turned, nor locked, nor too small on the
+ *  screen at `zoom` to aim at them (see bigEnough). (An instance's on the frame round its contents.) */
+export const tabsFor = (it: Item | undefined, editing: string | null, zoom: number): it is Item =>
+  !!it && labOn('sideTabs') && !editing && it.type !== 'mind' && !it.host && !it.comp && !it.rot && !it.tie && !isLocked(it) && bigEnough(linkBox(it), zoom);
+
+/** Zoomed out, too small for them (on the screen): one about square (its sides no more than half again one
+ *  another) under SQUARE across both ways; a long one under SHORT across its short side. */
+const SQUARE = 32, SHORT = 24;
+const bigEnough = (b: { w: number; h: number }, zoom: number): boolean => {
+  const w = b.w * zoom, h = b.h * zoom, lo = Math.min(w, h), hi = Math.max(w, h);
+  return hi <= lo * 1.5 ? hi >= SQUARE : lo >= SHORT;
+};
 
 /** The middle of a side on the frame. */
 const framePoint = (it: Item, side: Side, zoom: number): Point => sidePoint(it, side, FRAME_OFF / zoom);

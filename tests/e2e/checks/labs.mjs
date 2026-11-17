@@ -2846,6 +2846,13 @@ export const checks = {
     expect(await seen(), 'another picked: half seen again').toBe('0.5');
   },
 
+  async '"Полукруги на рамке": none on what is too small on the screen to aim at them'(p) {
+    const r = await p.ev(`(async () => { const t = await import('/src/labs/sideTabs.ts'), e = planx.editor;
+      const sq = e.newItem('sticky', 0, 0, { w: 160, h: 160 }), long = e.newItem('rect', 0, 0, { w: 200, h: 40 });
+      return [t.tabsFor(sq, null, 0.25), t.tabsFor(sq, null, 0.19), t.tabsFor(long, null, 0.6), t.tabsFor(long, null, 0.5)].join(); })()`);
+    expect(r, 'a sticker at 40 and 30 across, a long one 24 and 20 tall').toBe('true,false,true,false');
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

@@ -1507,7 +1507,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
 
   // («Полукруги на рамке», src/labs: the copy a click on the ball out would make, at 40%, easing in and out.)
   const alone = s.selection.size === 1 ? s.get([...s.selection][0]) : undefined;
-  const gh = s.live ? ghostNow(alone && s.ghostTab && tabsFor(alone, s.editingId ?? null) ? alone.id : null, s.ghostTab ?? null) : null;
+  const gh = s.live ? ghostNow(alone && s.ghostTab && tabsFor(alone, s.editingId ?? null, s.cam.z) ? alone.id : null, s.ghostTab ?? null) : null;
   const ghostOf = gh && s.get(gh.id);
   if (gh && ghostOf) {
     // (Drawn on a layer of its own and laid on at 40%: drawing it sets its own opacities.)
@@ -1630,7 +1630,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       ctx.globalAlpha = PICK_FADE * (1 - k);
       ctx.fill();
       ctx.stroke();
-      if (tabsFor(it, null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME * (1 - k), null);
+      if (tabsFor(it, null, cam.z)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME * (1 - k), null);
     }
     ctx.globalAlpha = 1;
   }
@@ -1699,7 +1699,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       // Its half circles («Полукруги на рамке», src/labs), on the frame round its contents.
       ctx.save();
       hiddenUnder(ctx, it, s, view);
-      if (tabsFor(it, s.editingId ?? null)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
+      if (tabsFor(it, s.editingId ?? null, cam.z)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
     } else if (s.showHandle && s.editingId !== id) {
       // (Not over what lies over its corner: see coveredAt. A component's at its edge, what it holds or its own.)
@@ -1718,7 +1718,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       ctx.save();
       hiddenUnder(ctx, it, s, view);
       // (Orange, its step to be changed: none.)
-      if (tabsFor(it, s.editingId ?? null) && s.scaling !== id) drawTabs(ctx, it, cam.z, pick, PICK_FRAME, s.tabAims ?? null);
+      if (tabsFor(it, s.editingId ?? null, cam.z) && s.scaling !== id) drawTabs(ctx, it, cam.z, pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
     }
   }

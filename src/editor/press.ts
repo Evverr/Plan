@@ -107,7 +107,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   // resize handle, link dots, turning corner, mind map buttons), on a folded mind map node's count
   // or on a table's line.
   const picked = ed.selection.size === 1 ? board.get([...ed.selection][0]) : undefined;
-  const onControl = (tabsFor(picked, ed.editingId) && !!tabAt(ed, picked, w)) || (!!picked && !ed.editingId && !isLocked(picked) && (onHandle(ed, picked, w) || onTopLeft(ed, picked, w) || onBottomLeft(ed, picked, w) || !!dotAt(ed, picked, w) || onRotate(ed, picked, w) || !!sideAt(ed, picked, w))) || (!!ed.plusNode() && !!plusAt(ed, ed.plusNode()!, w))
+  const onControl = (tabsFor(picked, ed.editingId, ed.cam.z) && !!tabAt(ed, picked, w)) || (!!picked && !ed.editingId && !isLocked(picked) && (onHandle(ed, picked, w) || onTopLeft(ed, picked, w) || onBottomLeft(ed, picked, w) || !!dotAt(ed, picked, w) || onRotate(ed, picked, w) || !!sideAt(ed, picked, w))) || (!!ed.plusNode() && !!plusAt(ed, ed.plusNode()!, w))
     || !!foldBadgeAt(ed, w) || !!tickAt(ed, w);
   const empty = ed.tool === 'select' && e.button === 0 && !ed.spaceDown && !e.shiftKey && !hit && !link && !onControl
     && !grabbableLine(ed, w, hit, e.pointerType) && !ed.editingId
@@ -240,7 +240,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   }
   // «Полукруги на рамке» (src/labs): a half circle: a copy that way on a click, a link when dragged.
   // (Not on its resize handle: that comes first.)
-  const tab = tabsFor(single ?? undefined, ed.editingId) && !ed.scalesTimeline(single) && !onHandle(ed, single!, w) ? tabAt(ed, single!, w) : null;
+  const tab = tabsFor(single ?? undefined, ed.editingId, ed.cam.z) && !ed.scalesTimeline(single) && !onHandle(ed, single!, w) ? tabAt(ed, single!, w) : null;
   if (single && tab) {
     ed.gesture = { type: 'tab', id: single.id, side: tab, start: w };
     return;
