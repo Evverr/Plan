@@ -57,30 +57,25 @@ export function setTableLines(ed: Editor, patch: { sc?: string; so?: number; vc?
 }
 
 /** The pointer on a table line: its cursor at once; lit and taken once it's rested there LINE_REST (a
- *  picked line at once): a press near it before that is the table's. */
+ *  picked line, or any of a table one's been dragged on, see Editor.linesWarm, at once): a press near it
+ *  before that is the table's. */
 export function restOn(ed: Editor, line: TableLine | null): void {
   if (sameLine(line, ed.lineRest?.line ?? null)) return;
   clearTimeout(ed.lineRest?.timer);
   ed.lineRest = null;
   if (!line) return;
-  // (Each line waited for alike, the next of a table too.)
-  const ready = ed.pickedLines.some((l) => sameLine(l, line)), rest = { line, armed: ready, lit: ready, timer: 0 };
+  const ready = ed.pickedLines.some((l) => sameLine(l, line)) || ed.linesWarm === line.id, rest = { line, armed: ready, lit: ready, timer: 0 };
   if (!ed.gesture) ed.setCursor(line.axis === 'col' ? 'col-resize' : 'row-resize');
-  if (rest.lit && !ed.gesture) ed.setHotLine(line);
+  // (Ready at once: blue at once too, with its cursor.)
+  if (rest.lit && !ed.gesture) ed.setHotLine(line, false);
   if (!rest.lit) {
     rest.timer = window.setTimeout(() => {
       rest.armed = rest.lit = true;
-      ed.tableWarm = { id: line.id, last: performance.now() };
       if (ed.lineRest !== rest || ed.gesture) return;
       ed.setHotLine(line);
     }, LINE_REST);
   }
   ed.lineRest = rest;
-}
-
-/** The pointer's over table `id` (or one of its lines): it stays ready. */
-export function warmTable(ed: Editor, id: string | undefined): void {
-  if (id && ed.tableWarm?.id === id) ed.tableWarm.last = performance.now();
 }
 
 /** The table line a press here takes hold of: one picked already; with the mouse, one it has rested

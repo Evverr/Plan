@@ -17,7 +17,7 @@ import { pagerHot } from '../labs/docPage';
 import { branchBase, buttonKey, foldBadge, foldedWays, mindButtons, mindWay, ringRadius, type MindButtonAt, type Way } from '../model/mind';
 import { frameButtonAt } from './frames';
 import { rotateCursor } from './cursors';
-import { restOn, tableLineAt, warmTable } from './tables';
+import { restOn, tableLineAt } from './tables';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { dotsOn, relatedAt } from '../labs/linkTool';
@@ -320,7 +320,6 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   if (onIt !== ed.hotHandle) { ed.hotHandle = onIt; ed.requestRender(); }
   // (Whether it's still ready is asked before it's kept ready by the pointer being on it.)
   restOn(ed, near);
-  warmTable(ed, near?.id ?? (over?.type === 'table' ? over.id : undefined));
   // (Its cursor at once, lit and taken a moment after, see restOn.)
   const line = ed.lineRest?.line ?? null;
   ed.setHotLine(ed.lineRest?.lit ? line : null);

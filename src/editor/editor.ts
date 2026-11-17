@@ -203,7 +203,9 @@ export class Editor {
    *  (till then a press there takes the table), which is when it lights up. */
   lineRest: { line: TableLine; armed: boolean; lit: boolean; timer: number } | null = null;
   /** The table whose lines are taken at once (one of them was waited for), and when the pointer was last on it. */
-  tableWarm: { id: string; last: number } | null = null;
+  /** The table a line's been dragged on: its lines ready under the pointer at once (lit with their cursor),
+   *  till it's picked no more (see restOn). */
+  linesWarm: string | null = null;
   /** Shared: how new links run (see LINK_STYLE_KEY). */
   linkStyle = readJSON<LinkStyle | null>(LINK_STYLE_KEY) ?? undefined;
   /** Cells picked in the selected table: a click on a cell of a table already selected picks it,
@@ -1030,6 +1032,8 @@ export class Editor {
   setSelection(ids: Iterable<string>, groups = true, quiet = false): void {
     const was = [...this.selection];
     this.selection = new Set(ids);
+    // (A table its lines were dragged on picked no more: they're waited for again, see linesWarm.)
+    if (this.linesWarm && !this.selection.has(this.linesWarm)) this.linesWarm = null;
     // (Picked by the «…» by its title, «Троеточие у титула»: its panel faint till the pointer's on it.)
     // («Тихая панель», src/labs: so whatever's picked, by a click as well.)
     const was1 = was.length === this.selection.size && was.every((id) => this.selection.has(id));
@@ -1376,10 +1380,10 @@ export class Editor {
 
   /** A table line under the pointer, lit (see restOn), coming in blue over LINE_FADE; picked, at once. */
   hotLineSince = 0;
-  setHotLine(l: TableLine | null): void {
+  setHotLine(l: TableLine | null, fade = true): void {
     if (sameLine(l, this.hotLine)) return;
     this.hotLine = l;
-    this.hotLineSince = performance.now();
+    this.hotLineSince = fade ? performance.now() : 0;
     this.requestRender();
   }
   /** What was picked (its ids, sorted, joined) by the «…» by its title («Троеточие у титула», src/labs), or by

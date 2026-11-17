@@ -1350,9 +1350,9 @@ export const checks = {
     expect(`${await p.ev('planx.editor.editingId') === id} ${await p.ev('planx.editor.editingCell')}`, 'still typing in that cell').toBe('true 4');
   },
 
-  async 'a table line\'s cursor at once, lit once waited for, coming in blue; the next of it waited for too'(p) {
+  async 'a table line\'s cursor at once, lit once waited for; one dragged, the table\'s others lit at once, till it\'s let go of'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
-      b.add(e.newItem('table', 200, 200, { id: 't', w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill('') })); e.setSelection([]); })()`);
+      b.add(e.newItem('table', 200, 200, { id: 't', w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill('') })); e.setSelection(['t']); })()`);
     const cursor = () => p.ev('planx.editor.canvas.style.cursor');
     const lit = () => p.ev('!!planx.editor.hotLine');
     // Columns meet at x 320 and 440.
@@ -1362,13 +1362,26 @@ export const checks = {
     expect(await lit(), 'not lit yet').toBe(false);
     await sleep(600);
     expect(await lit(), 'lit after waiting').toBe(true);
-    await p.mouse('mouseMoved', 380, 240);
+    await p.mouse('mouseMoved', 400, 240);
     await sleep(100);
     await p.mouse('mouseMoved', 440, 240);
     await sleep(150);
-    expect(await lit(), 'the next one not at once').toBe(false);
+    expect(await lit(), 'the next one not at once: none dragged yet').toBe(false);
     await sleep(600);
-    expect(await lit(), 'it too after waiting').toBe(true);
+    // Dragged: the others at once from now.
+    await p.drag([440, 240], [460, 240]);
+    await sleep(100);
+    await p.mouse('mouseMoved', 400, 240);
+    await sleep(100);
+    await p.mouse('mouseMoved', 320, 240);
+    await sleep(100);
+    expect(await lit(), 'one dragged: the next at once').toBe(true);
+    // The table let go of: waited for again.
+    await p.click([900, 600]);
+    await sleep(100);
+    await p.mouse('mouseMoved', 320, 240);
+    await sleep(150);
+    expect(await lit(), 'let go of: waited for again').toBe(false);
   },
 
   async 'a shape being drawn moves along with the pointer while Space is held, and goes on growing once it\'s let go'(p) {
