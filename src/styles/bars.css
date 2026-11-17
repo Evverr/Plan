@@ -53,7 +53,11 @@
 /* The picked one: on a light grey square with round corners (as a pressed button), the ring round its circle that grey. */
 .sw.on, .sw.custom.on { position: relative; overflow: visible; }
 /* (Before it, under its circle: its ::after is the wider spot it's pressed by, see panels.css.) */
-.sw.on::before { content: ""; position: absolute; z-index: -1; inset: calc(-1 * var(--s6)); background: var(--fmt-hover); border-radius: var(--s6); pointer-events: none; }
+/* The picked one, as Женя's (Доски, 104:7148): on a light grey square 32 across, rounded 8, its circle (18) cut
+   out of it by a white ring 1.5 wide. */
+.sw.on::before { content: ""; position: absolute; z-index: -1; inset: calc((var(--e26) - 32px * var(--k)) / 2); background: var(--fmt-hover); border-radius: calc(8px * var(--k)); pointer-events: none; }
+/* (The ring an outline drawn back over its clear edge, round the circle: its ::after is its wider spot, see panels.css.) */
+.sw.on { outline: calc(1.5px * var(--k)) solid var(--surface); outline-offset: calc(-1 * var(--s4)); }
 .sw-group, .sort-wrap { display: flex; align-items: center; }
 /* A group picked («Группы», src/labs): how many in it, then its button. */
 .group-count { gap: var(--s2); font-size: var(--s14); color: var(--fmt-ink); white-space: nowrap; }
