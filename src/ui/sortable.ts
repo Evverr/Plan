@@ -261,13 +261,14 @@ export function useSortable(storageKey: string, defaults: string[], axis: 'x' | 
   // is captured, so letting go in place still lands on the button as a click.
   const dragMove = (e: PointerEvent) => {
     if (!drag) return;
-    const d = drag, dist = Math.hypot(e.clientX - d.x0, e.clientY - d.y0);
-    const moved = d.moved || (d.zone === 'bar' ? Math.abs(along(e.clientX, e.clientY) - along(d.x0, d.y0)) > HOLD_SLOP || dist > HOLD_SLOP * 3 : dist > HOLD_SLOP);
-    const sorts = canRearrange();
+    const d = drag, dist = Math.hypot(e.clientX - d.x0, e.clientY - d.y0), sorts = canRearrange();
+    // (Nothing to put in order, «Режим настройки меню» off: moved as soon as it's moved any way.)
+    const moved = d.moved || (d.zone === 'bar' && sorts ? Math.abs(along(e.clientX, e.clientY) - along(d.x0, d.y0)) > HOLD_SLOP || dist > HOLD_SLOP * 3 : dist > HOLD_SLOP);
     // Over the other place (the open popover from the panel, the panel from the popover), it goes there.
     if (sorts && moved && d.zone === 'bar' && over('more', e)) { intoMore(d, e); return; }
     if (sorts && moved && (d.zone === 'more' || !els.current.has(d.key)) && over('bar', e)) { ontoBar(d, e); return; }
-    const out = outs(d.key) && moved && !inside(zones[d.zone].box()?.getBoundingClientRect(), e, OUT_MARGIN);
+    // («Режим настройки меню» off: nothing to put in order here, so out from the first move, not held on it.)
+    const out = outs(d.key) && moved && (!sorts || !inside(zones[d.zone].box()?.getBoundingClientRect(), e, OUT_MARGIN));
     const next = { ...d, x: e.clientX, y: e.clientY, moved, out };
     if (out) {
       if (!d.out) setOrder(d.before);
@@ -299,7 +300,9 @@ export function useSortable(storageKey: string, defaults: string[], axis: 'x' | 
     setDrag(null);
     if (drag.out) dropOut?.over?.(drag.key, null);
     if (!drag.moved) return;
-    if (drag.out) dropOut!.drop(drag.key, { x: drag.x, y: drag.y });
+    // (Let go over its own panel still: nothing made.)
+    const home = inside(zones[drag.zone].box()?.getBoundingClientRect(), { clientX: drag.x, clientY: drag.y }, 0);
+    if (drag.out && !home) dropOut!.drop(drag.key, { x: drag.x, y: drag.y });
     else writeJSON(storageKey, order);
     swallowClick.current = true;
     setTimeout(() => { swallowClick.current = false; }, 0);

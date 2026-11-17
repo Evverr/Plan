@@ -48,6 +48,26 @@ export const checks = {
     expect(k1.indexOf('undo') < k0.findIndex((k) => k[0] === 'undo'), 'undo moved left').toBeTruthy();
   },
 
+  async '"Режим настройки меню" off: a button making nothing not taken; one that makes something out at once, not held on the rail'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('customize', true))()`);
+    await sleep(100);
+    const pen = await p.at('.tools [data-key="hand"]');
+    await p.mouse('mouseMoved', pen[0], pen[1]);
+    await p.mouse('mousePressed', pen[0], pen[1]);
+    for (const dx of [10, 20, 30]) { await p.mouse('mouseMoved', pen[0] + dx, pen[1]); await sleep(30); }
+    expect(await p.ev(`!!document.querySelector('.pick-ghost')`), 'the hand: not taken').toBe(false);
+    await p.mouse('mouseReleased', pen[0] + 30, pen[1]);
+    await sleep(300);
+    const st = await p.at('.tools [data-key="sticky"]');
+    await p.mouse('mouseMoved', st[0], st[1]);
+    await p.mouse('mousePressed', st[0], st[1]);
+    for (const dx of [6, 12, 18]) { await p.mouse('mouseMoved', st[0] + dx, st[1]); await sleep(30); }
+    expect(await p.ev(`!!document.querySelector('.pick-ghost')`), 'a sticker: out at once').toBe(true);
+    await p.mouse('mouseReleased', st[0] + 18, st[1]);
+    await sleep(200);
+    expect(await p.ev(`planx.board.list().length`), 'let go over the rail: nothing made').toBe(0);
+  },
+
   async 'a rail button dragged onto the board makes its item there'(p) {
     const from = await p.at('.tools [data-key="sticky"]');
     await carry(p, from, [[500, 300], [600, 400]]);

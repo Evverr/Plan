@@ -124,6 +124,8 @@ export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleI
   const toolOf = (key: string): Tool | null =>
     key === 'frames' ? 'frame' : key === 'oval' ? lastShape.current : key === 'objects' ? lastObject.current : ['sticky', 'text', 'task', 'table', 'mind', 'page'].includes(key) ? key as Tool : null;
   const dropOut = {
+    // (Only what makes something on the board, or opens for it there: the pen, the eraser… never go out.)
+    can: (key: string) => !!toolOf(key) || key === 'image' || key === 'audio',
     preview: (key: string) => {
       const t = toolOf(key), icon = TOOLS[key]?.[1] ?? ICONS[key];
       return (t && <ToolPreview tool={t} zoom={zoom} />) || (icon ? <span className="tp-icon"><PanelIcon name={icon} /></span> : null);
