@@ -6,6 +6,7 @@ import { font } from '../canvas/text';
 import { drawEmoji } from '../emoji/emoji';
 import { drawIcon } from '../icons/icons';
 import { labOn, myId } from './labs';
+import { readJSON } from '../storage';
 import { zoomFade, zoomFading, zoomSize } from './zoomFade';
 
 /**
@@ -91,6 +92,9 @@ export function toggleReaction(ed: Editor, ids: string[], emoji: string): void {
   const me = myId(), items = ids.map((id) => ed.board.get(id)).filter((i): i is Item => !!i);
   const allMine = items.every((it) => it.rx?.[emoji]?.includes(me));
   ed.board.transact(() => {
+    // (Who put it, by name, for its hint: kept on the board, see reactionNames.)
+    const name = readJSON<{ name?: string }>('planx-me')?.name, people = (ed.board.meta.get('people') as Record<string, string> | undefined) ?? {};
+    if (!allMine && name && people[me] !== name) ed.board.meta.set('people', { ...people, [me]: name });
     for (const it of items) {
       const rx = { ...(it.rx ?? {}) }, who = (rx[emoji] ?? []).filter((w) => w !== me);
       if (!allMine) who.push(me);
@@ -98,6 +102,14 @@ export function toggleReaction(ed: Editor, ids: string[], emoji: string): void {
       ed.board.update(it.id, { rx: Object.keys(rx).length ? rx : undefined });
     }
   });
+}
+
+/** Those who put a reaction, by name (kept on the board as they put it; from before, «участник»): a few,
+ *  and how many more. */
+export function reactionNames(ed: Editor, pill: Pill): string {
+  const who = ed.board.get(pill.id)?.rx?.[pill.emoji] ?? [], people = (ed.board.meta.get('people') as Record<string, string> | undefined) ?? {};
+  const names = who.map((id) => (id === myId() ? 'вы' : people[id] ?? 'участник'));
+  return names.length > 5 ? `${names.slice(0, 5).join(', ')} и ещё ${names.length - 5}` : names.join(', ');
 }
 
 /* ---------- the laser pointer ---------- */

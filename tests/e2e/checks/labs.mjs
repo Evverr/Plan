@@ -2895,6 +2895,17 @@ export const checks = {
     expect(await p.ev(`JSON.stringify(planx.board.get('t').cellFmt?.[4])`), 'that cell down').toBe('{"va":"bottom"}');
   },
 
+  async '"Реакции": the pointer on one under an item, who put it after a moment'(p) {
+    await p.ev(`(async () => { const o = await import('/src/labs/overlays.ts'), e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('sticky', 300, 300, { id: 's', w: 150, h: 150 })); o.toggleReaction(e, ['s'], o.REACTIONS[0]);
+      const rx = b.get('s').rx; b.update('s', { rx: { [o.REACTIONS[0]]: [...rx[o.REACTIONS[0]], 'anna', 'old'] } }); b.meta.set('people', { ...(b.meta.get('people') ?? {}), anna: 'Аня' }); e.setSelection([]); })()`);
+    await sleep(300);
+    // Its pill just under the sticker's lower left corner.
+    await p.mouse('mouseMoved', 315, 463);
+    await sleep(1300);
+    expect(await p.ev(`document.querySelector('.tip')?.textContent ?? 'none'`), 'who put it').toBe('вы, Аня, участник');
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

@@ -23,6 +23,7 @@ import { isLocked, labOn } from '../labs/labs';
 import { dotsOn, relatedAt } from '../labs/linkTool';
 import { linkPartAt } from '../labs/textLink';
 import { boardTip, linkTip } from '../labs/itemLink';
+import { pillAt, reactionNames } from '../labs/overlays';
 import { zoomShows, zoomSize } from '../labs/zoomFade';
 
 /** How far outside a corner (in screen pixels) the pointer turns the item. */
@@ -296,7 +297,9 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   // (Over its line of text, however big it is: at the pointer across, at the line's top.)
   const tipHit = !ed.gesture ? hitItem(ed.shown(), w, ed.cam.z) : null, tipUrl = tipHit && ed.editingId !== tipHit.id ? linkPartAt(tipHit, w) : null;
   const tipRect = tipUrl ? linkRectAt(w) : null;
-  boardTip(tipUrl ? linkTip(ed, tipUrl) : null, ed.toScreen({ x: w.x, y: tipRect?.y ?? w.y }));
+  // A reaction under an item: who put it («Реакции», src/labs), over its pill.
+  const sp = ed.toScreen(w), pill = !tipUrl && !ed.gesture && labOn('reactions') ? pillAt(sp) : undefined;
+  boardTip(tipUrl ? linkTip(ed, tipUrl) : pill ? reactionNames(ed, pill) || null : null, tipUrl ? ed.toScreen({ x: w.x, y: tipRect?.y ?? w.y }) : pill ? { x: pill.x + pill.w / 2, y: pill.y } : sp);
   if (ed.canvas && !ed.gesture && ed.tool === 'link') { lineToolHover(ed, w); return; }
   if (!ed.canvas || ed.gesture || ed.tool !== 'select') return;
   if (labOn('linkTool') && dotsOn()) relatedHover(ed, w);
