@@ -63,29 +63,20 @@ export function restOn(ed: Editor, line: TableLine | null): void {
   clearTimeout(ed.lineRest?.timer);
   ed.lineRest = null;
   if (!line) return;
-  // Once one of a table's lines has been waited for, the others of it are lit at once, till the
-  // pointer's been off the table a second (see warmTable).
-  const warm = ed.tableWarm?.id === line.id && performance.now() - ed.tableWarm.last < WARM_FOR;
-  const ready = warm || ed.pickedLines.some((l) => sameLine(l, line)), rest = { line, armed: ready, lit: ready, timer: 0 };
-  if (ed.canvas && !ed.gesture) ed.canvas.style.cursor = line.axis === 'col' ? 'col-resize' : 'row-resize';
-  if (rest.lit && !ed.gesture) {
-    ed.hotLine = line;
-    ed.requestRender();
-  }
+  // (Each line waited for alike, the next of a table too.)
+  const ready = ed.pickedLines.some((l) => sameLine(l, line)), rest = { line, armed: ready, lit: ready, timer: 0 };
+  if (!ed.gesture) ed.setCursor(line.axis === 'col' ? 'col-resize' : 'row-resize');
+  if (rest.lit && !ed.gesture) ed.setHotLine(line);
   if (!rest.lit) {
     rest.timer = window.setTimeout(() => {
       rest.armed = rest.lit = true;
       ed.tableWarm = { id: line.id, last: performance.now() };
       if (ed.lineRest !== rest || ed.gesture) return;
-      ed.hotLine = line;
-      ed.requestRender();
+      ed.setHotLine(line);
     }, LINE_REST);
   }
   ed.lineRest = rest;
 }
-
-/** How long a table stays ready (its lines taken at once) with the pointer off it. */
-const WARM_FOR = 1000;
 
 /** The pointer's over table `id` (or one of its lines): it stays ready. */
 export function warmTable(ed: Editor, id: string | undefined): void {

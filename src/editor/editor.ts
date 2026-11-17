@@ -26,7 +26,7 @@ import { updateCursor } from './hover';
 import { CLIP_MARK, onKeyDown, onPaste } from './keys';
 import { addMindNode, mindFit, refitMind, removeMindNode, undoMindNode, type MindAdd } from './mindOps';
 import { press } from './press';
-import { formatCells, pickCell, restOn, setTableLines } from './tables';
+import { formatCells, pickCell, restOn, sameLine, setTableLines } from './tables';
 import { DEFAULT_PENS, isPoly, MIND_TOPIC, PENS_KEY, readPens, type InkStyle, type Pens, type PenTool, type Tool } from './tools';
 import { pushedBelow } from '../labs/textPush';
 import { arrowCopyAt } from '../labs/arrowCopy';
@@ -104,6 +104,10 @@ export interface UIState {
  * The work is spread over the modules next to this one (press, gestures, hover, frames, tables,
  * mindOps, keys, camera, copies); the fields and methods marked "shared" are for them, not the UI.
  */
+/** How long a cursor asked for waits before it's shown (see Editor.setCursor), in ms. */
+const CURSOR_WAIT = 60;
+/** How long a table line lit under the pointer takes to come in blue, in ms. */
+const LINE_FADE = 200;
 /** How far a copy made by Ctrl+D stands off what it's a copy of. */
 const DUPLICATE_GAP = 24;
 
@@ -796,6 +800,9 @@ export class Editor {
     const glide = this.gliding();
     // "Связи инструментом" (src/labs) with «Связи» on: the picked one's dots as ever, the links under the pointer lit.
     const dotsMode = labOn('linkTool') && dotsOn() && this.tool === 'select';
+    // (A table line lit under the pointer coming in blue, eased; again till it's there.)
+    const hotT = Math.min(1, (performance.now() - this.hotLineSince) / LINE_FADE), hotK = 1 - (1 - hotT) * (1 - hotT);
+    if (this.hotLine && hotT < 1) this.requestRender();
     drawScene(this.ctx, {
       items: this.withTyped(glide ? this.shown().map(glide) : this.shown()),
       // (Only once it's going: taken hold of, it stays as it is till then.)
@@ -837,6 +844,7 @@ export class Editor {
       mindDrop: g?.type === 'drag' && g.moved && g.mindTo ? { id: g.id, parent: g.mindTo } : null,
       mindMove: g?.type === 'mindMove' ? { from: g.from, to: g.to, target: g.target ? this.board.get(g.target) ?? null : null } : null,
       tableLines: this.hotLine ? [...this.pickedLines, this.hotLine] : this.pickedLines,
+      hotLine: this.hotLine && !this.pickedLines.some((l) => sameLine(l, this.hotLine)) ? { line: this.hotLine, k: hotK } : null,
       editingCell: this.editingCell,
       live: true,
       underPicks: this.underlays.size ? (c) => this.underlays.forEach((d) => { c.save(); d(c); c.restore(); }) : undefined,
@@ -1351,6 +1359,29 @@ export class Editor {
 
   /** Cmd (or Control) held: a timeline picked alone framed orange, its step to be changed by its side («Масштаб таймлайна», src/labs). */
   cmdHeld = false;
+
+  /** The cursor asked for, kept a moment before it's shown (CURSOR_WAIT): going along an edge, from it to a
+   *  corner, it doesn't flicker; but while something's being dragged, as it's set. */
+  private cursorWant = '';
+  private cursorTimer = 0;
+  setCursor(c: string): void {
+    const el = this.canvas;
+    if (!el || c === (this.cursorTimer ? this.cursorWant : el.style.cursor)) return;
+    clearTimeout(this.cursorTimer);
+    this.cursorTimer = 0;
+    this.cursorWant = c;
+    if (c === el.style.cursor) return;
+    this.cursorTimer = window.setTimeout(() => { this.cursorTimer = 0; if (!this.gesture && this.canvas) this.canvas.style.cursor = this.cursorWant; }, CURSOR_WAIT);
+  }
+
+  /** A table line under the pointer, lit (see restOn), coming in blue over LINE_FADE; picked, at once. */
+  hotLineSince = 0;
+  setHotLine(l: TableLine | null): void {
+    if (sameLine(l, this.hotLine)) return;
+    this.hotLine = l;
+    this.hotLineSince = performance.now();
+    this.requestRender();
+  }
   /** What was picked (its ids, sorted, joined) by the «…» by its title («Троеточие у титула», src/labs), or by
    *  anything with «Тихая панель» on: its panel half seen till the pointer's once on it. */
   quietPanel: string | null = null;

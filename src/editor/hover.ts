@@ -17,7 +17,7 @@ import { pagerHot } from '../labs/docPage';
 import { branchBase, buttonKey, foldBadge, foldedWays, mindButtons, mindWay, ringRadius, type MindButtonAt, type Way } from '../model/mind';
 import { frameButtonAt } from './frames';
 import { rotateCursor } from './cursors';
-import { restOn, sameLine, tableLineAt, warmTable } from './tables';
+import { restOn, tableLineAt, warmTable } from './tables';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { dotsOn, relatedAt } from '../labs/linkTool';
@@ -57,17 +57,19 @@ export function sideAt(ed: Editor, it: Item, w: Point): 'w' | 'h' | 'l' | 't' | 
   // (Not a timeline's with Cmd held, «Масштаб таймлайна»: none then.)
   if (tabsFor(it, ed.editingId, ed.cam.z) && !ed.scalesTimeline(it) && nearTab(ed, it, w)) return null;
   const hug = hugsContents(it), b = hug ? instanceBounds(it, ed.board.list()) : it, p = hug ? w : toLocal(it, w);
-  const near = ed.reach(4), corner = ed.reach(10);
+  // (Reached from outside 2 px sooner than from inside: its frame's drawn a little out.)
+  const near = ed.reach(4), out = 2 / ed.cam.z, corner = ed.reach(10);
   const along = (v: number, from: number, size: number) => v >= from + corner && v <= from + size - corner;
-  if (Math.abs(p.x - (b.x + b.w)) <= near && along(p.y, b.y, b.h)) return 'w';
+  const by = (v: number, edge: number, outward: 1 | -1) => (v - edge) * outward <= near + out && (edge - v) * outward <= near;
+  if (by(p.x, b.x + b.w, 1) && along(p.y, b.y, b.h)) return 'w';
   // (Text and tasks only wider or narrower, but a text drawn as a box: a task's top and bottom left to a
   // double click on it.)
   const tall = (it.type !== 'text' || !!it.tb) && it.type !== 'task';
-  if (tall && Math.abs(p.y - (b.y + b.h)) <= near && along(p.x, b.x, b.w)) return 'h';
+  if (tall && by(p.y, b.y + b.h, 1) && along(p.x, b.x, b.w)) return 'h';
   // The left and top sides too, the other side staying put (an instance stretches from its corner only).
   if (it.inst) return null;
-  if (Math.abs(p.x - b.x) <= near && along(p.y, b.y, b.h)) return 'l';
-  if (tall && Math.abs(p.y - b.y) <= near && along(p.x, b.x, b.w)) return 't';
+  if (by(p.x, b.x, -1) && along(p.y, b.y, b.h)) return 'l';
+  if (tall && by(p.y, b.y, -1) && along(p.x, b.x, b.w)) return 't';
   return null;
 }
 
@@ -316,8 +318,8 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   restOn(ed, near);
   warmTable(ed, near?.id ?? (over?.type === 'table' ? over.id : undefined));
   // (Its cursor at once, lit and taken a moment after, see restOn.)
-  const line = ed.lineRest?.line ?? null, lit = ed.lineRest?.lit ? line : null;
-  if (!sameLine(lit, ed.hotLine)) { ed.hotLine = lit; ed.requestRender(); }
+  const line = ed.lineRest?.line ?? null;
+  ed.setHotLine(ed.lineRest?.lit ? line : null);
   // A link the pointer is on (where no item is over it, as a press would find it) is faintly lit.
   const under = pickedUnder(ed, w) ?? hitItem(ed.shown(), w, ed.cam.z);
   const link = under && under.type !== 'frame' ? null : hitLink(ed.shownLinks(), (id) => ed.board.get(id), w, ed.cam.z);
@@ -363,5 +365,5 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
     // a double click, or a second single one on its text.)
     else if (hit && !isLocked(hit) && alt) cursor = 'copy';
   }
-  ed.canvas.style.cursor = cursor;
+  ed.setCursor(cursor);
 }

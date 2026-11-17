@@ -1350,7 +1350,7 @@ export const checks = {
     expect(`${await p.ev('planx.editor.editingId') === id} ${await p.ev('planx.editor.editingCell')}`, 'still typing in that cell').toBe('true 4');
   },
 
-  async 'a table line\'s cursor at once, lit once waited for; then the table\'s other lines lit at once, till the pointer is off it a second'(p) {
+  async 'a table line\'s cursor at once, lit once waited for, coming in blue; the next of it waited for too'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
       b.add(e.newItem('table', 200, 200, { id: 't', w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill('') })); e.setSelection([]); })()`);
     const cursor = () => p.ev('planx.editor.canvas.style.cursor');
@@ -1358,21 +1358,17 @@ export const checks = {
     // Columns meet at x 320 and 440.
     await p.mouse('mouseMoved', 320, 240);
     await sleep(150);
-    expect(await cursor(), 'its cursor at once').toBe('col-resize');
-    expect(await lit(), 'not lit at once the first time').toBe(false);
+    expect(await cursor(), 'its cursor a moment after').toBe('col-resize');
+    expect(await lit(), 'not lit yet').toBe(false);
     await sleep(600);
     expect(await lit(), 'lit after waiting').toBe(true);
     await p.mouse('mouseMoved', 380, 240);
     await sleep(100);
     await p.mouse('mouseMoved', 440, 240);
-    await sleep(50);
-    expect(await lit(), 'the next one at once').toBe(true);
-    // Off the table over a second: waited for again.
-    await p.mouse('mouseMoved', 800, 600);
-    await sleep(1200);
-    await p.mouse('mouseMoved', 320, 280);
-    await sleep(50);
-    expect(await lit(), 'off it a second: not at once again').toBe(false);
+    await sleep(150);
+    expect(await lit(), 'the next one not at once').toBe(false);
+    await sleep(600);
+    expect(await lit(), 'it too after waiting').toBe(true);
   },
 
   async 'a shape being drawn moves along with the pointer while Space is held, and goes on growing once it\'s let go'(p) {

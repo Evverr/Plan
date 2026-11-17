@@ -631,9 +631,16 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       // Let go where it was pressed: the stage's menu.
       if (!g.moved) window.dispatchEvent(new CustomEvent('planx:stage', { detail: { id: g.id, i: g.i } }));
       return;
+    case 'tableLine': {
+      board.endGesture();
+      // A line dragged (one, not picked with Shift): picked no more, waited for again as any other; clicked,
+      // it stays picked.
+      const t = board.get(g.id), same = (a?: number[], b?: number[]) => (a ?? []).join() === (b ?? []).join();
+      if (t && g.lines.length === 1 && !(same(t.cols, g.cols0) && same(t.rows, g.rows0))) { ed.pickedLines = []; ed.requestRender(); }
+      return;
+    }
     case 'resize':
     case 'rotate':
-    case 'tableLine':
       board.endGesture();
       return;
     case 'place': {
