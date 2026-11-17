@@ -293,7 +293,9 @@ export function App({ boardId }: { boardId: string }) {
   useEffect(() => {
     setTextShown(null);
     if (!textReady || ui.moving) return;
-    const t = setTimeout(() => setTextShown(textReady), freshEdit.current === textReady ? 0 : 280);
+    // (A table's cell typed in: at once, the first time too; from cell to cell it's held, see heldCell.)
+    const cell = editor.editingId === textReady && editor.board.get(textReady)?.type === 'table';
+    const t = setTimeout(() => setTextShown(textReady), freshEdit.current === textReady || cell ? 0 : 280);
     return () => clearTimeout(t);
   }, [textReady, ui.moving]);
   // Typing ended (by a press elsewhere, or Esc): the panel goes, and stays away from what that press
