@@ -5,7 +5,7 @@ import type { Editor } from './editor';
 import { labOn } from '../labs/labs';
 import { tablePlusAt } from '../labs/tableMove';
 
-/** How long the mouse rests on a table line before it can be dragged, in ms. */
+/** How long the mouse rests on a table line before it's lit and can be dragged (its cursor at once), in ms. */
 const LINE_REST = 500;
 
 export const sameLine = (a: TableLine | null, b: TableLine | null): boolean =>
@@ -56,28 +56,28 @@ export function setTableLines(ed: Editor, patch: { sc?: string; so?: number; vc?
   ed.board.update(it.id, next);
 }
 
-/** Starts (or stops) waiting for the mouse to rest on a table line; a picked line is ready at once. */
+/** The pointer on a table line: its cursor at once; lit and taken once it's rested there LINE_REST (a
+ *  picked line at once): a press near it before that is the table's. */
 export function restOn(ed: Editor, line: TableLine | null): void {
   if (sameLine(line, ed.lineRest?.line ?? null)) return;
   clearTimeout(ed.lineRest?.timer);
   ed.lineRest = null;
   if (!line) return;
-  // Once one of a table's lines has been waited for, the others of it are taken at once, till the
+  // Once one of a table's lines has been waited for, the others of it are lit at once, till the
   // pointer's been off the table a second (see warmTable).
   const warm = ed.tableWarm?.id === line.id && performance.now() - ed.tableWarm.last < WARM_FOR;
-  const rest = { line, armed: warm || ed.pickedLines.some((l) => sameLine(l, line)), timer: 0 };
-  if (rest.armed && !ed.gesture) {
+  const ready = warm || ed.pickedLines.some((l) => sameLine(l, line)), rest = { line, armed: ready, lit: ready, timer: 0 };
+  if (ed.canvas && !ed.gesture) ed.canvas.style.cursor = line.axis === 'col' ? 'col-resize' : 'row-resize';
+  if (rest.lit && !ed.gesture) {
     ed.hotLine = line;
-    if (ed.canvas) ed.canvas.style.cursor = line.axis === 'col' ? 'col-resize' : 'row-resize';
     ed.requestRender();
   }
-  if (!rest.armed) {
+  if (!rest.lit) {
     rest.timer = window.setTimeout(() => {
-      rest.armed = true;
+      rest.armed = rest.lit = true;
       ed.tableWarm = { id: line.id, last: performance.now() };
       if (ed.lineRest !== rest || ed.gesture) return;
       ed.hotLine = line;
-      if (ed.canvas) ed.canvas.style.cursor = line.axis === 'col' ? 'col-resize' : 'row-resize';
       ed.requestRender();
     }, LINE_REST);
   }

@@ -315,8 +315,9 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   // (Whether it's still ready is asked before it's kept ready by the pointer being on it.)
   restOn(ed, near);
   warmTable(ed, near?.id ?? (over?.type === 'table' ? over.id : undefined));
-  const line = ed.lineRest?.armed ? ed.lineRest.line : null;
-  if (!sameLine(line, ed.hotLine)) { ed.hotLine = line; ed.requestRender(); }
+  // (Its cursor at once, lit and taken a moment after, see restOn.)
+  const line = ed.lineRest?.line ?? null, lit = ed.lineRest?.lit ? line : null;
+  if (!sameLine(lit, ed.hotLine)) { ed.hotLine = lit; ed.requestRender(); }
   // A link the pointer is on (where no item is over it, as a press would find it) is faintly lit.
   const under = pickedUnder(ed, w) ?? hitItem(ed.shown(), w, ed.cam.z);
   const link = under && under.type !== 'frame' ? null : hitLink(ed.shownLinks(), (id) => ed.board.get(id), w, ed.cam.z);
