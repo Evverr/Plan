@@ -564,8 +564,16 @@ export const checks = {
     expect(await p.ev(`planx.board.linkList().filter((l) => l.style).length`), 'all smooth now').toBe(0);
   },
 
-  async 'a table line takes hold only after the mouse rests on it'(p) {
+  async 'a table line takes hold only after the mouse rests on it, the table picked; not picked, never'(p) {
     const id = await put(p, `const t = e.newItem('table', X, Y, { cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill(''), w: 360, h: 120 }); b.add(t); return t.id;`);
+    await sleep(200);
+    // Not picked: its line not taken, however long the mouse rests on it, nor its cursor shown.
+    const t1 = await p.ev(`planx.board.get('${id}')`), l1 = await screen(p, t1.x + 120, t1.y + 20);
+    await p.mouse('mouseMoved', l1[0], l1[1]);
+    await sleep(700);
+    expect(await p.ev('planx.editor.canvas.style.cursor') === 'col-resize', 'not picked: no cursor').toBe(false);
+    await p.ev(`planx.editor.setSelection(['${id}'])`);
+    await p.mouse('mouseMoved', 50, 50);
     await sleep(200);
     const t0 = await p.ev(`planx.board.get('${id}')`), line = await screen(p, t0.x + 120, t0.y + 20);
     await p.drag(line, [line[0] + 60, line[1] + 60], { rest: 200 });

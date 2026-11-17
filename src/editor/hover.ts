@@ -317,7 +317,9 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   let cursor = '';
   // (Typing in a table's cell, its lines are still taken.)
   const typingCell = !!ed.editingId && ed.board.get(ed.editingId)?.type === 'table';
-  const over = hitItem(ed.shown(), w, ed.cam.z), near = (ed.editingId && !typingCell) || dot ? null : tableLineAt(ed, w, over);
+  // (A table's lines only once it's picked: over one not picked, the usual cursor, nothing taken.)
+  const over = hitItem(ed.shown(), w, ed.cam.z), onLine = (ed.editingId && !typingCell) || dot ? null : tableLineAt(ed, w, over);
+  const near = onLine && ed.selection.has(onLine.id) ? onLine : null;
   // On the handle itself, or a little round it (not on the link dots): the handle stronger.
   const onIt = !dot && !!single && onHandle(ed, single, w, 8);
   if (onIt !== ed.hotHandle) { ed.hotHandle = onIt; ed.requestRender(); }
