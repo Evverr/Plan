@@ -9,6 +9,7 @@ import { usePanelPlace } from './labs/panelPlace';
 import { TextEditor } from './ui/TextEditor';
 import { TextPanel } from './ui/FormatPanel';
 import { goToItem } from './labs/itemLink';
+import { cellAnchor } from './ui/cellAnchor';
 import { TaskKeepPop, TaskMenu, TaskPop, TaskTipBubble } from './ui/TaskPop';
 import { noteBoard, setSideOpen, takeSideAway, useSideOpen } from './labs/SideNav';
 import { navigate } from './route';
@@ -334,14 +335,9 @@ export function App({ boardId }: { boardId: string }) {
   // The text panel: shown as above; once it goes, it fades out (half as long as it fades in), still
   // showing what it showed.
   const panelOn = tMode || (!!textItem && textShown === textItem.id && quiet !== textItem.id);
-  // A table's cell typed in: its text panel over the table's top while that's on the screen (staying there
-  // from cell to cell, only what's on it changing), else over the cell.
-  const overTable = (cell: Item, t: Item | undefined): Item => {
-    if (!t) return cell;
-    const top = editor.toScreen({ x: t.x, y: t.y }), right = editor.toScreen({ x: t.x + t.w, y: t.y });
-    return top.y >= 70 && top.y <= innerHeight - 70 && right.x > 0 && top.x < innerWidth ? { ...cell, x: t.x, y: t.y, w: t.w, h: t.h } : cell;
-  };
-  const typedCell = editing?.id === textItem?.id && editing?.type === 'table' && ui.editingCell !== null ? overTable(cellItem(editing, ui.editingCell), editing) : null;
+  // A table's cell typed in: its text panel by what the panels of its cells go by (ui/cellAnchor.ts: over the
+  // table's top while that's on the screen, else over the cell first typed in, kept but for one higher up).
+  const typedCell = editing?.id === textItem?.id && editing?.type === 'table' && ui.editingCell !== null ? { ...cellItem(editing, ui.editingCell), ...cellAnchor(editor, editing, [ui.editingCell]) } : null;
   if (typedCell) lastCell.current = typedCell;
   const panelNow = tMode ? tItem! : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : textItem) : null;
   const lastPanel = useRef<Item | null>(null);

@@ -16,6 +16,7 @@ import { DocSave } from '../labs/DocSave';
 import { ItemMenuButton, LinkParams } from '../labs/ContextMenu';
 import { boxOf, instanceBounds } from '../canvas/geometry';
 import { placeOver } from './FormatPanel';
+import { cellAnchor } from './cellAnchor';
 import { canCrop, croppingId, subscribeCrop, toggleCrop } from '../labs/imageCrop';
 import { pickedGroup } from '../labs/groups';
 
@@ -375,7 +376,9 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
       const all = editor.board.list(), boxes = items.map((i) => (i.inst ? instanceBounds(i, all) : boxOf(i)));
       if (!boxes.length) return;
       const x = Math.min(...boxes.map((b) => b.x)), y = Math.min(...boxes.map((b) => b.y));
-      const box = { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
+      // (A table's cells picked: by what the panels of its cells go by, see ui/cellAnchor.ts.)
+      const box = items.length === 1 && items[0].type === 'table' && cells.length ? cellAnchor(editor, items[0], cells)
+        : { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
       // «Перестроение панели» (src/labs): something else picked, the same panel goes by it: a copy of it
       // where it was fading out quickly, it fading in by the new one as quickly.
       const pick = items.map((i) => i.id).join();
