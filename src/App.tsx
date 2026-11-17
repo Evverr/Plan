@@ -7,7 +7,7 @@ import { IconPicker } from './ui/IconPicker';
 import { SelectionPanel } from './ui/SelectionPanel';
 import { usePanelPlace } from './labs/panelPlace';
 import { TextEditor } from './ui/TextEditor';
-import { TextPanel } from './ui/FormatPanel';
+import { MIXED, TextPanel } from './ui/FormatPanel';
 import { goToItem } from './labs/itemLink';
 import { cellAnchor } from './ui/cellAnchor';
 import { TaskKeepPop, TaskMenu, TaskPop, TaskTipBubble } from './ui/TaskPop';
@@ -33,6 +33,7 @@ import { openBoardFile, saveBoardFile } from './collab/boardFile';
 import { resetPanels, savePanels } from './ui/panels/store';
 import { useBar } from './ui/panels/bar';
 import type { Item, Link } from './model/types';
+import { alignOf } from './model/types';
 import { Labs } from './labs/LabsLayer';
 import { labOn, useLabs } from './labs/labs';
 import { morphFrom, morphPanel } from './labs/textButton';
@@ -341,7 +342,14 @@ export function App({ boardId }: { boardId: string }) {
   // table's top while that's on the screen, else over the cell first typed in, kept but for one higher up).
   const typedCell = editing?.id === textItem?.id && editing?.type === 'table' && ui.editingCell !== null ? { ...cellItem(editing, ui.editingCell), ...cellAnchor(editor, editing, [ui.editingCell]) } : null;
   if (typedCell) lastCell.current = typedCell;
-  const panelNow = tMode ? tItem! : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : textItem) : null;
+  // (A table's cells picked, not typed in: its alignment theirs, as they all have it, or none lit where they
+  // differ, see MIXED.)
+  const asCells = (t: Item): Item => {
+    if (t.type !== 'table' || !ui.cells.length || editing) return t;
+    const one = <T,>(f: (c: Item) => T) => { const vs = new Set(ui.cells.map((c) => f(cellItem(t, c)))); return vs.size === 1 ? [...vs][0] : MIXED; };
+    return { ...t, ta: one((c) => alignOf(c)), va: one((c) => c.va) } as Item;
+  };
+  const panelNow = tMode ? asCells(tItem!) : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : asCells(textItem)) : null;
   const lastPanel = useRef<Item | null>(null);
   const [, panelGone] = useState(0);
   if (panelNow) lastPanel.current = panelNow;

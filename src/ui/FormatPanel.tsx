@@ -86,6 +86,8 @@ const SIZES = [10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72, 96];
 const HEADINGS: Array<[string, number]> = [['Заголовок 1', 40], ['Заголовок 2', 30], ['Заголовок 3', 22]];
 const ALIGN_ICONS: Record<TextAlign, IconName> = { left: 'align-left', center: 'align-center', right: 'align-right' };
 const ALIGN_LABELS: Record<TextAlign, string> = { left: 'По левому краю', center: 'По центру', right: 'По правому краю' };
+/** An alignment that differs among what the panel's for (a table's cells picked): none lit. */
+export const MIXED = 'mixed';
 /** In a sticker or a shape, the text at its top, in its middle (unset) or at its bottom. */
 const VALIGNS: Array<[Item['va'], IconName, string]> = [['top', 'align-items-top', 'Прижать кверху'], [undefined, 'align-items-middle', 'Посередине'], ['bottom', 'align-items-bottom', 'Прижать книзу']];
 const LISTS: Array<[ListKind, IconName, string]> = [['bullet', 'bulleted-list', 'Маркированный список'], ['number', 'numbered-list', 'Нумерованный список']];
@@ -289,7 +291,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
             ))}
           </>}
         </div>}>
-          <Btn icon={ALIGN_ICONS[align]} label="Выравнивание" menu on={menu === 'align'} onClick={() => toggle('align')} />
+          <Btn icon={ALIGN_ICONS[align] ?? 'align-left'} label="Выравнивание" menu on={menu === 'align'} onClick={() => toggle('align')} />
         </Drop></span>,
         sep3: <div className="fsep line" />,
         list: <span className="sort-wrap"><Drop open={menu === 'list'} menu={<div className="tf-row">

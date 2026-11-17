@@ -2923,6 +2923,23 @@ export const checks = {
     }
   },
 
+  async 'table cells picked, their text panel: an alignment lit only where they all have it'(p) {
+    const lit = async () => {
+      await p.click(await p.at('.tfmt button[aria-label="Выравнивание"]')); await sleep(200);
+      const out = await p.ev(`JSON.stringify([...document.querySelectorAll('.tfmt button')].filter((x) => x.classList.contains('on') && x.getAttribute('aria-label') !== 'Выравнивание').map((x) => x.getAttribute('aria-label')))`);
+      await p.click(await p.at('.tfmt button[aria-label="Выравнивание"]')); await sleep(150);
+      return out;
+    };
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('table', 300, 300, { id: 't', w: 360, h: 240, cols: [120, 120, 120], rows: [80, 80, 80], cells: Array(9).fill('a'), cellFmt: [{ ta: 'right', va: 'top' }, { ta: 'left', va: 'top' }, { ta: 'right' }, null, null, null, null, null, null] }));
+      e.setSelection(['t']); e.pickCell(0, 'one'); e.pickCell(1, 'toggle'); })()`);
+    await sleep(400);
+    await p.click(await p.at('.bar.panel button[aria-label="Текст и шрифт"]')); await sleep(600);
+    expect(await lit(), 'across they differ: none lit; up, both top').toBe('["Прижать кверху"]');
+    await p.ev(`(() => { const e = planx.editor; e.pickCell(0, 'one'); e.pickCell(2, 'toggle'); })()`); await sleep(300);
+    expect(await lit(), 'across both right; up, they differ: none lit').toBe('["По правому краю"]');
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;
