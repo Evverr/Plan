@@ -1338,7 +1338,7 @@ export const checks = {
     expect(it, 'a picture of that sticker').toBe('image 01-love');
   },
 
-  async 'typing in a table\'s cell, its lines still resize it, the typing going on'(p) {
+  async 'typing in a table\'s cell, a line of it taken: the typing done (what was typed kept), the line moved'(p) {
     const id = await put(p, `const t = e.newItem('table', X, Y, { cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill(''), w: 360, h: 120 }); b.add(t); e.setSelection([t.id]); e.startEditing(t.id, 4); return t.id;`);
     await sleep(300);
     await p.cdp('Input.insertText', { text: 'Привет' });
@@ -1347,7 +1347,8 @@ export const checks = {
     await p.drag(line, [line[0] + 50, line[1]], { rest: 700 });
     const t = await p.ev(`planx.board.get('${id}')`);
     expect(t.cols[0], 'the column wider').toBeNear(170, 2);
-    expect(`${await p.ev('planx.editor.editingId') === id} ${await p.ev('planx.editor.editingCell')}`, 'still typing in that cell').toBe('true 4');
+    expect(await p.ev('planx.editor.editingId'), 'typing done').toBe(null);
+    expect(t.cells[4], 'what was typed kept').toBe('Привет');
   },
 
   async 'a table line\'s cursor at once, lit once waited for; one dragged, the table\'s others lit at once, till something else is done'(p) {

@@ -33,13 +33,9 @@ export function press(ed: Editor, e: PointerEvent): void {
   // (Anything but a table's line taken: its lines waited for again, see Editor.linesWarm; kept for a line.)
   const warm = ed.linesWarm;
   ed.linesWarm = null;
-  // Typing in a table's cell, one of its lines taken: it's resized, the typing going on (the text kept
-  // where it is, its focus too).
-  const typingIn = ed.editingId ? board.get(ed.editingId) : undefined;
-  const at = ed.toWorld(ed.local(e).x, ed.local(e).y);
-  const keepTyping = typingIn?.type === 'table' && e.button === 0 && !!grabbableLine(ed, at, hitItem(ed.shown(), at, ed.cam.z), e.pointerType);
-  if (keepTyping) e.preventDefault();
-  else ed.stopEditing();
+  // (Typing in a table's cell, one of its lines taken too: done with the typing, its lines alone moved then,
+  // see Editor.linesOnly.)
+  ed.stopEditing();
   // (Moved by the arrow keys till now: a press, and it's as picked again, see Editor.nudged.)
   ed.setNudged(false);
   // Same as in newItem: once someone works on the board, leave the camera to them.
@@ -284,7 +280,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   }
   // A table's lines resize the column or row before them, the table selected or not. Shift-clicking
   // picks several lines (or drops one); dragging any picked line moves them all.
-  const tl = (ed.editingId && !keepTyping) || entering ? null : grabbableLine(ed, w, hit, e.pointerType);
+  const tl = ed.editingId || entering ? null : grabbableLine(ed, w, hit, e.pointerType);
   if (tl) {
     ed.linesWarm = warm;
     // (Only lines moved now: its cells picked no more.)
