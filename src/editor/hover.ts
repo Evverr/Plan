@@ -22,6 +22,7 @@ import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { dotsOn, relatedAt } from '../labs/linkTool';
 import { linkPartAt } from '../labs/textLink';
+import { boardTip, linkTip } from '../labs/itemLink';
 import { zoomShows, zoomSize } from '../labs/zoomFade';
 
 /** How far outside a corner (in screen pixels) the pointer turns the item. */
@@ -291,6 +292,9 @@ export function pickedUnder(ed: Editor, w: Point): Item | null {
 /** With the pointer over the board and nothing being done: what's under it lights up (a link dot,
  *  a table line it has rested on, a mind map button) and the cursor says what a press would do. */
 export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
+  // A link in a text under the pointer: its hint, what it leads to («Ссылка на объект», src/labs).
+  const tipHit = !ed.gesture ? hitItem(ed.shown(), w, ed.cam.z) : null, tipUrl = tipHit && ed.editingId !== tipHit.id ? linkPartAt(tipHit, w) : null;
+  boardTip(tipUrl ? linkTip(ed, tipUrl) : null, ed.toScreen(w));
   if (ed.canvas && !ed.gesture && ed.tool === 'link') { lineToolHover(ed, w); return; }
   if (!ed.canvas || ed.gesture || ed.tool !== 'select') return;
   if (labOn('linkTool') && dotsOn()) relatedHover(ed, w);

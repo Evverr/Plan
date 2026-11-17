@@ -2868,6 +2868,11 @@ export const checks = {
     await p.ev(`(async () => { const l = await import('/src/labs/itemLink.ts'); l.openUrl(planx.editor, l.itemUrl('far')); })()`);
     await sleep(700);
     expect(await p.ev(`(() => { const e = planx.editor, s = e.toScreen({ x: 4075, y: 3075 }); return [Math.abs(s.x - e.canvas.clientWidth / 2) < 2, Math.abs(s.y - e.canvas.clientHeight / 2) < 2, [...e.selection].join()].join(); })()`), 'there, in the middle, picked').toBe('true,true,far');
+    // Its hint: what it leads to.
+    const tips = await p.ev(`(async () => { const l = await import('/src/labs/itemLink.ts'), e = planx.editor, b = planx.board;
+      b.add(e.newItem('frame', 0, 0, { id: 'f', w: 200, h: 150, text: 'Идеи', members: [] })); b.add(e.newItem('mind', 0, 900, { id: 'm', w: 200, h: 56, text: 'План' }));
+      return ['far', 'f', 'm', 'gone'].map((id) => l.linkTip(e, l.itemUrl(id))).concat(l.linkTip(e, 'https://example.com/x')).join(' | '); })()`);
+    expect(tips, 'its hints').toBe('Ссылка на стикер | Ссылка на фрейм «Идеи» | Ссылка на майнд-карту «План» | Ссылка на удалённый объект | Ссылка на example.com');
   },
 
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {

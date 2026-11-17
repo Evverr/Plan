@@ -1,4 +1,5 @@
 import type { Editor } from '../editor/editor';
+import type { Item } from '../model/types';
 import { cameraFor, flyTo } from '../editor/camera';
 import { linkBox } from '../canvas/geometry';
 import { labOn } from './labs';
@@ -47,4 +48,45 @@ export function openUrl(ed: Editor, url: string): void {
     } catch { /* not an address: as any */ }
   }
   window.open(url, '_blank', 'noopener');
+}
+
+/** What an item is called after «Ссылка на» (in the accusative), with its name where it has one. */
+const SHAPES: Record<string, string> = { triangle: 'треугольник', rhombus: 'ромб', star: 'звезду', pentagon: 'пятиугольник', hexagon: 'шестиугольник', parallelogram: 'параллелограмм', trapezoid: 'трапецию', arrow: 'стрелку', cross: 'крест' };
+function whatItIs(it: Item, get: (id: string) => Item | undefined): string {
+  const named = (what: string) => { const t = (it.text ?? '').trim().replace(/\s+/g, ' '); return t ? `${what} «${t.length > 30 ? `${t.slice(0, 30).trimEnd()}…` : t}»` : what; };
+  if (it.host) { const inst = get(it.host); return inst ? `${whatItIs({ ...it, host: undefined }, get)} в экземпляре «${inst.text ?? ''}»` : 'часть экземпляра'; }
+  if (it.type === 'frame') return it.tl ? named('таймлайн') : it.kb ? named('канбан') : it.comp ? named('компонент') : it.inst ? named('экземпляр компонента') : named('фрейм');
+  if (it.type === 'mind') return it.parent ? named('ветку майнд-карты') : named('майнд-карту');
+  if (it.type === 'task') return named('задачу');
+  if (it.hd) return named('титул');
+  if (it.code) return 'блок кода';
+  if (it.poll) return 'голосование';
+  if (it.form) return 'форму';
+  if (it.type === 'polygon') return SHAPES[it.shape ?? 'triangle'] ?? 'фигуру';
+  if (it.type === 'image') return it.doodle ? 'стикер-рисунок' : 'картинку';
+  const plain: Record<string, string> = { sticky: 'стикер', rect: 'прямоугольник', ellipse: 'эллипс', text: 'текст', table: 'таблицу', icon: 'иконку', emoji: 'эмодзи', ink: 'рисунок', audio: 'аудиозапись', page: 'документ' };
+  return plain[it.type] ?? 'объект';
+}
+
+/** The hint of a link in a text: what it leads to (something on this board, by what it is; another board;
+ *  a site, by its address). */
+export function linkTip(ed: Editor, url: string): string {
+  try {
+    const u = new URL(url, location.href), here = new URLSearchParams(location.search).get('board');
+    if (labOn('itemLinks') && u.origin === location.origin && u.pathname === location.pathname && u.searchParams.get('board')) {
+      if (u.searchParams.get('board') !== here) return 'Ссылка на другую доску';
+      const id = u.searchParams.get('item'), it = id ? ed.board.get(id) : undefined;
+      return !id ? 'Ссылка на эту доску' : it ? `Ссылка на ${whatItIs(it, (k) => ed.board.get(k))}` : 'Ссылка на удалённый объект';
+    }
+    return `Ссылка на ${u.host || url}`;
+  } catch { return `Ссылка: ${url}`; }
+}
+
+/** The hint at the pointer over the board (`at`, on the screen), or none; shown as the panels' are (see
+ *  ui/Tooltips.tsx, "planx:board-tip"). */
+let tipNow: string | null = null;
+export function boardTip(text: string | null, at: { x: number; y: number }): void {
+  if (text === tipNow) return;
+  tipNow = text;
+  window.dispatchEvent(new CustomEvent('planx:board-tip', { detail: text ? { text, ...at } : null }));
 }

@@ -33,7 +33,7 @@ function tipWidth(text: string): number {
 export function Tooltips() {
   const [tip, setTip] = useState<Tip | null>(null);
   useEffect(() => {
-    let timer = 0, current: HTMLElement | null = null;
+    let timer = 0, boardTimer = 0, current: HTMLElement | null = null;
     // Once a hint has been waited for, the others in the same panel come at once, until the pointer
     // has been away from that panel for a second.
     let warm: Element | null = null, leftAt: number | null = null;
@@ -80,6 +80,7 @@ export function Tooltips() {
     };
     const hide = () => {
       clearTimeout(timer);
+      clearTimeout(boardTimer);
       current = null;
       setTip(null);
     };
@@ -102,12 +103,28 @@ export function Tooltips() {
       if (warm && panelOf(el) === warm) show(el);
       else timer = window.setTimeout(() => show(el), WAIT);
     };
+    // On the board («Ссылка на объект», src/labs/itemLink.ts): a link in a text under the pointer, its hint
+    // over the pointer after the same wait (`at` on the canvas).
+    const onBoard = (e: Event) => {
+      const d = (e as CustomEvent<{ text: string; x: number; y: number } | null>).detail;
+      clearTimeout(boardTimer);
+      if (!d) { if (!current) setTip(null); return; }
+      if (current) return;
+      boardTimer = window.setTimeout(() => {
+        const c = document.querySelector('.board-canvas')?.getBoundingClientRect(), x = d.x + (c?.left ?? 0), y = d.y + (c?.top ?? 0);
+        const w = tipWidth(d.text), left = Math.min(Math.max(x - w / 2, EDGE), innerWidth - EDGE - w), above = y - 14 - H >= EDGE;
+        setTip({ text: d.text, left, top: above ? y - 14 - H : y + 22, side: above ? 'above' : 'below', px: Math.min(Math.max(x - left, 15), w - 15) });
+      }, WAIT);
+    };
+    window.addEventListener('planx:board-tip', onBoard);
     window.addEventListener('pointerover', over);
     window.addEventListener('pointerdown', hide, true);
     window.addEventListener('keydown', hide, true);
     window.addEventListener('blur', hide);
     return () => {
       clearTimeout(timer);
+      clearTimeout(boardTimer);
+      window.removeEventListener('planx:board-tip', onBoard);
       window.removeEventListener('pointerover', over);
       window.removeEventListener('pointerdown', hide, true);
       window.removeEventListener('keydown', hide, true);
