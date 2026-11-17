@@ -278,13 +278,14 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
         sep2: <div className="fsep line" />,
         align: <span className="sort-wrap"><Drop open={menu === 'align'} menu={<div className="tf-row">
           {(['left', 'center', 'right'] as TextAlign[]).map((a) => (
-            <Btn key={a} icon={ALIGN_ICONS[a]} label={ALIGN_LABELS[a]} on={align === a} onClick={() => set({ ta: a })} />
+            // (The menu stays: across and up or down, both without opening it again.)
+            <Btn key={a} icon={ALIGN_ICONS[a]} label={ALIGN_LABELS[a]} on={align === a} onClick={() => set({ ta: a }, true)} />
           ))}
           {/* (Up and down, in what has room round its text: a sticker, a shape, a table's cell.) */}
           {['sticky', 'rect', 'ellipse', 'polygon', 'table'].includes(item.type) && !item.code && <>
             <div className="fsep line" />
             {VALIGNS.map(([v, icon, label]) => (
-              <Btn key={label} icon={icon} label={label} on={item.va === v} onClick={() => set({ va: v })} />
+              <Btn key={label} icon={icon} label={label} on={item.va === v} onClick={() => set({ va: v }, true)} />
             ))}
           </>}
         </div>}>

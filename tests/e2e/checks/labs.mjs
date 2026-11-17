@@ -2893,6 +2893,10 @@ export const checks = {
     await p.click(await p.at('.tfmt button[aria-label="Прижать книзу"]'));
     await sleep(200);
     expect(await p.ev(`JSON.stringify(planx.board.get('t').cellFmt?.[4])`), 'that cell down').toBe('{"va":"bottom"}');
+    // The menu still open: across too, at once.
+    await p.click(await p.at('.tfmt button[aria-label="По правому краю"]'));
+    await sleep(200);
+    expect(await p.ev(`JSON.stringify(planx.board.get('t').cellFmt?.[4])`), 'down and right').toBe('{"va":"bottom","ta":"right"}');
   },
 
   async '"Реакции": the pointer on one under an item, who put it after a moment'(p) {
