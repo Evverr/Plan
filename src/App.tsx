@@ -54,7 +54,7 @@ type Pop = 'clear' | 'quick' | 'icons' | 'help' | 'name' | null;
 
 
 /** How long a table cell's text panel stays over it once typing in it's ended, for a double click on another (ms). */
-const CELL_HOLD = 350;
+const CELL_HOLD = 500;
 /** How long the text panel takes to fade out (format.css: half its fading in). */
 const PANEL_OUT = 80;
 

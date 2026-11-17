@@ -1350,7 +1350,7 @@ export const checks = {
     expect(`${await p.ev('planx.editor.editingId') === id} ${await p.ev('planx.editor.editingCell')}`, 'still typing in that cell').toBe('true 4');
   },
 
-  async 'a table line\'s cursor at once, lit once waited for; one dragged, the table\'s others lit at once, till it\'s let go of'(p) {
+  async 'a table line\'s cursor at once, lit once waited for; one dragged, the table\'s others lit at once, till something else is done'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
       b.add(e.newItem('table', 200, 200, { id: 't', w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill('') })); e.setSelection(['t']); })()`);
     const cursor = () => p.ev('planx.editor.canvas.style.cursor');
@@ -1376,12 +1376,12 @@ export const checks = {
     await p.mouse('mouseMoved', 320, 240);
     await sleep(100);
     expect(await lit(), 'one dragged: the next at once').toBe(true);
-    // The table let go of: waited for again.
-    await p.click([900, 600]);
+    // Something else done, in the table too (a cell clicked): waited for again.
+    await p.click([260, 300]);
     await sleep(100);
     await p.mouse('mouseMoved', 320, 240);
     await sleep(150);
-    expect(await lit(), 'let go of: waited for again').toBe(false);
+    expect(await lit(), 'something else done: waited for again').toBe(false);
   },
 
   async 'a shape being drawn moves along with the pointer while Space is held, and goes on growing once it\'s let go'(p) {

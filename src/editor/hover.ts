@@ -5,7 +5,7 @@ import { taskPartAt } from '../canvas/task';
 import type { Point } from '../canvas/geometry';
 import { nearTab, sameAims, tabAims, tabAt, tabsFor } from '../labs/sideTabs';
 import { coveredAt, hitItem, hugsContents, linkBox, hitLink, instanceBounds, linkHandles, linkShape, onAudioButton, pointInRect, sidePoint, SIDES, toLocal } from '../canvas/geometry';
-import { DOT_GAP, dotGap, HANDLE } from '../canvas/renderer';
+import { DOT_GAP, dotGap, HANDLE, linkRectAt } from '../canvas/renderer';
 import { instanceGlyph, instancePlus } from '../model/components';
 import { taskButtonAt } from './tasks';
 import { onCodeCopy, onCodeText } from '../labs/codeBlock';
@@ -293,8 +293,10 @@ export function pickedUnder(ed: Editor, w: Point): Item | null {
  *  a table line it has rested on, a mind map button) and the cursor says what a press would do. */
 export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   // A link in a text under the pointer: its hint, what it leads to («Ссылка на объект», src/labs).
+  // (Over its line of text, however big it is: at the pointer across, at the line's top.)
   const tipHit = !ed.gesture ? hitItem(ed.shown(), w, ed.cam.z) : null, tipUrl = tipHit && ed.editingId !== tipHit.id ? linkPartAt(tipHit, w) : null;
-  boardTip(tipUrl ? linkTip(ed, tipUrl) : null, ed.toScreen(w));
+  const tipRect = tipUrl ? linkRectAt(w) : null;
+  boardTip(tipUrl ? linkTip(ed, tipUrl) : null, ed.toScreen({ x: w.x, y: tipRect?.y ?? w.y }));
   if (ed.canvas && !ed.gesture && ed.tool === 'link') { lineToolHover(ed, w); return; }
   if (!ed.canvas || ed.gesture || ed.tool !== 'select') return;
   if (labOn('linkTool') && dotsOn()) relatedHover(ed, w);

@@ -423,8 +423,10 @@ const LINK_INK = TEXT_COLORS.blue;
 let textLinkRects: Array<{ x: number; y: number; w: number; h: number; url: string }> = [];
 
 /** The address of the link in text at a board point, as last drawn. */
-export const linkInTextAt = (p: Point): string | null =>
-  textLinkRects.find((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)?.url ?? null;
+export const linkInTextAt = (p: Point): string | null => linkRectAt(p)?.url ?? null;
+/** And where its line of it is (on the board), for its hint over it. */
+export const linkRectAt = (p: Point): { x: number; y: number; w: number; h: number; url: string } | null =>
+  textLinkRects.find((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) ?? null;
 
 const shadeCache = new Map<string, string>();
 

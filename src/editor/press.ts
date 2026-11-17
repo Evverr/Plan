@@ -30,6 +30,9 @@ import { startComment } from '../labs/comments';
 export function press(ed: Editor, e: PointerEvent): void {
   const board = ed.board;
   ed.byFinger = e.pointerType === 'touch';
+  // (Anything but a table's line taken: its lines waited for again, see Editor.linesWarm; kept for a line.)
+  const warm = ed.linesWarm;
+  ed.linesWarm = null;
   // Typing in a table's cell, one of its lines taken: it's resized, the typing going on (the text kept
   // where it is, its focus too).
   const typingIn = ed.editingId ? board.get(ed.editingId) : undefined;
@@ -283,6 +286,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   // picks several lines (or drops one); dragging any picked line moves them all.
   const tl = (ed.editingId && !keepTyping) || entering ? null : grabbableLine(ed, w, hit, e.pointerType);
   if (tl) {
+    ed.linesWarm = warm;
     const same = (l: TableLine) => l.id === tl.id && l.axis === tl.axis && l.index === tl.index;
     const picked = ed.pickedLines.filter((l) => l.id === tl.id), was = picked.some(same);
     // A click picks the line (it stays blue), Shift-click adds one or drops it; pressing a picked

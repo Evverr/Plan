@@ -112,8 +112,9 @@ export function Tooltips() {
       if (current) return;
       boardTimer = window.setTimeout(() => {
         const c = document.querySelector('.board-canvas')?.getBoundingClientRect(), x = d.x + (c?.left ?? 0), y = d.y + (c?.top ?? 0);
-        const w = tipWidth(d.text), left = Math.min(Math.max(x - w / 2, EDGE), innerWidth - EDGE - w), above = y - 14 - H >= EDGE;
-        setTip({ text: d.text, left, top: above ? y - 14 - H : y + 22, side: above ? 'above' : 'below', px: Math.min(Math.max(x - left, 15), w - 15) });
+        // (`y`, the top of the link's line: over it, its pointer just clear of it.)
+        const w = tipWidth(d.text), left = Math.min(Math.max(x - w / 2, EDGE), innerWidth - EDGE - w), above = y - 8 - H >= EDGE;
+        setTip({ text: d.text, left, top: above ? y - 8 - H : y + 30, side: above ? 'above' : 'below', px: Math.min(Math.max(x - left, 15), w - 15) });
       }, WAIT);
     };
     window.addEventListener('planx:board-tip', onBoard);
