@@ -2030,6 +2030,8 @@ export const checks = {
   },
 
   async '"Несколько сразу": two picked share the text panel, and one corner scales them both'(p) {
+    // (Off at first: turned on.)
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('multi', true))()`);
     await p.ev(`(() => { const e = planx.editor, b = planx.board, { x: X, y: Y } = e.toWorld(300, 250);
       b.add(e.newItem('sticky', X, Y, { id: 's1', w: 100, h: 100, text: 'Один' }));
       b.add(e.newItem('sticky', X + 150, Y, { id: 's2', w: 100, h: 100, text: 'Два' }));
