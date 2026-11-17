@@ -2906,6 +2906,19 @@ export const checks = {
     expect(await p.ev(`document.querySelector('.tip')?.textContent ?? 'none'`), 'who put it').toBe('вы, Аня, участник');
   },
 
+  async 'a folded frame duplicated by the keyboard (Cmd+D, Alt and an arrow): its copy by its bar, not past what it holds'(p) {
+    for (const how of ['dup', 'arrow']) {
+      const r = await p.ev(`(async () => { const e = planx.editor, b = planx.board; b.replaceAll([], []);
+        b.add(e.newItem('sticky', 340, 340, { id: 's', w: 600, h: 600 })); b.add(e.newItem('frame', 300, 300, { id: 'f', w: 700, h: 700, text: 'Ф', members: ['s'] }));
+        e.setFolded('f', true); e.setSelection(['f']); await new Promise((d) => setTimeout(d, 100));
+        if ('${how}' === 'dup') e.duplicate(); else e.duplicateArrow(1, 0);
+        await new Promise((d) => setTimeout(d, 200));
+        const f = b.get('f'), c = b.list().find((i) => i.type === 'frame' && i.id !== 'f');
+        return [c.x - f.x - f.w, c.y - f.y].join(); })()`);
+      expect(r, `${how}: 24 right of its bar, level`).toBe('24,0');
+    }
+  },
+
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
     const ids = await p.ev(`(() => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl);
       b.update(t.id, { w: 19 * 2 + 10 * 23 }); const from = t.x + 19;

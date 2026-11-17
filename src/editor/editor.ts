@@ -29,7 +29,7 @@ import { press } from './press';
 import { formatCells, pickCell, restOn, sameLine, setTableLines } from './tables';
 import { DEFAULT_PENS, isPoly, MIND_TOPIC, PENS_KEY, readPens, type InkStyle, type Pens, type PenTool, type Tool } from './tools';
 import { pushedBelow } from '../labs/textPush';
-import { arrowCopyAt } from '../labs/arrowCopy';
+import { arrowCopyAt, foldedIn } from '../labs/arrowCopy';
 import { holdZoomBox } from '../labs/zoomBox';
 import { rejoined } from '../labs/linkJoint';
 import { croppingId } from '../labs/imageCrop';
@@ -1820,7 +1820,9 @@ export class Editor {
   duplicateArrow(dx: number, dy: number): void {
     const keep = this.clipboard, data = this.copyData();
     if (!data) return;
-    const at = arrowCopyAt(this.board.list(), (JSON.parse(data) as { items: Item[] }).items, this.selectedItems().filter((i) => !i.host), dx, dy);
+    // (Past what's in sight only: not what folded frames hold, out of sight.)
+    const hidden = this.hidden(), all = this.board.list().filter((i) => !hidden.has(i.id));
+    const at = arrowCopyAt(all, (JSON.parse(data) as { items: Item[] }).items, this.selectedItems().filter((i) => !i.host), dx, dy);
     if (!at) return;
     this.clipboard = data;
     this.paste(0, at, true);
@@ -1835,7 +1837,9 @@ export class Editor {
     if (!b) return;
     const picked = this.selectedItems().filter((i) => !i.host), one = picked.length === 1 ? picked[0] : null;
     const line = one && (lineOf(one, this.board.list(), 'y') ?? lineOf(one, this.board.list(), 'x'));
-    let at = { x: b.x + b.w * 1.5 + DUPLICATE_GAP, y: b.y + b.h / 2 };
+    // (By what's seen of it: a folded frame by its bar, not what it holds.)
+    const away = foldedIn(items), s = boundsOf(items.filter((i) => !away.has(i.id))) ?? b;
+    let at = { x: s.x + s.w * 1.5 + DUPLICATE_GAP + (b.x + b.w / 2 - s.x - s.w / 2), y: b.y + b.h / 2 };
     // (Down a column only from its last: one with its like under it goes right of it, as one on its own.)
     if (one && line && (line.axis === 'x' || line[line.length - 1] === one)) {
       const [prev, last] = line.slice(-2), down = line.axis === 'y';

@@ -11,12 +11,22 @@ import { columnOf, columns, snaps } from './kanban';
  */
 const GAP = 24;
 
+/** What's copied but not seen: what folded frames among it hold (their bar's all there is to them). */
+export function foldedIn(copied: Item[]): Set<string> {
+  const by = new Map(copied.map((i) => [i.id, i])), out = new Set<string>();
+  const hide = (f: Item) => (f.members ?? []).forEach((m) => { const o = by.get(m); if (o && !out.has(m)) { out.add(m); hide(o); } });
+  copied.filter((i) => i.type === 'frame' && i.fold).forEach(hide);
+  return out;
+}
+
 /** Where the copy's middle goes (`copied`: what's picked, as copied, its bounds' middle), or none. */
 export function arrowCopyAt(all: Item[], copied: Item[], picked: Item[], dx: number, dy: number): Point | null {
   const whole = boundsOf(copied);
   if (!whole || !picked.length) return null;
   // (Instances by what they show, not their frames, unseen and wider: the gap between what's seen.)
-  const b = boundsOf(copied.filter((i) => !(i.inst && copied.some((c) => c.host === i.id)))) ?? whole;
+  // (Nor what a folded frame holds: by its bar.)
+  const away = foldedIn(copied);
+  const b = boundsOf(copied.filter((i) => !away.has(i.id) && !(i.inst && copied.some((c) => c.host === i.id)))) ?? whole;
   const at = (x: number, y: number): Point => ({ x: whole.x + whole.w / 2 + x - b.x, y: whole.y + whole.h / 2 + y - b.y });
   const k = picked.every(snaps) ? kanbanOf(all, picked[0].id) : undefined;
   if (k && picked.every((p) => kanbanOf(all, p.id)?.id === k.id)) {
