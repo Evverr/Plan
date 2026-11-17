@@ -2790,7 +2790,7 @@ export const checks = {
     expect(await p.ev(`!!planx.board.get('${ids.task}').tv`), 'opened by a click').toBe(true);
   },
 
-  async '"Троеточие у титула": the «…» by a timeline\'s title picks it, its panel half seen; a new table has a title too'(p) {
+  async '"Троеточие у титула": the «…» by a timeline\'s title picks it, its panel half seen'(p) {
     const at = await p.ev(`(async () => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl), h = b.list().find((i) => i.tie === t.id);
       e.cam = { x: 150 - t.x * 0.7, y: 200 - t.y * 0.7, z: 0.7 }; e.camChanged(); e.setSelection([]);
       const m = (await import('/src/labs/header.ts')).moreBox(h), s = e.toScreen({ x: h.x + m.x + m.w / 2, y: h.y + m.y + m.h / 2 }); return [s.x, s.y]; })()`);
@@ -2808,10 +2808,6 @@ export const checks = {
     await p.ev(`(() => { const e = planx.editor; e.setSelection([e.selection.values().next().value]); })()`);
     await sleep(300);
     expect(await p.ev(`getComputedStyle(document.querySelector('.bar.panel')).opacity`), 'picked as ever: all of it').toBe('1');
-    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setTool('table'); })()`);
-    await p.click([500, 400]);
-    await sleep(300);
-    expect(await p.ev(`(() => { const t = planx.board.list().find((i) => i.type === 'table'); return planx.board.list().find((i) => i.tie === t?.id)?.text; })()`), 'a table, its title').toBe('Таблица');
   },
 
   async '"Кучки": a timeline dragged over another goes over it, with all it holds'(p) {
@@ -2873,6 +2869,17 @@ export const checks = {
       b.add(e.newItem('frame', 0, 0, { id: 'f', w: 200, h: 150, text: 'Идеи', members: [] })); b.add(e.newItem('mind', 0, 900, { id: 'm', w: 200, h: 56, text: 'План' }));
       return ['far', 'f', 'm', 'gone'].map((id) => l.linkTip(e, l.itemUrl(id))).concat(l.linkTip(e, 'https://example.com/x')).join(' | '); })()`);
     expect(tips, 'its hints').toBe('Ссылка на стикер | Ссылка на фрейм «Идеи» | Ссылка на майнд-карту «План» | Ссылка на удалённый объект | Ссылка на example.com');
+  },
+
+  async '"Титул в объектах": a timeline\'s title hidden with it in a folded frame; a table\'s title, as they had for a day, gone'(p) {
+    const r = await p.ev(`(async () => { const e = planx.editor, b = planx.board; e.addTimeline({ x: 0, y: 0 }); const t = b.list().find((i) => i.tl), h = b.list().find((i) => i.tie === t.id);
+      const f = e.newItem('frame', t.x - 100, h.y - 100, { w: t.w + 200, h: t.h + 300, members: [t.id], text: 'Фрейм' }); b.add(f);
+      e.setFolded(f.id, true);
+      const tb = e.newItem('table', 3000, 0, { w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill('') }); b.add(tb);
+      b.add(e.newItem('rect', 3000, -40, { hd: true, tie: tb.id, text: 'Таблица', icon: 'table', w: 300, h: 30 }));
+      await new Promise((d) => setTimeout(d, 100));
+      return [e.shown().some((i) => i.id === h.id), b.list().some((i) => i.tie === tb.id)].join(); })()`);
+    expect(r, 'the title hidden, the table\'s gone').toBe('false,false');
   },
 
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {

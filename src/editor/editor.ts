@@ -696,6 +696,8 @@ export class Editor {
   private tasksFitted = false;
   private refitTasks(): void {
     if (refitTasks(this.board) && labOn('kanban')) tidyKanbans(this.board);
+    // (Headers tied to kanbans and timelines as they're drawn now, «Титул в объектах», src/labs.)
+    tidyTies(this.board);
   }
 
   /** «Канбан» (src/labs): a new task where its «Создать задачу» is, under the first stage's cards, typed in;
@@ -725,11 +727,6 @@ export class Editor {
   /** A new task put in a kanban: with no ring («Чекбокс у задачи», src/labs). */
   ringless(it: Item): void {
     if (it.type === 'task' && kanbanOf(this.board.list(), it.id)) this.board.update(it.id, { nck: true });
-  }
-
-  /** A new table's title over it, «Таблица», as a kanban's or a timeline's («Титул в объектах», src/labs). */
-  addTableHeader(it: Item): void {
-    if (labOn('headerObject')) this.addHeader(center(it), { item: it, title: 'Таблица', icon: 'table', color: 'orange' });
   }
 
   /** «Титул в объектах» (src/labs/header.ts), centred on `c`, picked; or, `over` given, over its
@@ -1314,7 +1311,6 @@ export class Editor {
     if (type === 'text') it.h = itemTextHeight(it);
     if (type === 'task') Object.assign(it, freshTask(this.board, it, c));
     this.addItem(it);
-    if (type === 'table') this.addTableHeader(it);
     this.ringless(it);
     this.setTool('select');
     this.setSelection([it.id]);
@@ -2104,6 +2100,8 @@ export class Editor {
       // Hidden layers ("Слои", src/labs): out of sight, their links too.
       const layered = hiddenByLayers(this.board, items);
       for (const id of layered) hidden.add(id);
+      // A header tied to what's hidden (in a folded frame, say) hidden with it («Титул в объектах», src/labs).
+      for (const i of items) if (i.tie && hidden.has(i.tie)) hidden.add(i.id);
       // How many nodes each folded mind map node hides, each way.
       const get = (id: string) => this.board.get(id), folded = new Map<string, Map<Way, number>>();
       for (const i of items) {

@@ -54,15 +54,18 @@ export function tiedAt(h: Item, t: Item): { x: number; y: number } {
 /** Each header tied to a kanban or timeline put back over its corner, however that's moved, stretched or
  *  aligned (for good: undone, it's put back again). */
 export function tidyTies(board: Board): void {
-  const items = board.list(), moves = new Map<string, { x: number; y: number; h: number }>();
+  const items = board.list(), moves = new Map<string, { x: number; y: number; h: number }>(), gone: string[] = [];
   for (const h of items) {
     const t = h.tie ? board.get(h.tie) : undefined;
     if (!t) continue;
+    // (A table's, as tables had for a day: tables have none.)
+    if (t.type === 'table') { gone.push(h.id); continue; }
     // (As tall as it takes, its sizes changed since, say.)
     const hh = headerHeight(h), at = tiedAt({ ...h, h: hh }, t);
     if (at.x !== h.x || at.y !== h.y || hh !== h.h) moves.set(h.id, { ...at, h: hh });
   }
   if (moves.size) board.forGood(() => moves.forEach((p, id) => board.updateForGood(id, p)));
+  if (gone.length) board.forGood(() => board.remove(gone));
 }
 
 /** These ids, a header tied to a kanban or timeline among them (`tie`) for that: it's never picked. */
