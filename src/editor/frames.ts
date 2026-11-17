@@ -221,7 +221,7 @@ export function settled(board: Board, ids: Iterable<string>, fresh?: string): Ma
  * What the look into a folded frame shows: the frame as it is unfolded, with what it holds, fitted
  * into a w × h view with `pad` round it.
  */
-export function peekView(board: Board, id: string, theme: Theme, w: number, h: number, dpr: number, pad: number): Scene | null {
+export function peekView(board: Board, id: string, theme: Theme, w: number, h: number, dpr: number, pad: number, padY = pad): Scene | null {
   const f = board.get(id);
   if (f?.type !== 'frame') return null;
   const items = board.list(), held = carried(board, [f], items);
@@ -230,7 +230,7 @@ export function peekView(board: Board, id: string, theme: Theme, w: number, h: n
   const inner = hiddenIn(board, items.filter((i) => held.has(i.id) && i.id !== f.id));
   const shown = [open, ...stacked(board, items.filter((i) => held.has(i.id) && i.id !== f.id && !inner.has(i.id)))];
   const ids = new Set(shown.map((i) => i.id));
-  const z = Math.min((w - pad * 2) / open.w, (h - pad * 2) / open.h);
+  const z = Math.min((w - pad * 2) / open.w, (h - padY * 2) / open.h);
   return {
     items: shown,
     links: board.linkList().filter((l) => ids.has(l.from) && ids.has(l.to)),

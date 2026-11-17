@@ -2251,8 +2251,8 @@ export class Editor {
   }
 
   /** What the look into a folded frame shows, in a w × h view (see peekView). */
-  peekScene(id: string, w: number, h: number, dpr: number, pad = 24): Scene | null {
-    return this.theme ? peekView(this.board, id, this.theme, w, h, dpr, pad) : null;
+  peekScene(id: string, w: number, h: number, dpr: number, pad = 24, padY = pad): Scene | null {
+    return this.theme ? peekView(this.board, id, this.theme, w, h, dpr, pad, padY) : null;
   }
 
   /* ---------- pointer input ---------- */

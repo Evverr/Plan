@@ -12,9 +12,10 @@ import { layerRoot } from '../labs/sideViewport';
 const MAX_W = 0.86, MAX_H = 0.8, HEAD = 56;
 
 /**
- * A look into a folded frame (opened by its eye button, through the "planx:peek" event): the frame
- * as it is unfolded, with all it holds, in a popup over the dimmed board. It only shows; Esc, the
- * cross or a click beside it closes it, and "Развернуть" unfolds the frame on the board.
+ * A look into a folded frame (opened by its magnifier, through the "planx:peek" event): the frame
+ * as it is unfolded, with all it holds, in a popup over the dimmed board, as on the board (its title row
+ * on the board's colour, as much room under it as over it). It only shows; Esc, the cross or a click
+ * beside it closes it.
  */
 export function FramePeek({ editor, board }: { editor: Editor; board: Board }) {
   const [id, setId] = useState<string | null>(null);
@@ -42,15 +43,17 @@ export function FramePeek({ editor, board }: { editor: Editor; board: Board }) {
 
   const f = id ? board.get(id) : undefined;
   const full = f ? f.fold ?? f : null;
-  const k = full ? Math.min((innerWidth * MAX_W) / full.w, (innerHeight * MAX_H - HEAD) / full.h) : 1;
-  const w = full ? Math.max(320, Math.round(full.w * k)) : 0, h = full ? Math.max(200, Math.round(full.h * k)) : 0;
+  // (Its title row over it, as much room under it.)
+  const k = full ? Math.min((innerWidth * MAX_W) / full.w, (innerHeight * MAX_H - HEAD * 2) / full.h) : 1;
+  // (Its picture the whole of it: its title row over the top of it, as much room at the bottom.)
+  const w = full ? Math.max(320, Math.round(full.w * k)) : 0, h = full ? Math.max(200, Math.round(full.h * k)) + HEAD * 2 : 0;
   useLayoutEffect(() => {
     const c = canvas.current;
     if (!c || !id) return;
     const dpr = window.devicePixelRatio || 1;
     c.width = Math.round(w * dpr);
     c.height = Math.round(h * dpr);
-    const ctx = c.getContext('2d'), scene = editor.peekScene(id, w, h, dpr);
+    const ctx = c.getContext('2d'), scene = editor.peekScene(id, w, h, dpr, 24, HEAD + 24);
     if (ctx && scene) drawScene(ctx, scene);
   });
   useEffect(() => { if (id && !f) setId(null); }, [id, f]);
@@ -62,7 +65,6 @@ export function FramePeek({ editor, board }: { editor: Editor; board: Board }) {
       <div className="peek" role="dialog" aria-label={title}>
         <div className="peek-head">
           <span className="peek-title">{title}</span>
-          {f.fold && <button className="btn" onClick={() => { editor.setFolded(id, false); setId(null); }}>Развернуть</button>}
           <button className="ib" title="Закрыть" aria-label="Закрыть" onClick={() => setId(null)}><PanelIcon name="cross" /></button>
         </div>
         <canvas ref={canvas} style={{ width: w, height: h }} />

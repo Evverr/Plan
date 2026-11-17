@@ -15,5 +15,5 @@ export type FrameButton = 'peek';
  *  what it holds, at its right end; an unfolded one has none. */
 export function frameButtons(it: Item): Array<{ kind: FrameButton; icon: string; x: number; y: number; s: number }> {
   if (it.type !== 'frame' || !it.fold) return [];
-  return [{ kind: 'peek', icon: 'seen-items', x: it.x + it.w - FOLD_RIGHT - FOLD_ICON, y: it.y + (it.h - FOLD_ICON) / 2, s: FOLD_ICON }];
+  return [{ kind: 'peek', icon: 'search', x: it.x + it.w - FOLD_RIGHT - FOLD_ICON, y: it.y + (it.h - FOLD_ICON) / 2, s: FOLD_ICON }];
 }

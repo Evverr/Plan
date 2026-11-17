@@ -33,7 +33,7 @@ const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave
  * moved in just enough to stay 8px clear of the screen's edges and of the tool rail when level with
  * it. Every colour control of the panel sits in it.
  */
-function Palette({ label, children }: { label: string; children: ReactNode }) {
+function Palette({ label, children, icon = 'palette' }: { label: string; children: ReactNode; icon?: PanelIconName }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null), popRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -53,7 +53,7 @@ function Palette({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div ref={ref} className="op-wrap">
       <button className={`ib ${open ? 'on' : ''}`} title={label} aria-label={label} aria-expanded={open} onClick={() => setOpen(!open)}>
-        <PanelIcon name="palette" />
+        <PanelIcon name={icon} />
       </button>
       {open && <div ref={popRef} className="op-pop palette-pop" data-nosort>{children}</div>}
     </div>
@@ -515,14 +515,14 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
         ) : undefined,
         // How the selected links run: straight, in right angles, smooth; each way any of them runs lit,
         // a press sending all of them that way.
-        lines: links.length > 0 ? (
-          <div className="sw-group">
-            {([[undefined, 'line-curve', 'Плавная линия'], ['arc', 'line-arc', 'Дуга'], ['elbow', 'line-elbow', 'Линия с прямыми углами'], ['straight', 'line-straight', 'Прямая линия']] as const).map(([style, icon, title]) => (
-              <button key={icon} className={`ib ${links.some((l) => l.style === style) ? 'on' : ''}`} title={title} aria-label={title}
-                aria-pressed={links.some((l) => l.style === style)} onClick={() => editor.setLinkStyle(style)}><PanelIcon name={icon} /></button>
-            ))}
-          </div>
-        ) : undefined,
+        // (With things picked too: one button, its kinds opening from it, the panel kept short.)
+        lines: links.length > 0 ? (() => {
+          const kinds = ([[undefined, 'line-curve', 'Плавная линия'], ['arc', 'line-arc', 'Дуга'], ['elbow', 'line-elbow', 'Линия с прямыми углами'], ['straight', 'line-straight', 'Прямая линия']] as const).map(([style, icon, title]) => (
+            <button key={icon} className={`ib ${links.some((l) => l.style === style) ? 'on' : ''}`} title={title} aria-label={title}
+              aria-pressed={links.some((l) => l.style === style)} onClick={() => editor.setLinkStyle(style)}><PanelIcon name={icon} /></button>
+          ));
+          return items.length > 0 ? <Palette label="Вид линий" icon="line-curve"><div className="sw-group">{kinds}</div></Palette> : <div className="sw-group">{kinds}</div>;
+        })() : undefined,
         // What's picked made a component (one already isn't made one again); a component's instance (or
         // something in one) alone: its component brought out to be changed instead.
         component: editInst ? btn('component', 'Редактировать компонент', () => editor.editComponentAt(editInst))

@@ -272,7 +272,8 @@ export function App({ boardId }: { boardId: string }) {
   // (Standing where the selection panel stood when that was at the bottom.)
   const [textMode, setTextMode] = useState<{ id: string; dock?: { cx: number; bottom: number } } | null>(null);
   // What it's for: what the text panel's for, or a mind map node (whose text the panel's for only by the T).
-  const tItem = selItems.length === 1 && (textItem?.id === selItems[0].id || selItems[0].type === 'mind') ? selItems[0] : undefined;
+  // (Several picked, «Несколько сразу»: the text panel they share, see asOne.)
+  const tItem = selItems.length === 1 && (textItem?.id === selItems[0].id || selItems[0].type === 'mind') ? selItems[0] : selItems.length > 1 && textItem ? textItem : undefined;
   useEffect(() => { if (textMode && textMode.id !== tItem?.id) setTextMode(null); }, [tItem?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const textModeRef = useRef(textMode);
   textModeRef.current = textMode;
@@ -284,7 +285,8 @@ export function App({ boardId }: { boardId: string }) {
   // The text panel shows up 0.28 s after typing starts (several picked: after they're picked), or after
   // it's let go when moved; it stays away while the item is being moved or resized.
   const [textShown, setTextShown] = useState<string | null>(null);
-  const textReady = textItem && (selItems.length > 1 || typedIn === textItem.id) ? textItem.id : null;
+  // (Several picked: the text panel they share only by the T, "Кнопка T", one panel at a time.)
+  const textReady = textItem && ((selItems.length > 1 && !labs.textButton) || typedIn === textItem.id) ? textItem.id : null;
   // Picked and typed in at once (just made: a sheet, a text…): straight to the text panel, the selection
   // panel never shown before it, nor the wait.
   const pickedAt = useRef({ key: '', at: 0 }), freshEdit = useRef<string | null>(null), selNow = ui.selection.join();

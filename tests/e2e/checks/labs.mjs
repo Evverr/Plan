@@ -2029,7 +2029,7 @@ export const checks = {
     expect(await p.ev(`planx.board.get('top').x - planx.board.get('low').x`), 'moved').toBe(80);
   },
 
-  async '"Несколько сразу": two picked share the text panel, and one corner scales them both'(p) {
+  async '"Несколько сразу": two picked share the text panel (by the T, one panel at a time), and one corner scales them both'(p) {
     // (Off at first: turned on.)
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('multi', true))()`);
     await p.ev(`(() => { const e = planx.editor, b = planx.board, { x: X, y: Y } = e.toWorld(300, 250);
@@ -2037,6 +2037,10 @@ export const checks = {
       b.add(e.newItem('sticky', X + 150, Y, { id: 's2', w: 100, h: 100, text: 'Два' }));
       e.setSelection(['s1', 's2']); })()`);
     await sleep(900);
+    // One panel: the text panel they share only by its T.
+    expect(await p.ev(`!!document.querySelector('.tfmt')`), 'no text panel by itself').toBe(false);
+    await p.click(await p.at('.bar.panel button[aria-label="Текст и шрифт"]'));
+    await sleep(400);
     await p.click(await p.at('.tfmt button[aria-label="Жирный"]'));
     expect(await p.ev(`[planx.board.get('s1').fw, planx.board.get('s2').fw].join()`), 'both bold').toBe('700,700');
     // The corner: just past the lower right of the two (at 300 + 250, 250 + 100 on the screen).
@@ -2934,6 +2938,17 @@ export const checks = {
     await p.cdp('Input.insertText', { text: 'ункт' }); await sleep(200);
     await p.escape(); await sleep(200);
     expect(await p.ev(`JSON.stringify([planx.board.list().filter((i) => i.type === 'frame').length, planx.board.get('t').cells[1]])`), 'no frame; typed into the cell').toBe('[0,"Былfункт"]');
+  },
+
+  async 'things and lines picked together: the lines\' kinds under one button, the panel kept short'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('sticky', 200, 300, { id: 'a', w: 100, h: 100 })); b.add(e.newItem('sticky', 700, 300, { id: 'b', w: 100, h: 100 }));
+      b.addLink({ id: 'L', from: 'a', to: 'b' }); e.setSelection(['a', 'b', 'L']); })()`);
+    await sleep(500);
+    expect(await p.ev(`[!!document.querySelector('.bar.panel button[aria-label="Дуга"]'), !!document.querySelector('.bar.panel button[aria-label="Вид линий"]')].join()`), 'one button').toBe('false,true');
+    await p.click(await p.at('.bar.panel button[aria-label="Вид линий"]'));
+    await p.click(await p.at('.palette-pop button[aria-label="Дуга"]'));
+    expect(await p.ev(`planx.board.getLink('L').style`), 'its kind from it').toBe('arc');
   },
 
   async '"Масштаб таймлайна": its right side dragged with Cmd, its step as it goes, as many days, what is on it along; drawn to 2x near it'(p) {
