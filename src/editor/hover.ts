@@ -303,10 +303,11 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   else if (ed.related) { ed.related = null; ed.requestRender(); }
   const picked = ed.selection.size === 1 ? ed.board.get([...ed.selection][0]) : undefined;
   // A locked item has no handles to take.
-  const single = isLocked(picked) ? undefined : picked;
+  // (Nor a table only its lines are moved on, see Editor.linesOnly: none of its controls.)
+  const single = isLocked(picked) || ed.linesOnly(picked) ? undefined : picked;
   // («Полукруги на рамке», src/labs: its half circles, before anything else there but its resize handle:
   // on that, they keep still.)
-  const balls = tabsFor(single, ed.editingId, ed.cam.z) && !ed.scalesTimeline(single) && !onHandle(ed, single, w);
+  const balls = tabsFor(single, ed.editingId, ed.cam.z) && !ed.scalesTimeline(single) && !ed.linesOnly(single) && !onHandle(ed, single, w);
   const tab = balls ? tabAt(ed, single!, w) : null;
   if (tab !== ed.hotTab) { ed.hotTab = tab; ed.requestRender(); }
   const aims = tabsFor(single, ed.editingId, ed.cam.z) ? (balls ? tabAims(ed, single, w) : tabAims(ed, single, null)) : null;

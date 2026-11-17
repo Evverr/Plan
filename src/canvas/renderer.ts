@@ -133,6 +133,8 @@ export interface Scene {
   mindDrop?: { id: string; parent: string } | null;
   /** Table lines drawn blue: the one under the pointer and those picked to drag together. */
   tableLines: TableLine[];
+  /** The table a line of which is picked: none of its controls drawn (see Editor.linesOnly). */
+  linesOnly?: string | null;
   /** The one of them under the pointer (not picked), and how far it's come in blue (0…1). */
   hotLine?: { line: TableLine; k: number } | null;
   /** The pen or highlighter line being drawn, in board units. */
@@ -1709,7 +1711,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
       hiddenUnder(ctx, it, s, view);
       if (tabsFor(it, s.editingId ?? null, cam.z)) drawTabs(ctx, it, cam.z, theme.pick, PICK_FRAME, s.tabAims ?? null);
       ctx.restore();
-    } else if (s.showHandle && s.editingId !== id) {
+    } else if (s.showHandle && s.editingId !== id && s.linesOnly !== id) {
       // (Not over what lies over its corner: see coveredAt. A component's at its edge, what it holds or its own.)
       const hs = (s.byFinger ? HANDLE * 1.5 : HANDLE) / cam.z, off = 3 / cam.z, hidden = !it.rot && !it.comp && coveredAt(s.items, it, { x: it.x + it.w, y: it.y + it.h });
       ctx.fillStyle = theme.surface;

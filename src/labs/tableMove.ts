@@ -124,7 +124,8 @@ function tableOf(ed: Editor): Item | null {
   if (shownFor && one !== shownFor) show(ed, null);
   if ((!shownFor && (!one || ed.editingId !== one)) || ed.cam.z < GRIPS_FROM_Z) return null;
   const it = ed.selectedItems()[0];
-  return it?.type === 'table' && !isLocked(it) && !it.rot ? it : null;
+  // (A line of it picked: only lines are moved then, see Editor.linesOnly.)
+  return it?.type === 'table' && !isLocked(it) && !it.rot && !ed.linesOnly(it) ? it : null;
 }
 
 /** Where the pointer is on the screen, over the board or the text being typed (none elsewhere): only the

@@ -203,6 +203,12 @@ export class Editor {
    *  (till then a press there takes the table), which is when it lights up. */
   lineRest: { line: TableLine; armed: boolean; lit: boolean; timer: number } | null = null;
   /** The table whose lines are taken at once (one of them was waited for), and when the pointer was last on it. */
+  /** A table one of whose lines is picked: only its lines moved then, its cells picked no more, none of its
+   *  controls (handle, half circles, «+», pills). */
+  linesOnly(it: Item | null | undefined): boolean {
+    return it?.type === 'table' && this.pickedLines.some((l) => l.id === it.id);
+  }
+
   /** The table a line's been dragged on: its lines ready under the pointer at once (lit with their cursor),
    *  till it's picked no more (see restOn). */
   linesWarm: string | null = null;
@@ -843,6 +849,7 @@ export class Editor {
       mindDrop: g?.type === 'drag' && g.moved && g.mindTo ? { id: g.id, parent: g.mindTo } : null,
       mindMove: g?.type === 'mindMove' ? { from: g.from, to: g.to, target: g.target ? this.board.get(g.target) ?? null : null } : null,
       tableLines: this.hotLine ? [...this.pickedLines, this.hotLine] : this.pickedLines,
+      linesOnly: this.pickedLines[0]?.id ?? null,
       hotLine: this.hotLine && !this.pickedLines.some((l) => sameLine(l, this.hotLine)) ? { line: this.hotLine, k: hotK } : null,
       editingCell: this.editingCell,
       live: true,

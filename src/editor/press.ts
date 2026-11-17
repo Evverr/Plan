@@ -243,7 +243,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   }
   // «Полукруги на рамке» (src/labs): a half circle: a copy that way on a click, a link when dragged.
   // (Not on its resize handle: that comes first.)
-  const tab = tabsFor(single ?? undefined, ed.editingId, ed.cam.z) && !ed.scalesTimeline(single) && !onHandle(ed, single!, w) ? tabAt(ed, single!, w) : null;
+  const tab = tabsFor(single ?? undefined, ed.editingId, ed.cam.z) && !ed.scalesTimeline(single) && !ed.linesOnly(single) && !onHandle(ed, single!, w) ? tabAt(ed, single!, w) : null;
   if (single && tab) {
     ed.gesture = { type: 'tab', id: single.id, side: tab, start: w };
     return;
@@ -257,7 +257,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   const side = single && !isLocked(single) ? sideAt(ed, single, w) : null;
   const topLeft = single && !isLocked(single) && !side && onTopLeft(ed, single, w);
   const bottomLeft = single && !isLocked(single) && !side && !topLeft && onBottomLeft(ed, single, w);
-  if (single && !isLocked(single) && (side || topLeft || bottomLeft || onHandle(ed, single, w))) {
+  if (single && !isLocked(single) && !ed.linesOnly(single) && (side || topLeft || bottomLeft || onHandle(ed, single, w))) {
     board.beginGesture();
     // A component stretched by hand gets room of its own, its frame first as it's seen: round what it holds.
     if (single.comp && !single.air) ed.reframeComponent(single.id, instanceBounds(single, items), true);
@@ -287,6 +287,8 @@ export function press(ed: Editor, e: PointerEvent): void {
   const tl = (ed.editingId && !keepTyping) || entering ? null : grabbableLine(ed, w, hit, e.pointerType);
   if (tl) {
     ed.linesWarm = warm;
+    // (Only lines moved now: its cells picked no more.)
+    ed.cells = [];
     const same = (l: TableLine) => l.id === tl.id && l.axis === tl.axis && l.index === tl.index;
     const picked = ed.pickedLines.filter((l) => l.id === tl.id), was = picked.some(same);
     // A click picks the line (it stays blue), Shift-click adds one or drops it; pressing a picked
