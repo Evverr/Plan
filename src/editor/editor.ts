@@ -1087,7 +1087,9 @@ export class Editor {
     const shape = type === 'rect' || type === 'ellipse' || type === 'polygon' ? shapePatch(type, shapeStyle()) : {};
     // In the layer picked ("Слои", src/labs).
     const ly = newItemLayer(this.board);
-    return { ...d, ...shape, id: uid(), type, x: Math.round(x), y: Math.round(y), z, ...(ly ? { ly } : {}), ...extra } as Item;
+    // A plain frame (not a kanban, timeline, component or instance): black, 1% seen.
+    const tint = type === 'frame' && !extra.tl && !extra.kb && !extra.comp && !extra.inst ? { color: '#000000', fo: 0.01 } : {};
+    return { ...d, ...shape, ...tint, id: uid(), type, x: Math.round(x), y: Math.round(y), z, ...(ly ? { ly } : {}), ...extra } as Item;
   }
 
   /** Puts an icon in the middle of the screen (fanned out a little so several don't stack),
