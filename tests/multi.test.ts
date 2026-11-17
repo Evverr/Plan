@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Item } from '../src/model/types';
 import { asOne, scaled, scaleFor } from '../src/labs/multi';
+import { setLab } from '../src/labs/labs';
 
 const item = (id: string, extra: Partial<Item> = {}): Item => ({ id, type: 'sticky', x: 0, y: 0, w: 100, h: 100, z: 1, ...extra });
 
@@ -19,6 +20,8 @@ describe('several picked at once', () => {
   });
 
   it('the text panel takes them as one, with only what they share', () => {
+    // («Несколько сразу» off at first: turned on.)
+    setLab('multi', true);
     const one = asOne([item('a', { fw: 700, ff: 'inter', x: 0 }), item('b', { fw: 700, ff: 'onest', x: 300 })])!;
     expect(one.fw).toBe(700);
     expect(one.ff).toBeUndefined();
