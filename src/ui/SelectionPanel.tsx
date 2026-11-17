@@ -26,7 +26,7 @@ const same = (vals: Array<string | undefined>): string | null => (vals.length &&
 /** Rearrangeable buttons; the bin comes last until moved. */
 /** "2 объекта", "5 объектов", "21 объект". */
 const objects = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'объект' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'объекта' : 'объектов'}`;
-const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'rows', 'cols', 'crop', 'lines', 'component', 'hug', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
+const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'crop', 'lines', 'component', 'hug', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
 
 /**
  * A palette button and the popover of colour controls it opens above it, centred on the button and
@@ -508,21 +508,6 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
           : colored ? <ItemColors key={items.map((i) => i.id).join()} editor={editor} items={items} />
           // Links alone: their colour, opacity, dashes and arrowheads, all of them at once.
           : links.length > 0 ? <Palette key={links.map((l) => l.id).join()} label="Цвет и стрелки линий"><LinkParams editor={editor} ids={links.map((l) => l.id)} /></Palette> : undefined,
-        // Rows and columns of the selected tables: add or take away the last one.
-        rows: tables.length > 0 ? (
-          <div className="sw-group table-count">
-            <span>Строки</span>
-            {btn('minus-s', 'Убрать строку', () => { hold.current = !!over; editor.changeTable('row', -1); })}
-            {btn('plus-s', 'Добавить строку', () => { hold.current = !!over; editor.changeTable('row', 1); })}
-          </div>
-        ) : undefined,
-        cols: tables.length > 0 ? (
-          <div className="sw-group table-count">
-            <span>Столбцы</span>
-            {btn('minus-s', 'Убрать столбец', () => { hold.current = !!over; editor.changeTable('col', -1); })}
-            {btn('plus-s', 'Добавить столбец', () => { hold.current = !!over; editor.changeTable('col', 1); })}
-          </div>
-        ) : undefined,
         // "Кроп картинки" (src/labs).
         crop: labs.imageCrop && items.length === 1 && canCrop(items[0]) ? (
           <button className={`ib ${croppingId() === items[0].id ? 'on' : ''}`} title="Кроп" aria-label="Кроп" aria-pressed={croppingId() === items[0].id}

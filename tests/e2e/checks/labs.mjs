@@ -1256,24 +1256,6 @@ export const checks = {
     expect(await p.ev(`document.querySelectorAll('.bar.panel').length`), 'switched off').toBe(1);
   },
 
-  async 'with the panel over a table, it stays put while columns are added, till the pointer leaves it'(p) {
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
-    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
-      b.add(e.newItem('table', 420, 300, { id: 't', w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill('') })); e.setSelection(['t']); })()`);
-    await sleep(400);
-    const before = await p.rect('.panel-over'), plus = await p.at('.panel-over button[aria-label="Добавить столбец"]');
-    await p.click(plus);
-    await sleep(100);
-    await p.click(plus);
-    await sleep(200);
-    expect(await p.ev(`planx.board.get('t').cols.length`), 'two columns added').toBe(5);
-    expect((await p.rect('.panel-over')).l, 'the panel stayed').toBe(before.l);
-    await p.mouse('mouseMoved', 600, 700);
-    await sleep(200);
-    expect((await p.rect('.panel-over')).l > before.l, 'over the middle again, once left').toBe(true);
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', false))()`);
-  },
-
   async '"Кнопка T": the selection panel turns into the text panel, a press on the board turns it back'(p) {
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); planx.board.add(e.newItem('sticky', 500, 300, { id: 's', text: 'Привет' })); e.setSelection(['s']); })()`);

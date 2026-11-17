@@ -55,15 +55,6 @@
 /* (Before it, under its circle: its ::after is the wider spot it's pressed by, see panels.css.) */
 .sw.on::before { content: ""; position: absolute; z-index: -1; inset: calc(-1 * var(--s6)); background: var(--fmt-hover); border-radius: var(--s6); pointer-events: none; }
 .sw-group, .sort-wrap { display: flex; align-items: center; }
-.table-count { gap: var(--s2); font-size: var(--s14); color: var(--fmt-ink); }
-/* A table's rows and columns carry their own separators, wherever they're moved to: a line either
-   side, spaced like the bar's separators, but none at the panel's end or doubling one already there. */
-.table-count::before, .table-count::after { content: ""; flex: none; width: 1px; height: var(--e20); background: var(--fmt-line); }
-.table-count::before { margin: 0 var(--s4) 0 var(--s2); }
-.table-count::after { margin: 0 var(--s2) 0 var(--s4); }
-.table-count:first-child::before, .sep + .table-count::before, .table-count + .table-count::before,
-.table-count:last-child::after, .table-count:has(+ .sep)::after { display: none; }
-.table-count span { padding: 0 var(--s4) 0 var(--s8); }
 /* A group picked («Группы», src/labs): how many in it, then its button. */
 .group-count { gap: var(--s2); font-size: var(--s14); color: var(--fmt-ink); white-space: nowrap; }
 .group-count span { padding: 0 var(--s4) 0 var(--s8); }
