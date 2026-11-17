@@ -1762,7 +1762,9 @@ export class Editor {
     this.settle(items.filter((i) => !held.has(i.id)).map((i) => i.id));
     // Paste again lands one step further.
     if (!at) this.clipboard = JSON.stringify({ items, links });
-    this.setSelection(items.map((i) => i.id));
+    // (Picked, but what a folded frame among them holds: out of sight, no frames of their own nor a panel for it.)
+    const away = foldedIn(items);
+    this.setSelection(items.filter((i) => !away.has(i.id)).map((i) => i.id));
   }
 
   /** Puts copies of items, and of the links among them, on the board (see copiesOf). */

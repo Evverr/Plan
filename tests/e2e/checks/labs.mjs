@@ -2914,8 +2914,8 @@ export const checks = {
         if ('${how}' === 'dup') e.duplicate(); else e.duplicateArrow(1, 0);
         await new Promise((d) => setTimeout(d, 200));
         const f = b.get('f'), c = b.list().find((i) => i.type === 'frame' && i.id !== 'f');
-        return [c.x - f.x - f.w, c.y - f.y].join(); })()`);
-      expect(r, `${how}: 24 right of its bar, level`).toBe('24,0');
+        return [c.x - f.x - f.w, c.y - f.y, [...e.selection].join() === c.id].join(); })()`);
+      expect(r, `${how}: 24 right of its bar, level, it alone picked (not what it holds)`).toBe('24,0,true');
     }
   },
 
