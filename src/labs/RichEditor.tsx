@@ -390,7 +390,9 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     // (A table put in it whose place was taken out as it was typed in: gone with it, «Таблица в документе».)
     const was = editor.board.get(id), kept = new Set((rs ?? []).filter((r) => r.o).map((r) => r.o));
     const gone = was ? objectsIn(was).filter((o) => !kept.has(o)) : [];
-    editor.board.update(id, { text, rs });
+    // (Its links moved with what was typed before them, as its styles are: commitText's own remapping
+    // finds the text changed already.)
+    editor.board.update(id, { text, rs, ...(was?.links && { links: remapLinks(was.text ?? '', text, was.links) }) });
     if (gone.length) editor.board.remove(gone);
     editor.commitText(id, text);
   };

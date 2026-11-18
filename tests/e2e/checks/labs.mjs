@@ -1246,6 +1246,22 @@ export const checks = {
     await p.key('Escape', 'Escape', 27);
   },
 
+  async '"Документ": a link in it blue as it\'s typed in, on its word still once something\'s typed before it'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Смотри сайт тут и дальше\\nВторая', links: [{ s: 12, e: 15, url: 'https://example.com' }] }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    expect(await p.ev(`document.querySelector('.rich-edit [data-link]')?.textContent`), 'its link blue in the field').toBe('тут');
+    // type at start of the doc
+    await p.ev(`(() => { const d = document.querySelector('.rich-edit'); const r = document.createRange(); r.setStart(d.children[0].firstChild, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); })()`);
+    await p.cdp('Input.insertText', { text: 'Ну, ' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(await p.ev(`JSON.stringify([planx.board.get('${id}').text, planx.board.get('${id}').links, planx.board.get('${id}').rs ?? null])`), 'typed before it: the link on its word still, no colour of its own')
+      .toBe(JSON.stringify(['Ну, Смотри сайт тут и дальше\nВторая', [{ s: 16, e: 19, url: 'https://example.com' }], null]));
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

@@ -42,14 +42,17 @@ export function toHtml(it: Item): string {
       const pic = objectPicture(obj);
       return `<div data-h="0" data-o="${oid}" contenteditable="false" class="rich-obj" style="height:${obj.h + OBJ_GAP * 2}px;background:url(${pic}) no-repeat 0 ${OBJ_GAP}px / ${obj.w}px ${obj.h}px"></div>`;
     }
-    const cuts = [...new Set([0, para.length, ...runs.flatMap((r) => [r.s - s0, r.e - s0]).filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
+    // (Its links blue in it, as on the sheet: marked, their colour not taken for one of the text's.)
+    const links = it.links ?? [];
+    const cuts = [...new Set([0, para.length, ...[...runs, ...links].flatMap((r) => [r.s - s0, r.e - s0]).filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
     const inner = k === 'hr' ? '' : cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => !k.h && k.s <= s0 + c && k.e >= s0 + e).reduce((m, k) => ({ ...m, ...k }), {} as RunStyle);
+      const link = links.some((l) => l.s <= s0 + c && l.e >= s0 + e);
       const css = [r.b && 'font-weight:700', r.i && 'font-style:italic', (r.u || r.x) && `text-decoration:${[r.u && 'underline', r.x && 'line-through'].filter(Boolean).join(' ')}`,
-        r.c && `color:${cssColor(r.c)}`, r.m && k !== 'code' && CODE_CSS].filter(Boolean).join(';');
+        link ? `color:${TEXT_COLORS.blue}` : r.c && `color:${cssColor(r.c)}`, r.m && k !== 'code' && CODE_CSS].filter(Boolean).join(';');
       const t = esc(para.slice(c, e)), code = r.m && k !== 'code';
       // (Code marked so as well as by its look: a document all in the monospaced font has it too.)
-      return css ? `<span${code ? ' data-code=""' : ''} style="${css}">${t}</span>` : t;
+      return css ? `<span${code ? ' data-code=""' : ''}${link ? ' data-link=""' : ''}${link && r.c ? ` data-c="${esc(r.c)}"` : ''} style="${css}">${t}</span>` : t;
     }).join('');
     return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''}${k ? ` data-k="${k}"` : ''}${d ? ` data-d="${d}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
   }).join('');
@@ -166,8 +169,10 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
       if (d.includes('underline') || e.tagName === 'U') st.u = true;
       if (d.includes('line-through') || e.tagName === 'S' || e.tagName === 'STRIKE') st.x = true;
     }
-    const c = colorKey(cs.color);
-    if (c !== own) st.c = c;
+    // (A link's blue its own, not the text's: the colour it had under it kept, if any.)
+    const link = el.closest('[data-link]') as HTMLElement | null;
+    const c = link && para.contains(link) ? link.dataset.c : colorKey(cs.color);
+    if (c && c !== own) st.c = c;
     return st;
   };
   const paras: Element[] = [];
