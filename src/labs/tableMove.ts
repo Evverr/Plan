@@ -4,6 +4,7 @@ import type { Point } from '../canvas/geometry';
 import { cellText, colsOf, rowsOf, withCount } from '../model/table';
 import { isLocked } from './labs';
 import { PICK_FRAME } from '../canvas/renderer';
+import { inDocLimit } from './docObjects';
 
 /**
  * "Перестановка в таблице": on the selected table (clicked a second time, or by the gear on its panel), a pill just out over its top edge by each column and
@@ -259,13 +260,16 @@ export function pressPlus(ed: Editor, w: TablePlus): void {
   if (ed.editingId === it.id) ed.stopEditing();
   if (w.includes('@')) {
     const [axis, at] = w.split('@');
-    ed.board.update(it.id, withInserted(it, axis as EndPlus, Number(at)));
+    // (One in a document's text, «Таблица в документе»: within its text and a page, see inDocLimit.)
+    const p = inDocLimit(it, withInserted(it, axis as EndPlus, Number(at)));
+    if (p) ed.board.update(it.id, p);
     ed.requestRender();
     return;
   }
   const end = w as EndPlus, c = plusAt(ed, it, end);
   held[end] = ed.toWorld(c.x, c.y);
-  ed.board.update(it.id, withCount(it, end, 1));
+  const p = inDocLimit(it, withCount(it, end, 1));
+  if (p) ed.board.update(it.id, p);
   ed.requestRender();
 }
 

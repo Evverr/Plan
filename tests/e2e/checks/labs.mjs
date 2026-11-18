@@ -1319,6 +1319,37 @@ export const checks = {
     expect(await p.ev(`planx.board.list().some((i) => i.type === 'table')`), 'its place taken out: gone').toBe(false);
   },
 
+  async '"Таблица в документе": no wider than its text, no taller than a page; typed over with its page picked, kept'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 400, y: 400 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const tid = await p.ev(`(async () => { const o = await import('/src/labs/docObjects.ts'), b = planx.board, e = planx.editor;
+      const t = e.newItem('table', 0, 0, { cols: [200, 200, 200], rows: [40, 40, 40], cells: Array(9).fill(''), w: 600, h: 120, inDoc: '${id}' });
+      e.addItem(t);
+      const r = o.withObject({ text: 'Начало\\nКонец', rs: undefined, links: undefined }, t.id, 0);
+      b.update('${id}', { text: r.text, rs: r.rs });
+      e.setSelection([t.id]);
+      return t.id; })()`);
+    await sleep(200);
+    const max = await p.ev(`(async () => (await import('/src/labs/docObjects.ts')).DOC_OBJ_MAX)()`);
+    const size = () => p.ev(`(() => { const t = planx.board.get('${tid}'); return { w: t.w, h: t.h, n: t.cols.length, m: t.rows.length }; })()`);
+    for (let i = 0; i < 3; i++) await p.ev(`planx.editor.changeTable('col', 1)`);
+    const wide = await size();
+    expect(wide.n, 'columns added').toBe(6);
+    expect(wide.w <= max.w + 0.5, `no wider than its text (${wide.w} ≤ ${max.w})`).toBe(true);
+    for (let i = 0; i < 40; i++) await p.ev(`planx.editor.changeTable('row', 1)`);
+    const tall = await size();
+    expect(tall.h <= max.h + 0.5 && tall.h + 40 > max.h, `rows added as long as it stays within a page (${tall.h} ≤ ${max.h})`).toBe(true);
+    // Its page picked (as a double click opens it) and typed over: the text new, the table still there.
+    await p.ev(`(() => { planx.board.update('${tid}', { rows: [40, 40, 40], h: 120, cells: Array(18).fill('') }); planx.editor.startEditing('${id}', null, 'all'); })()`);
+    await sleep(400);
+    await p.cdp('Input.insertText', { text: 'Новый' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(JSON.stringify([await p.ev(`!!planx.board.get('${tid}')`), await p.ev(`planx.board.get('${id}').text`), await p.ev(`planx.board.get('${tid}').inDoc`)]), 'typed over: the table kept, after what\'s typed')
+      .toBe(JSON.stringify([true, 'Новый\n', id]));
+  },
+
   async '"Markdown в документе": a list in a list by Tab (numbered at its depth), out by Shift+Tab and Enter; a block of code by «```», Tab two spaces in it, out by Enter'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

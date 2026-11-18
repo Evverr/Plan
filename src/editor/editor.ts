@@ -45,7 +45,7 @@ import { finishNib, nibPoints } from '../labs/nib';
 import { nodeEditing, shapedBy } from '../labs/paths';
 import { hiddenByLayers, layersVersion, newItemLayer } from '../labs/layers';
 import { pagesTurned, setDocObjects } from '../labs/docPage';
-import { offPage, tidyDocObjects } from '../labs/docObjects';
+import { inDocLimit, offPage, tidyDocObjects } from '../labs/docObjects';
 import { zoomsWithKey } from '../labs/wheelZoom';
 import { codeFit, scrollCode } from '../labs/codeBlock';
 import { FORM_H, FORM_RAD, FORM_W } from '../labs/formObject';
@@ -1584,7 +1584,11 @@ export class Editor {
   /** Adds (+1) or removes (-1) the last column or row of the selected tables. */
   changeTable(axis: 'col' | 'row', delta: 1 | -1): void {
     this.board.transact(() => {
-      for (const it of this.selectedItems()) if (it.type === 'table') this.board.update(it.id, withCount(it, axis, delta));
+      // (One in a document's text, «Таблица в документе»: within its text and a page, see inDocLimit.)
+      for (const it of this.selectedItems()) {
+        const p = it.type === 'table' ? inDocLimit(it, withCount(it, axis, delta)) : null;
+        if (p) this.board.update(it.id, p);
+      }
     });
   }
 
@@ -1965,6 +1969,9 @@ export class Editor {
     if (this.editingId === id) { this.editingId = null; this.editingCell = null; }
     if (it) {
       let value = text.replace(/\s+$/, '');
+      // (A document's: not past the place of a table put in its text, its last paragraph, «Таблица в документе».)
+      const placed = it.type === 'page' ? Math.max(0, ...(it.rs ?? []).filter((r) => r.o).map((r) => r.s)) : 0;
+      if (placed > value.length) value = text.slice(0, placed);
       if (it.hd) {
         // «Титул в объектах» (src/labs): its title or its description, as tall as they then take (tied to
         // a kanban or timeline, a line of title).

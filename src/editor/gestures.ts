@@ -21,7 +21,7 @@ import { MIND_TOPIC, type PenTool } from './tools';
 import { clickTypes, onMindText, updateCursor } from './hover';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
-import { dropTables } from '../labs/docObjects';
+import { DOC_OBJ_MAX, dropTables } from '../labs/docObjects';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
 import { addCodeAt } from '../labs/codeBlock';
@@ -283,6 +283,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       // A header («Титул в объектах», src/labs): no shorter than its title and description take at its width
       // (stretched taller, kept so: see headerFit).
       if (it.hd) { nw = Math.max(HEADER_MIN_W, nw); nh = Math.max(sy ? nh : it.hdH ? it.h : 0, headerHeight(it, { w: nw })); }
+      // A table put in a document's text («Таблица в документе», src/labs): no wider than its text, no taller than a page.
+      if (it.type === 'table' && it.inDoc) { nw = Math.min(nw, DOC_OBJ_MAX.w); nh = Math.min(nh, DOC_OBJ_MAX.h); }
       // Text wrapping onto more lines (or fewer) takes the text just under it along.
       const moves = pushedBelow(it, nh - it.h, board.list());
       board.transact(() => {
@@ -347,8 +349,21 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       const patch: Partial<Item> = {};
       const cols = g.lines.filter((l) => l.axis === 'col').map((l) => l.index);
       const rows = g.lines.filter((l) => l.axis === 'row').map((l) => l.index);
-      if (cols.length) { patch.cols = movedLines(g.cols0, cols, w.x - g.start.x, MIN_COL); patch.w = patch.cols.reduce((a, b) => a + b, 0); }
-      if (rows.length) { patch.rows = movedLines(g.rows0, rows, w.y - g.start.y, MIN_ROW); patch.h = patch.rows.reduce((a, b) => a + b, 0); }
+      // (In a document's text, «Таблица в документе»: as far as it stays as wide as the text, as tall as a page.)
+      const t = board.get(g.id)!, room = t.inDoc ? DOC_OBJ_MAX : null;
+      const sum = (v: number[]) => v.reduce((a, b) => a + b, 0);
+      if (cols.length) {
+        let dx = w.x - g.start.x;
+        patch.cols = movedLines(g.cols0, cols, dx, MIN_COL);
+        if (room && sum(patch.cols) > room.w) { dx -= sum(patch.cols) - room.w; patch.cols = movedLines(g.cols0, cols, dx, MIN_COL); }
+        patch.w = sum(patch.cols);
+      }
+      if (rows.length) {
+        let dy = w.y - g.start.y;
+        patch.rows = movedLines(g.rows0, rows, dy, MIN_ROW);
+        if (room && sum(patch.rows) > room.h) { dy -= sum(patch.rows) - room.h; patch.rows = movedLines(g.rows0, rows, dy, MIN_ROW); }
+        patch.h = sum(patch.rows);
+      }
       board.update(g.id, patch);
       return;
     }

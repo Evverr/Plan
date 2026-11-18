@@ -37,8 +37,12 @@ export function tidyDocObjects(board: Board): void {
     if (!it.inDoc) continue;
     const doc = board.get(it.inDoc);
     if (!doc) { moves.set(it.id, { inDoc: undefined }); continue; }
-    const s = slotOf(doc, it.id);
-    if (s && (Math.abs(s.x - it.x) > 0.01 || Math.abs(s.y - it.y) > 0.01)) moves.set(it.id, { x: s.x, y: s.y });
+    const s = slotOf(doc, it.id), p: Partial<Item> = {};
+    if (s && (Math.abs(s.x - it.x) > 0.01 || Math.abs(s.y - it.y) > 0.01)) Object.assign(p, { x: s.x, y: s.y });
+    // (Grown past its text or a page some way not held back as it was done: back within them.)
+    const lim = inDocLimit(it, {});
+    if (lim?.cols || lim?.rows) Object.assign(p, lim);
+    if (Object.keys(p).length) moves.set(it.id, p);
   }
   if (moves.size) board.forGood(() => moves.forEach((p, id) => board.updateForGood(id, p)));
 }
@@ -98,11 +102,30 @@ function paragraphAt(doc: Item, y: number, skip?: string): number {
   return after;
 }
 
-/** A table fitted to a sheet's text: as wide at most, its columns narrowed alike. */
-export function fitted(it: Item): Partial<Item> {
-  if (it.w <= PAGE_TEXT.w) return {};
-  const k = PAGE_TEXT.w / it.w, cols = colsOf(it).map((v) => Math.round(v * k * 10) / 10);
-  return { cols, w: cols.reduce((a, b) => a + b, 0), rows: rowsOf(it) };
+/** A table fitted to a sheet: as wide as its text at most, as tall as a page (see inDocLimit). */
+const fitted = (it: Item, doc: string): Partial<Item> => inDocLimit({ ...it, inDoc: doc }, {}) ?? {};
+
+/** How big a table put in a document may be: as wide as its text, as tall as a page of it. */
+export const DOC_OBJ_MAX = { w: PAGE_TEXT.w, h: PAGE_TEXT.h - OBJ_GAP * 2 };
+
+/** A change to a table's size, as one put in a document may have it (any other's as it is): no wider than
+ *  its text (its columns narrowed alike to fit), no taller than a page (rows that would make it so not
+ *  added: null; taller rows, made shorter alike to fit). */
+export function inDocLimit(it: Item, patch: Partial<Item>): Partial<Item> | null {
+  if (!it.inDoc || it.type !== 'table') return patch;
+  const out = { ...patch }, cols = out.cols ?? colsOf(it), rows = out.rows ?? rowsOf(it), w = cols.reduce((a, b) => a + b, 0), h = rows.reduce((a, b) => a + b, 0);
+  if (w > DOC_OBJ_MAX.w + 0.5) {
+    const k = DOC_OBJ_MAX.w / w;
+    out.cols = cols.map((v) => Math.floor(v * k * 10) / 10);
+    out.w = out.cols.reduce((a, b) => a + b, 0);
+  }
+  if (h > DOC_OBJ_MAX.h + 0.5) {
+    if (rows.length > rowsOf(it).length) return null;
+    const k = DOC_OBJ_MAX.h / h;
+    out.rows = rows.map((v) => Math.floor(v * k * 10) / 10);
+    out.h = out.rows.reduce((a, b) => a + b, 0);
+  }
+  return out;
 }
 
 /** Tables let go after being dragged: onto a sheet (its middle on one), into its text there (out of the
@@ -125,7 +148,7 @@ export function dropTables(board: Board, ids: Iterable<string>): void {
         const now = board.get(doc.id)!, after = paragraphAt(now, cy, id);
         const t = withObject({ text: now.text ?? '', rs: now.rs as TextRun[] | undefined, links: now.links }, id, after);
         board.update(doc.id, { text: t.text, rs: t.rs, links: t.links });
-        board.update(id, { inDoc: doc.id, ...fitted(it), ...(it.z <= now.z && { z: board.maxZ() + 1 }) });
+        board.update(id, { inDoc: doc.id, ...fitted(it, doc.id), ...(it.z <= now.z && { z: board.maxZ() + 1 }) });
       } else board.update(id, { inDoc: undefined });
     });
   }

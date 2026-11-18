@@ -420,9 +420,27 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     // What's picked in it kept, for the panel's buttons to work on after a press there.
     const keep = () => { const s = getSelection(); if (active && s?.rangeCount && el.contains(s.anchorNode)) active.range = s.getRangeAt(0).cloneRange(); };
     document.addEventListener('selectionchange', keep);
+    // Typed over what's picked with a table in it («Таблица в документе»): the text taken out and typed
+    // in anew, the table kept (after what's typed). Taken out by Backspace or Delete, it goes as ever.
+    const typedOver = (e: InputEvent) => {
+      const s = getSelection();
+      if ((e.inputType !== 'insertText' && e.inputType !== 'insertParagraph' && e.inputType !== 'insertLineBreak') || !s?.rangeCount || s.isCollapsed) return;
+      const r = s.getRangeAt(0), objs = [...el.querySelectorAll<HTMLElement>('.rich-obj')].filter((o) => r.intersectsNode(o));
+      if (!objs.length) return;
+      e.preventDefault();
+      const kept = objs.map((o) => o.cloneNode(true) as HTMLElement);
+      document.execCommand('delete');
+      if (e.inputType === 'insertText') document.execCommand('insertText', false, e.data ?? '');
+      else document.execCommand('insertParagraph');
+      const at = paragraphAt(el);
+      if (at) at.after(...kept);
+      else el.append(...kept);
+    };
+    el.addEventListener('beforeinput', typedOver);
     const onCommit = () => commit();
     window.addEventListener('planx:commit-edit', onCommit);
     return () => {
+      el.removeEventListener('beforeinput', typedOver);
       el.removeEventListener('scroll', settle);
       counted.disconnect();
       el.removeEventListener('pointerdown', down);
