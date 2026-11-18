@@ -1158,9 +1158,12 @@ export const checks = {
       await p.ev(`getSelection().collapseToEnd()`);
       const pts = await p.ev(`(() => { const el = document.querySelector('.rich-edit'), r = document.createRange(); r.selectNodeContents(el.lastElementChild); const rects = [...r.getClientRects()].filter((b) => b.width > 4), b = rects[rects.length - 1], f = el.getBoundingClientRect();
         return [[b.right - 1, b.top + b.height / 2], [f.left - ${dx}, b.top + b.height / 2]]; })()`);
+      // (Every selection there was as it was dragged, kept: none with the lines over it, even for a moment.)
+      await p.ev(`(() => { window.__picks = []; window.__on = true; const f = () => { window.__picks.push(getSelection().toString()); if (window.__on) requestAnimationFrame(f); }; requestAnimationFrame(f); })()`);
       await p.drag(pts[0], pts[1], { steps: 25 });
       await sleep(100);
       expect(await p.ev(`getSelection().toString().replace(/[.]$/, '')`), `that line alone picked (${dx} past the edge)`).toBe('немного слов сверху');
+      expect(await p.ev(`(() => { window.__on = false; return window.__picks.filter((t) => t.includes('и ещё')).length; })()`), 'never the line over it as it was dragged (in any frame)').toBe(0);
     }
     await p.key('Escape', 'Escape', 27);
   },
