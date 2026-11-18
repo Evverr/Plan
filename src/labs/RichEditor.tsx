@@ -6,7 +6,7 @@ import { remapLinks, setRun, type TextRun } from '../model/textLinks';
 import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, pagesOf, pageShown, showPage, textArea } from './docPage';
 import { objectsIn } from './docObjects';
 import { newTable, tableLook } from '../model/table';
-import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
+import { cleanPaste, cssColor, fromDom, fromMarkdown, headingStyle, looksLikeMarkdown, toHtml } from './richDoc';
 import { labOn } from './labs';
 
 /**
@@ -593,9 +593,11 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         // (Taken here alone: not on to the board, which would paste it there too.)
         e.preventDefault();
         e.stopPropagation();
-        const html = plain.current ? '' : e.clipboardData.getData('text/html');
+        const asIs = plain.current, html = asIs ? '' : e.clipboardData.getData('text/html'), plainText = e.clipboardData.getData('text/plain');
         plain.current = false;
-        const clean = html && cleanPaste(html, fs), tpl = document.createElement('div');
+        // (Plain text written in Markdown, «Markdown в документе»: as what it marks, a heading, a list…)
+        const md = !asIs && !html && labOn('docMd') && looksLikeMarkdown(plainText) ? toHtml({ ...fromMarkdown(plainText), fs } as Item) : '';
+        const clean = md || (html && cleanPaste(html, fs)), tpl = document.createElement('div');
         tpl.innerHTML = clean || '';
         const blocks = [...tpl.children] as HTMLElement[];
         if (blocks.length === 1 && blocks[0].dataset.h === '0' && !blocks[0].dataset.l && !blocks[0].dataset.k) document.execCommand('insertHTML', false, blocks[0].innerHTML);

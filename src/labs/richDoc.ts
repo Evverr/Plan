@@ -229,3 +229,59 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
   for (const [at, o] of objs) rs = setPara(text, rs, at, at, 'o', o);
   return { text, rs };
 }
+
+/** Whether plain text pasted is written in Markdown («Markdown в документе»): a heading, a list, a quote, a
+ *  block of code or a divider on a line of its own, or bold or code in a line. */
+export function looksLikeMarkdown(text: string): boolean {
+  return /^(#{1,6}\s|>\s?|\s*[-*+]\s|\s*\d+[.)]\s|\s*```|(-{3,}|\*{3,}|_{3,})\s*$)/m.test(text) || /\*\*[^*\n]+\*\*|`[^`\n]+`/.test(text);
+}
+
+/** Text in Markdown as a document's: its paragraphs, each a heading (#…######), a list's item (-, *, +,
+ *  1.; deeper as it's further in), a checklist's ([ ], [x]), a quote (>), a line of a block of code
+ *  (between ```s), a divider (---); in them bold (**…**, __…__), italic (*…*, _…_), struck through (~~…~~)
+ *  and code (`…`), a link's text alone ([…](…)). */
+export function fromMarkdown(md: string): { text: string; rs: TextRun[] | undefined } {
+  const lines = md.replace(/\r/g, '').replace(/\n+$/, '').split('\n');
+  // (How far in a list in a list goes: the least any item's in.)
+  const ins = lines.map((l) => /^(\s+)(?:[-*+]|\d+[.)])\s/.exec(l)?.[1].replace(/\t/g, '    ').length ?? 0).filter((n) => n > 0);
+  const unit = ins.length ? Math.min(...ins) : 2;
+  const paras: Array<{ t: string; keys: Partial<Record<'h' | 'l' | 'k' | 'd', string | number>>; marks: Array<{ s: number; e: number; key: keyof RunStyle }> }> = [];
+  let code = false;
+  for (const raw of lines) {
+    if (/^\s*```/.test(raw)) { code = !code; continue; }
+    if (code) { paras.push({ t: raw, keys: { k: 'code' }, marks: [] }); continue; }
+    // (A blank line between paragraphs only parts them, as Markdown has it: no line of its own.)
+    if (!raw.trim()) continue;
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(raw)) { paras.push({ t: '', keys: { k: 'hr' }, marks: [] }); continue; }
+    let line = raw, m: RegExpExecArray | null;
+    const keys: Partial<Record<'h' | 'l' | 'k' | 'd', string | number>> = {};
+    if ((m = /^>\s?(.*)$/.exec(line))) { keys.k = 'quote'; line = m[1]; }
+    if ((m = /^(#{1,6})\s+(.*?)\s*#*$/.exec(line))) { keys.h = m[1].length; line = m[2]; }
+    else if ((m = /^(\s*)[-*+]\s+\[([ xXх])\]\s+(.*)$/.exec(line))) { keys.l = m[2] === ' ' ? 'todo' : 'done'; keys.d = Math.round(m[1].length / unit); line = m[3]; }
+    else if ((m = /^(\s*)[-*+]\s+(.*)$/.exec(line))) { keys.l = 'bullet'; keys.d = Math.round(m[1].length / unit); line = m[2]; }
+    else if ((m = /^(\s*)\d+[.)]\s+(.*)$/.exec(line))) { keys.l = 'number'; keys.d = Math.round(m[1].length / unit); line = m[2]; }
+    if (keys.d !== undefined) keys.d = Math.min(LIST_DEPTH, Number(keys.d)) || undefined;
+    // In the line: its marks taken out, what they mark kept (by where it comes to stand).
+    let t = '';
+    const marks: Array<{ s: number; e: number; key: keyof RunStyle }> = [];
+    const re = /`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|~~([^~]+)~~|\*([^*\s][^*]*)\*|(?<![\p{L}\d])_([^_\s][^_]*)_(?![\p{L}\d])|\[([^\]]+)\]\([^)]*\)/gu;
+    let at = 0;
+    for (const x of line.matchAll(re)) {
+      t += line.slice(at, x.index);
+      const inner = x[1] ?? x[2] ?? x[3] ?? x[4] ?? x[5] ?? x[6] ?? x[7] ?? '', key: keyof RunStyle | null = x[1] ? 'm' : x[2] || x[3] ? 'b' : x[4] ? 'x' : x[5] || x[6] ? 'i' : null;
+      if (key) marks.push({ s: t.length, e: t.length + inner.length, key });
+      t += inner;
+      at = x.index! + x[0].length;
+    }
+    t += line.slice(at);
+    paras.push({ t, keys, marks });
+  }
+  const text = paras.map((p) => p.t).join('\n');
+  let rs: TextRun[] | undefined, s0 = 0;
+  for (const p of paras) {
+    for (const mk of p.marks) rs = setRun(rs, s0 + mk.s, s0 + mk.e, mk.key, true);
+    for (const [key, v] of Object.entries(p.keys)) if (v !== undefined) rs = setPara(text, rs, s0, s0, key as 'h' | 'l' | 'k' | 'd', v);
+    s0 += p.t.length + 1;
+  }
+  return { text, rs };
+}

@@ -1634,6 +1634,25 @@ export const checks = {
     expect(await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'); return [d.pageShown(planx.board.get('${id}')), planx.editor.shown().some((i) => i.id === '${tid}')].join(); })()`), 'its page shown, it in sight').toBe('1,true');
   },
 
+  async '"Markdown в документе": plain text in Markdown pasted: its headings, lists, checklists, code and bold as what they mark; Cmd+Shift+V, as it is'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const md = '## Итоги\n\n- **сделали** прототип\n- [ ] проверить `api`\n\n> важно';
+    const paste = () => p.ev(`(() => { const dt = new DataTransfer(); dt.setData('text/plain', ${JSON.stringify(md)}); document.querySelector('.rich-edit').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); })()`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Начало', rs: undefined }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(350);
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' });
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter' });
+    await paste();
+    await sleep(150);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(250);
+    const it = await p.ev(`planx.board.get('${id}')`);
+    expect(it.text, 'its text, the marks taken out').toBe('Начало\nИтоги\nсделали прототип\nпроверить api\nважно');
+    expect(JSON.stringify(it.rs), 'what they marked').toBe(JSON.stringify([{ s: 12, e: 13, h: 2 }, { s: 13, e: 20, b: true }, { s: 29, e: 30, l: 'bullet' }, { s: 40, e: 43, m: true }, { s: 43, e: 44, l: 'todo' }, { s: 49, e: 50, k: 'quote' }]));
+  },
+
   async '"Markdown в документе": a list in a list by Tab (numbered at its depth), out by Shift+Tab and Enter; a block of code by «```», Tab two spaces in it, out by Enter'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);
