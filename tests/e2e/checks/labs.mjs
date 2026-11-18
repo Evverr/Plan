@@ -1104,6 +1104,21 @@ export const checks = {
     expect(await p.ev(`JSON.stringify([planx.board.get('${id}').fs ?? 16, planx.board.get('${id}').rs])`), 'kept: its own size on it alone').toBe(JSON.stringify([16, [{ s: 8, e: 9, z: 32 }]]));
   },
 
+  async '"Документ": typed in with its second page shown: scrolled to where that page starts, not the top'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 40, y: 20, z: 0.8 }; e.camChanged(); e.dropItem('page', { x: 420, y: 500 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const r = await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), b = planx.board;
+      b.update('${id}', { text: Array.from({ length: 80 }, (_, i) => 'Строка ' + (i + 1)).join('\\n') });
+      const it = b.get('${id}'), first = d.docLines(it).find((l) => l.page === 1);
+      d.showPage('${id}', 1); planx.editor.startEditing('${id}', null, 'end');
+      await new Promise((r) => setTimeout(r, 400));
+      const el = document.querySelector('.rich-edit'), top = el.getBoundingClientRect().top;
+      const at = [...el.children].find((c) => c.getBoundingClientRect().bottom > top + 2);
+      return [el.scrollTop > 0, at?.textContent === it.text.slice(first.s, first.e).trim()].join(); })()`);
+    expect(r, 'scrolled to its second page\'s first line').toBe('true,true');
+  },
+
   async '"Документ": pasted with its styling (bold, italic, headings; fonts and sizes left out), lines as paragraphs of their own, a piece of a line into the line'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

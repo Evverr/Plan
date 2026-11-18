@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import type { Editor } from '../editor/editor';
 import { PAGE, type Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
-import { DOC_LINE, PAGE_TEXT } from './docPage';
+import { DOC_LINE, docLines, PAGE_TEXT, pageShown } from './docPage';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
 
 /**
@@ -33,6 +33,21 @@ export function richStyle(key: 'b' | 'i' | 'u' | 'x' | 'c', value?: string): boo
   if (key === 'c') document.execCommand('foreColor', false, value ? cssColor(value) : getComputedStyle(active!.el).color);
   else document.execCommand({ b: 'bold', i: 'italic', u: 'underline', x: 'strikeThrough' }[key]);
   return true;
+}
+
+/** Where character `i` of its text is in the field: its paragraphs one each, a line break between them. */
+function domAt(root: HTMLElement, i: number): [Node, number] | null {
+  let left = i;
+  for (const para of root.children) {
+    const len = (para.textContent ?? '').length;
+    if (left <= len) {
+      const w = document.createTreeWalker(para, NodeFilter.SHOW_TEXT);
+      for (let t = w.nextNode(); t; t = w.nextNode()) { const n = (t.textContent ?? '').length; if (left <= n) return [t, left]; left -= n; }
+      return [para, 0];
+    }
+    left -= len + 1;
+  }
+  return null;
 }
 
 /** The paragraph the caret's in (the field itself pointed at, its child there). */
@@ -118,6 +133,17 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     if (editor.editCaret === 'end') r.collapse(false);
     sel?.removeAllRanges();
     sel?.addRange(r);
+    // Opened on a page past the first (its pager turned): scrolled to where that page starts, not the top.
+    const page = pageShown(item);
+    if (page > 0) {
+      const first = docLines(item).find((l) => l.page === page), at = first && domAt(el, first.s);
+      if (at) {
+        const q = document.createRange();
+        q.setStart(at[0], at[1]);
+        const top = (q.getClientRects()[0] ?? (at[0].nodeType === Node.TEXT_NODE ? at[0].parentElement : at[0] as Element)?.getBoundingClientRect())?.top;
+        if (top !== undefined) el.scrollTop += (top - el.getBoundingClientRect().top) / editor.cam.z;
+      }
+    }
     // What's picked in it kept, for the panel's buttons to work on after a press there.
     const keep = () => { const s = getSelection(); if (active && s?.rangeCount && el.contains(s.anchorNode)) active.range = s.getRangeAt(0).cloneRange(); };
     document.addEventListener('selectionchange', keep);
