@@ -2,7 +2,7 @@ import { PAGE, type Item } from '../model/types';
 import type { Board } from '../model/board';
 import { paraAt, setPara, type TextLink, type TextRun } from '../model/textLinks';
 import { colsOf, rowsOf } from '../model/table';
-import { DOC_LINE, docLines, OBJ_GAP, PAGE_TEXT, pageShown } from './docPage';
+import { DOC_LINE, docLines, OBJ_GAP, PAGE_TEXT, pageShown, showPage } from './docPage';
 import { drawScene, readTheme } from '../canvas/renderer';
 
 /**
@@ -29,6 +29,9 @@ export function offPage(it: Item, get: (id: string) => Item | undefined): boolea
   return !!s && s.page !== pageShown(doc);
 }
 
+/** Each table put in a document: on which page it was last, at what size (see tidyDocObjects). */
+const lastSeen = new Map<string, { page: number; w: number; h: number }>();
+
 /** Each table put in a document where its room there is (for good: undone, it's put back again). One
  *  whose document's gone, its own again. */
 export function tidyDocObjects(board: Board): void {
@@ -37,7 +40,10 @@ export function tidyDocObjects(board: Board): void {
     if (!it.inDoc) continue;
     const doc = board.get(it.inDoc);
     if (!doc) { moves.set(it.id, { inDoc: undefined }); continue; }
-    const s = slotOf(doc, it.id), p: Partial<Item> = {};
+    const s = slotOf(doc, it.id), p: Partial<Item> = {}, was = lastSeen.get(it.id);
+    // Its size changed and it gone on to another page for that: that page shown here, it in sight.
+    if (s && was && (was.w !== it.w || was.h !== it.h) && was.page !== s.page && pageShown(doc) === was.page) showPage(doc.id, s.page);
+    if (s) lastSeen.set(it.id, { page: s.page, w: it.w, h: it.h });
     if (s && (Math.abs(s.x - it.x) > 0.01 || Math.abs(s.y - it.y) > 0.01)) Object.assign(p, { x: s.x, y: s.y });
     // (Grown past its text or a page some way not held back as it was done: back within them.)
     const lim = inDocLimit(it, {});

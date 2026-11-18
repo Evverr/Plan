@@ -85,6 +85,8 @@ export function docLines(it: Item): DocLine[] {
   let page = 0, y = 0, at = 0, indent = 0, mark: string | undefined, a: TextAlign | undefined, box: DocLine['box'], k: string | undefined;
   // A numbered list's count at each depth, while its paragraphs follow one another.
   let nums: number[] = [];
+  // (A table's place where it's first in the text: any other paragraph with it, an empty line.)
+  const placed = new Set<string>();
   const put = (s: number, e: number, size: number, h: number, first: boolean, obj?: Item) => {
     const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
     if (y + gap + tall > PAGE_TEXT.h && y > 0) { page++; y = 0; }
@@ -109,7 +111,8 @@ export function docLines(it: Item): DocLine[] {
     const list = own('l') as string | undefined, depth = Math.min(LIST_DEPTH, (own('d') as number | undefined) ?? 0);
     if (k === 'hr') { nums = []; indent = 0; mark = undefined; box = undefined; put(s0, e0, size, 0, true); continue; }
     // A table put in its place: room as tall as it (on the next page whole, if not on this one).
-    const oid = runs.find((r) => r.o && r.s <= e0 && r.e > e0)?.o, obj = oid ? objectOf(oid) : undefined;
+    const oid = runs.find((r) => r.o && r.s <= e0 && r.e > e0)?.o, obj = oid && !placed.has(oid) ? objectOf(oid) : undefined;
+    if (obj) placed.add(obj.id);
     if (obj) { nums = []; indent = 0; mark = undefined; box = undefined; a = undefined; k = undefined; put(s0, e0, size, 0, true, obj); continue; }
     // A numbered list counts on at its depth while its paragraphs follow one another (deeper ones, started
     // again under each of its items; a bullet's at that depth, too).
@@ -312,6 +315,14 @@ export function turnPage(it: Item, dir: -1 | 1): void {
   const n = pagesOf(it).length;
   shown.set(it.id, Math.max(0, Math.min(n - 1, pageShown(it, n) + dir)));
   turned++;
+}
+
+/** Whether a point on it is under its text, on its last page shown (double-clicked there, typed on at its end). */
+export function belowText(it: Item, p: Point): boolean {
+  const n = pageShown(it);
+  if (n !== pagesOf(it).length - 1) return false;
+  const last = docLines(it).filter((l) => l.page === n).pop();
+  return !last || p.y > it.y + PAGE.TOP + last.y + (last.tall ?? last.size * DOC_LINE);
 }
 
 /** The pager under it: its middle, and its arrows' each side of it. */

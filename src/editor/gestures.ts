@@ -22,6 +22,7 @@ import { clickTypes, onMindText, updateCursor } from './hover';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { DOC_OBJ_MAX, dropTables } from '../labs/docObjects';
+import { belowText } from '../labs/docPage';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
 import { addCodeAt } from '../labs/codeBlock';
@@ -631,7 +632,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         else if (it?.type === 'frame' && !it.inst && (it.fold || toLocal(it, g.start).y >= it.y)) ed.setFolded(it.id, !it.fold);
         // A task's header (but its title, ring and arrow) goes on to the next of its views.
         else if (it?.type === 'task' && taskPartAt(it, g.start) === 'head') nextView(board, it, taskOpen());
-        else if (!it?.inst) ed.startEditing(g.id, it?.type === 'table' ? cellAt(it, g.start) : it?.type === 'task' ? taskFieldAt(it, g.start) : null);
+        // (A document's sheet under its text on the page shown: its caret at the end, to type on there.)
+        else if (!it?.inst) ed.startEditing(g.id, it?.type === 'table' ? cellAt(it, g.start) : it?.type === 'task' ? taskFieldAt(it, g.start) : null, it?.type === 'page' && belowText(it, g.start) ? 'end' : 'all');
       } else if (g.again && !g.cell && clickTypes(board.get(g.id), g.start)) {
         // Picked already, clicked again on its text: typed in, as on a double click.
         const it = board.get(g.id)!;

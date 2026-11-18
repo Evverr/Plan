@@ -1350,6 +1350,44 @@ export const checks = {
       .toBe(JSON.stringify([true, 'Новый\n', id]));
   },
 
+  async '"Таблица в документе": typed on under one last in the text (its place not copied by Enter), places copied before cleaned up; made a page tall, its page shown'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 400, y: 400 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    // (Its place three times over, as Enter by its picture made it before.)
+    const tid = await p.ev(`(async () => { const b = planx.board, e = planx.editor;
+      const t = e.newItem('table', 0, 0, { cols: [200, 200, 200], rows: [40, 40, 40], cells: Array(9).fill(''), w: 600, h: 120, inDoc: '${id}' });
+      e.addItem(t);
+      b.update('${id}', { text: 'Начало\\n\\n\\n', rs: [{ s: 7, e: 9, o: t.id }, { s: 10, e: 11, o: t.id }] });
+      e.setSelection([]);
+      return t.id; })()`);
+    await sleep(200);
+    const lines = () => p.ev(`(async () => (await import('/src/labs/docPage.ts')).docLines(planx.board.get('${id}')).filter((l) => l.o).length)()`);
+    expect(await lines(), 'its place copied: room for it once').toBe(1);
+    // Double-clicked under its text: typed on at the end, on a line under the table.
+    const at = await p.ev(`(() => { const t = planx.board.get('${tid}'), s = planx.editor.toScreen({ x: t.x + 100, y: t.y + t.h + 120 }); return [s.x, s.y]; })()`);
+    for (const c of [1, 2]) {
+      await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: at[0], y: at[1], button: 'left', clickCount: c });
+      await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: at[0], y: at[1], button: 'left', clickCount: c });
+      await sleep(40);
+    }
+    await sleep(500);
+    await p.cdp('Input.insertText', { text: 'Под' });
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' });
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter' });
+    await p.cdp('Input.insertText', { text: 'ещё' });
+    await sleep(100);
+    expect(await p.ev(`document.querySelectorAll('.rich-edit [data-o]').length`), 'one picture, its place not copied').toBe(1);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    const doc = await p.ev(`planx.board.get('${id}')`);
+    expect(JSON.stringify([doc.text.split('\n').filter(Boolean), doc.rs.filter((r) => r.o).length]), 'typed under it; its place once').toBe(JSON.stringify([['Начало', 'Под', 'ещё'], 1]));
+    // Made as tall as a page: on to the next, that page shown.
+    await p.ev(`(async () => { const o = await import('/src/labs/docObjects.ts'); planx.board.update('${tid}', { rows: [o.DOC_OBJ_MAX.h - 80, 40, 40], h: o.DOC_OBJ_MAX.h }); })()`);
+    await sleep(300);
+    expect(await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'); return [d.pageShown(planx.board.get('${id}')), planx.editor.shown().some((i) => i.id === '${tid}')].join(); })()`), 'its page shown, it in sight').toBe('1,true');
+  },
+
   async '"Markdown в документе": a list in a list by Tab (numbered at its depth), out by Shift+Tab and Enter; a block of code by «```», Tab two spaces in it, out by Enter'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

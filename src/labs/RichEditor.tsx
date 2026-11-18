@@ -188,6 +188,48 @@ function caretTo(p: HTMLElement): void {
   getSelection()?.removeAllRanges();
   getSelection()?.addRange(r);
 }
+/** The caret off a table's picture («Таблица в документе»), as it's put by it (a click past it, the caret at
+ *  the field's end): in the paragraph after it, or before it, one made for it if there's none to type in. */
+function caretOffObject(root: HTMLElement): void {
+  const s = getSelection();
+  if (!s?.rangeCount || !s.isCollapsed || !root.contains(s.anchorNode)) return;
+  const isObj = (e: Element | null | undefined): e is HTMLElement => !!e?.classList.contains('rich-obj');
+  let before: Element | null = null, after: Element | null = null;
+  if (s.anchorNode === root) { before = root.children[s.anchorOffset - 1] ?? null; after = root.children[s.anchorOffset] ?? null; }
+  else {
+    let n: Node | null = s.anchorNode;
+    while (n && n.parentNode !== root) n = n.parentNode;
+    if (!isObj(n as Element)) return;
+    before = n as Element;
+    after = before.nextElementSibling;
+  }
+  const plain = (e: Element | null): e is HTMLElement => !!e && !isObj(e) && (e as HTMLElement).dataset.k !== 'hr';
+  if (isObj(before)) {
+    const to = plain(after) ? after : emptyPara();
+    if (to !== after) before.after(to);
+    caretTo(to);
+  } else if (isObj(after)) {
+    if (plain(before)) { const r = document.createRange(); r.selectNodeContents(before); r.collapse(false); s.removeAllRanges(); s.addRange(r); }
+    else { const to = emptyPara(); after.before(to); caretTo(to); }
+  }
+}
+
+/** A table's place copied by the browser (as a paragraph's attributes are, Enter by it): a plain empty
+ *  paragraph, the place where it was first kept. */
+function oneObjectEach(root: HTMLElement): void {
+  const seen = new Set<string>();
+  for (const d of [...root.children] as HTMLElement[]) {
+    const o = d.dataset.o;
+    if (!o) continue;
+    if (!seen.has(o) && d.classList.contains('rich-obj')) { seen.add(o); continue; }
+    delete d.dataset.o;
+    d.removeAttribute('contenteditable');
+    d.removeAttribute('class');
+    d.removeAttribute('style');
+    if (!d.textContent) d.innerHTML = '<br>';
+  }
+}
+
 /** A divider: `para` made one (empty), or one put after it; the caret in a paragraph after it. */
 function divider(para: HTMLElement, replace: boolean): void {
   let hr: HTMLElement = para;
@@ -371,6 +413,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     }
     sel?.removeAllRanges();
     sel?.addRange(r);
+    // (At its end, a table last in it: on a line of its own under it.)
+    if (editor.editCaret === 'end') caretOffObject(el);
     // Opened on a page past the first (its pager turned): scrolled to where that page starts, not the top,
     // its first line at the top; again a frame on, past anything the browser did to show what's picked.
     const toPage = () => {
@@ -407,6 +451,9 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     let dragging = false;
     const down = () => { dragging = true; }, up = () => { dragging = false; };
     el.addEventListener('pointerdown', down);
+    // (Clicked on a table's picture, or by it: the caret in a paragraph next to it, see caretOffObject.)
+    const offObject = () => requestAnimationFrame(() => caretOffObject(el));
+    el.addEventListener('click', offObject);
     window.addEventListener('pointerup', up);
     const clamp = () => {
       const s = getSelection();
@@ -444,6 +491,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
       el.removeEventListener('scroll', settle);
       counted.disconnect();
       el.removeEventListener('pointerdown', down);
+      el.removeEventListener('click', offObject);
       window.removeEventListener('pointerup', up);
       document.removeEventListener('selectionchange', clamp);
       document.removeEventListener('selectionchange', keep);
@@ -495,6 +543,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         else document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
       }}
       onInput={() => {
+        if (ref.current) oneObjectEach(ref.current);
         // A new paragraph after a heading (Enter at its end): plain text.
         const s = getSelection(), el = ref.current;
         let n: Node | null = s?.anchorNode ?? null;
@@ -515,8 +564,16 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         else if (md?.code) { para.innerHTML = '<br>'; para.dataset.k = 'code'; codeLine(para); caretTo(para); }
       }}
       onPointerDown={(e) => {
+        // Clicked under a table last in it («Таблица в документе»): a line under it to type on.
+        const el = ref.current, t = e.target as HTMLElement, last = el?.lastElementChild as HTMLElement | null;
+        if (last?.classList.contains('rich-obj') && e.clientY > last.getBoundingClientRect().bottom) {
+          e.preventDefault();
+          const p = emptyPara();
+          last.after(p);
+          caretTo(p);
+          return;
+        }
         // A checklist's box clicked: ticked, or not any more (the caret where it was).
-        const el = ref.current, t = e.target as HTMLElement;
         const para = el && t.parentElement === el ? t : null;
         if (!para || (para.dataset.l !== 'todo' && para.dataset.l !== 'done')) return;
         const box = parseFloat(getComputedStyle(para).paddingLeft) * editor.cam.z, x = e.clientX - para.getBoundingClientRect().left;
@@ -526,6 +583,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         }
       }}
       onKeyDown={(e) => {
+        // (Typed by a table's picture: in a paragraph next to it, not on it, see caretOffObject.)
+        if (ref.current && (e.key.length === 1 || e.key === 'Enter') && !e.metaKey && !e.ctrlKey) caretOffObject(ref.current);
         // In a list: Enter in an empty item ends the list there, Backspace at an item's start takes it out
         // of the list (as in Word). In a quote, the same: out of the quote.
         const para = ref.current && paragraphAt(ref.current), sel = getSelection();

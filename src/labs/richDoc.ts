@@ -29,12 +29,15 @@ export function headingStyle(level: number, fs: number, first: boolean, own?: nu
 export function toHtml(it: Item): string {
   const text = it.text ?? '', runs = (it.rs ?? []) as TextRun[], fs = it.fs ?? 16;
   let at = 0;
+  // (A table's place where it's first in the text: any other paragraph with it, an empty one.)
+  const placed = new Set<string>();
   return text.split('\n').map((para, n) => {
     const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a'), k = paraAt(text, runs, s0, 'k'), d = paraAt(text, runs, s0, 'd');
     at += para.length + 1;
     // A table put in its place («Таблица в документе»): as tall as its room on the sheet, a picture of it
     // there, not typed in (taken out whole, as a letter is).
-    const oid = paraAt(text, runs, s0, 'o'), obj = oid ? docObject(oid) : undefined;
+    const oid = paraAt(text, runs, s0, 'o'), obj = oid && !placed.has(oid) ? docObject(oid) : undefined;
+    if (obj) placed.add(obj.id);
     if (obj) {
       const pic = objectPicture(obj);
       return `<div data-h="0" data-o="${oid}" contenteditable="false" class="rich-obj" style="height:${obj.h + OBJ_GAP * 2}px;background:url(${pic}) no-repeat 0 ${OBJ_GAP}px / ${obj.w}px ${obj.h}px"></div>`;
@@ -187,7 +190,7 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     const d = Number((para as HTMLElement).dataset.d) || 0;
     if (d) depths.push([start, d]);
     const o = (para as HTMLElement).dataset.o;
-    if (o) objs.push([start, o]);
+    if (o && !objs.some(([, x]) => x === o)) objs.push([start, o]);
     const z = Number((para as HTMLElement).dataset.z) || 0;
     if (z) sizes.push([start, z]);
     const al = (para as HTMLElement).dataset.a;
