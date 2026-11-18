@@ -124,6 +124,8 @@ export interface Item {
   /** A table put in a document's text («Таблица в документе», src/labs/docObjects.ts): the document's
    *  id. It stands where its paragraph is there, moved, copied and deleted with it (picked on its own). */
   inDoc?: string;
+  /** A document's sheet's own margins («Поля документа», src/labs): top, right, bottom, left (unset: ГОСТ's, see pageMargins). */
+  pm?: number[];
   /** Hidden («Скрыть объект», src/labs): not drawn, but picked as ever (its frame shows it then). */
   hid?: boolean;
   /** A task without its «ВАЖНОЕ» pill at the right of its top edge («Тег» unticked in its menu). */
@@ -262,19 +264,22 @@ export interface Person { n: string; c: string }
 /** A document's sheet («Документ», src/labs/docPage.ts): A4 at 96 dpi, its margins as ГОСТ has them (3 cm
  *  on the left, 1.5 on the right, 2 above and below), how many pages it shows at most. */
 export const PAGE = { W: 794, H: 1123, LEFT: 113, RIGHT: 57, TOP: 76, BOTTOM: 76, MAX: 10 };
+/** A document's sheet's margins: its own («Поля документа», src/labs), or ГОСТ's. */
+export const pageMargins = (it: Pick<Item, 'pm'>): { top: number; right: number; bottom: number; left: number } =>
+  ({ top: it.pm?.[0] ?? PAGE.TOP, right: it.pm?.[1] ?? PAGE.RIGHT, bottom: it.pm?.[2] ?? PAGE.BOTTOM, left: it.pm?.[3] ?? PAGE.LEFT });
 
 /** Font weight of text left as it was made: plain for text, heavier on stickers and shapes. */
 export const baseWeight = (type: ItemType): number => (type === 'text' || type === 'table' || type === 'page' ? 400 : type === 'sticky' ? 500 : 600);
 /** Inset of the text in stickers and shapes (on the left); figures without square corners keep it further in. */
 export const textPad = (it: Item): number =>
   it.type === 'sticky' ? 14 : it.type === 'rect' || it.type === 'task' ? 10 : it.type === 'table' ? 16 : it.type === 'mind' ? (it.parent ? 15 : 32)
-    : it.type === 'page' ? PAGE.LEFT
+    : it.type === 'page' ? pageMargins(it).left
     : it.type === 'ellipse' ? Math.min(it.w, it.h) * 0.15 + 6 : it.type === 'polygon' ? Math.min(it.w, it.h) * 0.22 + 6 : 0;
 /** On the right: as on the left, but a document's sheet's narrower margin. */
-export const textPadR = (it: Item): number => (it.type === 'page' ? PAGE.RIGHT : textPad(it));
+export const textPadR = (it: Item): number => (it.type === 'page' ? pageMargins(it).right : textPad(it));
 /** Room above and below the text: the same as to the sides, but for a central topic (15, not 32), a
  *  table's cells (8, not 16: a row's 40 high) and a document's sheet. */
-export const textPadY = (it: Item): number => (it.type === 'mind' ? 8 : it.type === 'table' ? 8 : it.type === 'page' ? PAGE.TOP : textPad(it));
+export const textPadY = (it: Item): number => (it.type === 'mind' ? 8 : it.type === 'table' ? 8 : it.type === 'page' ? pageMargins(it).top : textPad(it));
 export const alignOf = (it: Item): TextAlign => it.ta ?? (it.type === 'text' || it.type === 'table' || it.type === 'mind' || it.type === 'page' ? 'left' : 'center');
 
 /** Text colours; "ink" is the item's usual text colour. */

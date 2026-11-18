@@ -1,4 +1,4 @@
-import { PAGE, type Item, type TextAlign } from '../model/types';
+import { PAGE, pageMargins, type Item, type TextAlign } from '../model/types';
 import type { Point } from '../canvas/geometry';
 import { font, fontOf, LINE_HEIGHT } from '../canvas/text';
 import type { TextRun } from '../model/textLinks';
@@ -14,6 +14,11 @@ import type { TextRun } from '../model/textLinks';
 
 /** Where the text goes on the sheet. */
 export const PAGE_TEXT = { w: PAGE.W - PAGE.LEFT - PAGE.RIGHT, h: PAGE.H - PAGE.TOP - PAGE.BOTTOM };
+/** Where the text goes on a sheet of its own margins («Поля документа», src/labs): from its top left, how big. */
+export function textArea(it: Pick<Item, 'pm'>): { x: number; y: number; w: number; h: number } {
+  const m = pageMargins(it);
+  return { x: m.left, y: m.top, w: PAGE.W - m.left - m.right, h: PAGE.H - m.top - m.bottom };
+}
 
 /** The page each sheet shows here, by id. */
 const shown = new Map<string, number>();
@@ -65,7 +70,8 @@ export function docLines(it: Item): DocLine[] {
   const text = it.text ?? '', fs = it.fs ?? 16, st = fontOf(it), runs = (it.rs ?? []) as Array<TextRun & { h?: number }>;
   // (And the sizes of what's put in it.)
   const objs = runs.filter((r) => r.o).map((r) => { const o = objectOf(r.o!); return o ? `${o.w}x${o.h}` : '-'; }).join();
-  const key = `${text}|${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}`, was = laidOut.get(it.id);
+  const area = textArea(it);
+  const key = `${text}|${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}|${area.w}x${area.h}`, was = laidOut.get(it.id);
   if (was?.key === key) return was.lines;
   if (typeof document !== 'undefined') measure ??= document.createElement('canvas').getContext('2d');
   const styled = runs.filter((r) => r.b || r.i || r.m);
@@ -90,7 +96,7 @@ export function docLines(it: Item): DocLine[] {
   const put = (s: number, e: number, size: number, h: number, first: boolean, obj?: Item) => {
     const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
     // (A pixel's grace: a table stretched to the page's bottom, its rows rounded a little over, kept there.)
-    if (y + gap + tall > PAGE_TEXT.h + 1 && y > 0) { page++; y = 0; }
+    if (y + gap + tall > area.h + 1 && y > 0) { page++; y = 0; }
     else y += gap;
     lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }), ...(first && box && { box }), ...(a && { a }), ...(k && { k }), ...(obj && { o: obj.id, tall }) });
     y += tall;
@@ -121,7 +127,7 @@ export function docLines(it: Item): DocLine[] {
     indent = (list ? LIST_IN * (depth + 1) : 0) + (k === 'quote' ? QUOTE_IN : 0) + (block ? CODE_IN : 0);
     box = list === 'todo' || list === 'done' ? list : undefined;
     mark = list === 'number' ? `${nums[depth]}.` : list === 'bullet' ? BULLETS[depth % BULLETS.length] : undefined;
-    const room = PAGE_TEXT.w - indent - (block ? CODE_IN : 0);
+    const room = area.w - indent - (block ? CODE_IN : 0);
     if (s0 === e0) { put(s0, e0, size, h, true); continue; }
     let ls = s0, first = true;
     while (ls < e0) {
@@ -159,7 +165,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   ink: string; link: string; tint: (c: string) => string; onLink?: (r: { x: number; y: number; w: number; h: number; url: string }) => void;
 }): void {
   const text = it.text ?? '', st = fontOf(it), runs = (it.rs ?? []) as TextRun[], links = it.links ?? [];
-  const align = it.ta ?? 'left', alpha = it.to ?? 1, ink = it.tc ? look.tint(it.tc) : look.ink;
+  const align = it.ta ?? 'left', alpha = it.to ?? 1, ink = it.tc ? look.tint(it.tc) : look.ink, area = textArea(it);
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.textBaseline = 'alphabetic';
@@ -174,7 +180,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
       ctx.fillStyle = ink;
       ctx.globalAlpha = alpha * 0.07;
       ctx.beginPath();
-      ctx.roundRect(it.x + PAGE.LEFT + q, it.y + PAGE.TOP + l.y, PAGE_TEXT.w - q, l.size * DOC_LINE, [opens ? r : 0, opens ? r : 0, ends ? r : 0, ends ? r : 0]);
+      ctx.roundRect(it.x + area.x + q, it.y + area.y + l.y, area.w - q, l.size * DOC_LINE, [opens ? r : 0, opens ? r : 0, ends ? r : 0, ends ? r : 0]);
       ctx.fill();
       ctx.globalAlpha = alpha;
     }
@@ -185,12 +191,12 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   function drawLine(l: DocLine): void {
     // (A table's place: the table itself drawn there, as it is on the board.)
     if (l.o) return;
-    const top = it.y + PAGE.TOP + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14), left = it.x + PAGE.LEFT, block = l.k === 'code';
+    const top = it.y + area.y + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14), left = it.x + area.x, block = l.k === 'code';
     // A divider: a faint line across, in the middle of its line.
     if (l.k === 'hr') {
       ctx.fillStyle = ink;
       ctx.globalAlpha = alpha * 0.2;
-      ctx.fillRect(left, Math.round(top + tall / 2), PAGE_TEXT.w, 1);
+      ctx.fillRect(left, Math.round(top + tall / 2), area.w, 1);
       ctx.globalAlpha = alpha;
       return;
     }
@@ -215,7 +221,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
       return { t, r, f, w: ctx.measureText(t).width, link: links.find((k) => k.s <= c && k.e >= e) };
     });
     const lw = pieces.reduce((s, p) => s + p.w, 0);
-    const room = PAGE_TEXT.w - l.indent;
+    const room = area.w - l.indent;
     const la = block ? 'left' : l.a ?? align;
     let x = left + l.indent + (la === 'center' ? (room - lw) / 2 : la === 'right' ? room - lw : 0);
     ctx.font = font(l.size, l.h ? 700 : st.weight, block ? 'mono' : st.family, st.italic);
@@ -288,10 +294,10 @@ function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: numb
 export function docBoxAt(items: Item[], w: Point): { it: Item; at: number } | null {
   for (const it of items) {
     if (it.type !== 'page' || w.x < it.x || w.x > it.x + it.w || w.y < it.y || w.y > it.y + it.h) continue;
-    const n = pageShown(it);
+    const n = pageShown(it), area = textArea(it);
     for (const l of docLines(it)) {
       if (l.page !== n || !l.box) continue;
-      const x = it.x + PAGE.LEFT + l.indent - LIST_IN + 4, mid = it.y + PAGE.TOP + l.y + l.size * DOC_LINE / 2, s = Math.round(l.size * 0.8);
+      const x = it.x + area.x + l.indent - LIST_IN + 4, mid = it.y + area.y + l.y + l.size * DOC_LINE / 2, s = Math.round(l.size * 0.8);
       if (w.x >= x - 3 && w.x <= x + s + 3 && Math.abs(w.y - mid) <= s / 2 + 3) return { it, at: l.s };
     }
   }
@@ -320,10 +326,10 @@ export function turnPage(it: Item, dir: -1 | 1): void {
 
 /** Whether a point on it is under its text, on its last page shown (double-clicked there, typed on at its end). */
 export function belowText(it: Item, p: Point): boolean {
-  const n = pageShown(it);
+  const n = pageShown(it), area = textArea(it);
   if (n !== pagesOf(it).length - 1) return false;
   const last = docLines(it).filter((l) => l.page === n).pop();
-  return !last || p.y > it.y + PAGE.TOP + last.y + (last.tall ?? last.size * DOC_LINE);
+  return !last || p.y > it.y + area.y + last.y + (last.tall ?? last.size * DOC_LINE);
 }
 
 /** The pager under it: its middle, and its arrows' each side of it. */

@@ -1,3 +1,4 @@
+import { marginsOn, subscribeMargins, toggleMargins } from '../labs/docMargins';
 import { useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '../editor/editor';
 import type { Item } from '../model/types';
@@ -26,7 +27,7 @@ const same = (vals: Array<string | undefined>): string | null => (vals.length &&
 /** Rearrangeable buttons; the bin comes last until moved. */
 /** "2 объекта", "5 объектов", "21 объект". */
 const objects = (n: number) => `${n} ${n % 10 === 1 && n % 100 !== 11 ? 'объект' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'объекта' : 'объектов'}`;
-const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'crop', 'lines', 'component', 'hug', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
+const ORDER = ['hdIcon', 'sepHd', 'fold', 'grouped', 'lang', 'sepLang', 'docSave', 'margins', 'sepDoc', 'colors', 'text', 'notext', 'align', 'tidy', 'crop', 'lines', 'component', 'hug', 'detach', 'front', 'back', 'duplicate', 'lock', 'react', 'trash'];
 
 /**
  * A palette button and the popover of colour controls it opens above it, centred on the button and
@@ -337,6 +338,8 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
   // there (wherever it's been moved), it goes up above it instead.
   const [place, setPlace] = useState<{ left: number; bottom: number | null }>({ left: 0, bottom: null });
   const [, redraw] = useReducer((n: number) => n + 1, 0);
+  // (Its margins button lit as they come out or go, «Поля документа».)
+  useEffect(() => subscribeMargins(redraw), []);
   // Over what's picked but with no room there, it stands under it, and what opens from it opens down.
   const [down, setDown] = useState(false);
   // Whether it came in waiting for the text panel to go (as it showed up).
@@ -501,6 +504,11 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
         sepLang: labs.codeBlock && items.length === 1 && items[0].code ? <div className="sep" /> : undefined,
         // A document saved as a file ("Документ", src/labs).
         docSave: labs.docPage && items.length === 1 && items[0].type === 'page' ? <DocSave key={items[0].id} editor={editor} item={items[0]} /> : undefined,
+        // Its margins out to be dragged («Поля документа», src/labs/docMargins.ts), or away.
+        margins: labs.docPage && labs.docMargins && items.length === 1 && items[0].type === 'page' ? (
+          <button className={`ib ${marginsOn(items[0].id) ? 'on' : ''}`} title="Поля" aria-label="Поля" aria-pressed={marginsOn(items[0].id)}
+            onClick={() => toggleMargins(editor, items[0].id)}><PanelIcon name="expand-m" /></button>
+        ) : undefined,
         sepDoc: labs.docPage && items.length === 1 && items[0].type === 'page' ? <div className="sep" /> : undefined,
         // All the colours are under the palette: a table's own when it's selected alone.
         // (Picking something else closes the palette: the key changes with the selection.)

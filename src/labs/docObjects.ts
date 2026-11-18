@@ -1,8 +1,8 @@
-import { PAGE, type Item } from '../model/types';
+import type { Item } from '../model/types';
 import type { Board } from '../model/board';
 import { paraAt, setPara, type TextLink, type TextRun } from '../model/textLinks';
 import { colsOf, rowsOf } from '../model/table';
-import { DOC_LINE, docLines, docObject, OBJ_GAP, PAGE_TEXT, pageShown, showPage } from './docPage';
+import { DOC_LINE, docLines, docObject, OBJ_GAP, PAGE_TEXT, pageShown, showPage, textArea } from './docPage';
 import { drawScene, readTheme } from '../canvas/renderer';
 
 /**
@@ -18,7 +18,8 @@ import { drawScene, readTheme } from '../canvas/renderer';
 /** Where a table put in a document stands on the board, and on which of its pages (null: not in its text). */
 export function slotOf(doc: Item, id: string): { x: number; y: number; page: number } | null {
   const l = docLines(doc).find((d) => d.o === id);
-  return l ? { x: doc.x + PAGE.LEFT, y: doc.y + PAGE.TOP + l.y + OBJ_GAP, page: l.page } : null;
+  const a = textArea(doc);
+  return l ? { x: doc.x + a.x, y: doc.y + a.y + l.y + OBJ_GAP, page: l.page } : null;
 }
 
 /** Whether a table put in a document is out of sight there: on a page it doesn't show. */
@@ -99,7 +100,7 @@ function paragraphAt(doc: Item, y: number, skip?: string): number {
   const text = doc.text ?? '', n = pageShown(doc), lines = docLines(doc).filter((l) => l.page === n && l.o !== skip);
   let after = -1;
   for (const l of lines) {
-    const mid = doc.y + PAGE.TOP + l.y + (l.tall ?? l.size * DOC_LINE) / 2;
+    const mid = doc.y + textArea(doc).y + l.y + (l.tall ?? l.size * DOC_LINE) / 2;
     if (y < mid) break;
     after = text.slice(0, l.s).split('\n').length - 1;
   }
@@ -111,14 +112,20 @@ function paragraphAt(doc: Item, y: number, skip?: string): number {
 /** A table fitted to a sheet: as wide as its text at most, as tall as a page (see inDocLimit). */
 const fitted = (it: Item, doc: string): Partial<Item> => inDocLimit({ ...it, inDoc: doc }, {}) ?? {};
 
-/** How big a table put in a document may be: as wide as its text, as tall as a page of it. */
+/** How big a table put in a document may be: as wide as its text, as tall as a page of it (ГОСТ's margins;
+ *  a sheet's own, objMax). */
 export const DOC_OBJ_MAX = { w: PAGE_TEXT.w, h: PAGE_TEXT.h - OBJ_GAP * 2 };
+export const objMax = (doc: Item | undefined): { w: number; h: number } => {
+  if (!doc) return DOC_OBJ_MAX;
+  const a = textArea(doc);
+  return { w: a.w, h: a.h - OBJ_GAP * 2 };
+};
 
 /** The room a table put in a document has where it is: as wide as the text; as tall as what's left of its
  *  page under where it stands (a page, at a page's top), so it's never made to go past the sheet's bottom. */
 export function roomFor(it: Item): { w: number; h: number } {
-  const doc = it.inDoc ? docObject(it.inDoc) : undefined, l = doc && docLines(doc).find((d) => d.o === it.id);
-  return { w: DOC_OBJ_MAX.w, h: l ? DOC_OBJ_MAX.h - l.y : DOC_OBJ_MAX.h };
+  const doc = it.inDoc ? docObject(it.inDoc) : undefined, l = doc && docLines(doc).find((d) => d.o === it.id), max = objMax(doc);
+  return { w: max.w, h: l ? max.h - l.y : max.h };
 }
 
 /** A change to a table's size, as one put in a document may have it (any other's as it is): no wider than
@@ -126,7 +133,7 @@ export function roomFor(it: Item): { w: number; h: number } {
  *  rows that would make it so not added, null; taller rows, made shorter alike to fit). */
 export function inDocLimit(it: Item, patch: Partial<Item>, here = true): Partial<Item> | null {
   if (!it.inDoc || it.type !== 'table') return patch;
-  const room = here ? roomFor(it) : DOC_OBJ_MAX;
+  const room = here ? roomFor(it) : objMax(it.inDoc ? docObject(it.inDoc) : undefined);
   const out = { ...patch }, cols = out.cols ?? colsOf(it), rows = out.rows ?? rowsOf(it), w = cols.reduce((a, b) => a + b, 0), h = rows.reduce((a, b) => a + b, 0);
   if (w > room.w + 0.5) {
     const k = room.w / w;

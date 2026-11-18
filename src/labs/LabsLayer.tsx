@@ -1,3 +1,4 @@
+import { drawMargins, endMargin, marginAt, marginCursor, marginDragging, moveMargin, setHotMargin, startMargin } from './docMargins';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '../editor/editor';
 import type { Connection } from '../collab/connection';
@@ -64,7 +65,7 @@ export function Labs({ editor, conn, docked, tool }: { editor: Editor; conn: Con
   // Their drawing over the board, redrawn whenever one is switched on or off (the editor asks about
   // locks as it goes, so its handles change too).
   useEffect(() => {
-    const draw = (ctx: CanvasRenderingContext2D) => { const more = drawLabs(ctx, editor); if (labOn('tidy')) { drawTidy(ctx, editor); drawMindTidy(ctx, editor); } if (labOn('tableMove')) drawGrips(ctx, editor); if (labOn('linkJoint')) drawJoint(ctx, editor); drawCrop(ctx, editor); drawGroup(ctx, editor); drawNib(ctx, editor); if (labOn('nib')) drawEditedPath(ctx, editor); if (labOn('softEraser')) drawEraser(ctx, editor); return more; };
+    const draw = (ctx: CanvasRenderingContext2D) => { const more = drawLabs(ctx, editor); if (labOn('tidy')) { drawTidy(ctx, editor); drawMindTidy(ctx, editor); } if (labOn('tableMove')) drawGrips(ctx, editor); if (labOn('docMargins')) drawMargins(ctx, editor); if (labOn('linkJoint')) drawJoint(ctx, editor); drawCrop(ctx, editor); drawGroup(ctx, editor); drawNib(ctx, editor); if (labOn('nib')) drawEditedPath(ctx, editor); if (labOn('softEraser')) drawEraser(ctx, editor); return more; };
     // (Locks and reactions under the selection frames.)
     const marks = (ctx: CanvasRenderingContext2D) => drawMarks(ctx, editor);
     editor.overlays.add(draw);
@@ -154,6 +155,14 @@ export function Labs({ editor, conn, docked, tool }: { editor: Editor; conn: Con
         canvas()!.setPointerCapture(e.pointerId);
         return;
       }
+      // A document's margin taken by its triangle or line («Поля документа»).
+      const margin = e.button === 0 && labOn('docMargins') ? marginAt(editor, local(e)) : null;
+      if (margin) {
+        e.stopPropagation();
+        canvas()!.setPointerCapture(e.pointerId);
+        startMargin(editor, margin, local(e));
+        return;
+      }
       // A table's row or column taken by its pill ("Перестановка в таблице"); a second click on the
       // table puts them out.
       const plus = e.button === 0 && labOn('tableMove') ? tablePlusAt(editor, local(e)) : null;
@@ -215,6 +224,12 @@ export function Labs({ editor, conn, docked, tool }: { editor: Editor; conn: Con
         const cur = cropCursor(editor, local(e));
         if (cur) { canvas()!.style.cursor = cur; return; }
       }
+      if (marginDragging()) { moveMargin(editor, local(e)); return; }
+      if (e.target === canvas() && !e.buttons && labOn('docMargins')) {
+        const mg = marginAt(editor, local(e));
+        setHotMargin(editor, mg);
+        if (mg) { canvas()!.style.cursor = marginCursor(mg); return; }
+      }
       if (gripDragging()) { const p = local(e); moveGrip(editor, editor.toWorld(p.x, p.y)); return; }
       if (e.target === canvas() && !e.buttons && labOn('tableMove')) {
         const g = gripAt(editor, local(e)), plus = g ? null : tablePlusAt(editor, local(e));
@@ -251,6 +266,7 @@ export function Labs({ editor, conn, docked, tool }: { editor: Editor; conn: Con
     };
     const onUp = (e: PointerEvent) => {
       if (cropDragging()) endCropDrag();
+      if (marginDragging()) endMargin(editor);
       if (gripDragging()) endGrip(editor);
       if (labOn('tableMove')) releasedForGrips(editor, { x: e.clientX, y: e.clientY });
       if (tidyDragging()) { const p = local(e); endTidyDrag(editor, editor.toWorld(p.x, p.y)); }

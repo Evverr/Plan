@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { Editor } from '../editor/editor';
-import { PAGE, type Item } from '../model/types';
+import type { Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
 import { remapLinks, setRun, type TextRun } from '../model/textLinks';
-import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, PAGE_TEXT, pagesOf, pageShown } from './docPage';
+import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, pagesOf, pageShown, textArea } from './docPage';
 import { objectsIn } from './docObjects';
 import { newTable, tableLook } from '../model/table';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
@@ -262,8 +262,8 @@ export function richTable(): boolean {
   if (!restore() || !active) return false;
   const { ed, id, el } = active, doc = ed.board.get(id), p = pickedParagraphs().pop();
   if (!doc || !p) return false;
-  const n = 3, cw = Math.floor((PAGE_TEXT.w / n) * 10) / 10, cols = Array<number>(n).fill(cw);
-  const it = ed.newItem('table', doc.x + PAGE.LEFT, doc.y + PAGE.TOP, { ...newTable(n, 3), ...tableLook(n), cols, w: cw * n, inDoc: id });
+  const area = textArea(doc), n = 3, cw = Math.floor((area.w / n) * 10) / 10, cols = Array<number>(n).fill(cw);
+  const it = ed.newItem('table', doc.x + area.x, doc.y + area.y, { ...newTable(n, 3), ...tableLook(n), cols, w: cw * n, inDoc: id });
   ed.addItem(it);
   const box = document.createElement('div');
   box.dataset.h = '0';
@@ -541,12 +541,12 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const z = editor.cam.z, p = editor.toScreen({ x: item.x + PAGE.LEFT, y: item.y + PAGE.TOP }), st = fontOf(item);
+  const area = textArea(item), z = editor.cam.z, p = editor.toScreen({ x: item.x + area.x, y: item.y + area.y }), st = fontOf(item);
   return (
     <div ref={ref} className="rich-edit" contentEditable suppressContentEditableWarning spellCheck={false} role="textbox" aria-multiline aria-label="Текст документа"
       style={{
         // (Room under its text a page tall: a last page half full scrolled to its first line at the top too.)
-        left: p.x, top: p.y, width: PAGE_TEXT.w, height: PAGE_TEXT.h, paddingBottom: PAGE_TEXT.h, transform: `scale(${z})`,
+        left: p.x, top: p.y, width: area.w, height: area.h, paddingBottom: area.h, transform: `scale(${z})`,
         fontSize: fs, lineHeight: DOC_LINE, fontWeight: st.weight, fontStyle: st.italic ? 'italic' : undefined,
         fontFamily: FONTS[st.family ?? 'onest']?.css, color: item.tc ? cssColor(item.tc) : undefined, textAlign: item.ta ?? 'left',
       }}

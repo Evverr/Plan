@@ -1283,6 +1283,29 @@ export const checks = {
     expect(md, 'as Markdown').toBe('Заметки\n\n> Цитата\n\n- [x] купить хлеб\n\n---\n\n#### Мелкий\n\nвызов `run()` и дальше\n');
   },
 
+  async '"Поля документа": the margins out by the panel\'s button, the left one dragged by its triangle a whole millimetre at a time, the text and its field narrower'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.dropItem('page', { x: 500, y: 420 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Слово '.repeat(300) }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - it.x * 0.6, y: 90 - it.y * 0.6, z: 0.6 }; e.camChanged(); e.setSelection(['${id}']); })()`);
+    await sleep(400);
+    const lines = () => p.ev(`(async () => (await import('/src/labs/docPage.ts')).docLines(planx.board.get('${id}')).length)()`);
+    const before = await lines();
+    await p.click(await p.at('button[aria-label="Поля"]'));
+    await sleep(300);
+    expect(await p.ev(`document.querySelector('button[aria-label="Поля"]').classList.contains('on')`), 'its button lit').toBe(true);
+    const tri = await p.ev(`(() => { const it = planx.board.get('${id}'), s = planx.editor.toScreen({ x: it.x + 113, y: it.y }); return [s.x, s.y - 4]; })()`);
+    await p.drag(tri, [tri[0] + 60, tri[1]], { steps: 10 });
+    const pm = await p.ev(`planx.board.get('${id}').pm`), mm = 794 / 210;
+    expect(pm.slice(0, 3).join(), 'the others as they were').toBe('76,57,76');
+    expect(pm[3] > 113 + 80 && Math.abs(pm[3] / mm - Math.round(pm[3] / mm)) < 0.01, `the left one further in, in whole millimetres (${pm[3]})`).toBe(true);
+    expect((await lines()) > before, 'the text narrower: more lines').toBe(true);
+    await p.ev(`planx.editor.startEditing('${id}', null, 'end')`);
+    await sleep(400);
+    expect(await p.ev(`Math.round(parseFloat(document.querySelector('.rich-edit').style.width))`), 'its field as narrow').toBe(Math.round(794 - 57 - pm[3]));
+    await p.key('Escape', 'Escape', 27);
+  },
+
   async '"Таблица в документе": dragged onto a sheet, in its text (the text after it lower by its height), moved with it, dragged off out of it; one put in by «Стиль», gone with its place; as Markdown'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); })()`);
     await p.ev(`(() => { const e = planx.editor; e.dropItem('page', { x: 400, y: 400 }); })()`);
