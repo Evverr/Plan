@@ -168,6 +168,15 @@ describe('link shapes', () => {
     const smooth = linkShape({ id: 'l', from: 'a', to: 'b', fromSide: 'right', toSide: 'left' }, get)!;
     expect(smooth.curve && smooth.pts.length).toBe(25);
   });
+  it('a smooth link with no sides (made by the connector) curves too, out of the sides facing each other', () => {
+    const a = { id: 'a', type: 'sticky', x: 0, y: 0, w: 100, h: 100, z: 0 } as const, b = { ...a, id: 'b', x: 300, y: 200 };
+    const get = (id: string) => (id === 'a' ? a : b);
+    const [p0, c1, c2, p3] = linkCurve({ id: 'l', from: 'a', to: 'b' }, get)!;
+    // (From the middle of its right side, into the middle of the other's left: not a straight line.)
+    expect([p0, p3]).toEqual([{ x: 100, y: 50 }, { x: 300, y: 250 }]);
+    expect(c1.y).toBe(50);
+    expect(c2.y).toBe(250);
+  });
 });
 
 describe('right-angled links kept apart', () => {

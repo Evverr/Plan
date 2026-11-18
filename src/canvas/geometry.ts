@@ -294,11 +294,10 @@ export function curveBetween(a: Point, aSide: Side, b: Point, bSide: Side | null
 export function linkCurve(link: Link, get: (id: string) => Item | undefined): Bezier | null {
   const a = get(link.from), b = get(link.to);
   if (!a || !b) return null;
-  if (link.fromSide && link.toSide) {
-    return curveBetween(endAt(a, link.fromSide, 0, link.fromAt), link.fromSide, endAt(b, link.toSide, 0, link.toAt), link.toSide, angleOf(a), angleOf(b));
-  }
-  const [p, q] = linkEnds(link, get)!;
-  return [p, p, q, q];
+  // (One without sides, as made by the connector or before there were sides: from the middles of the sides
+  // facing each other, a curve too, not straight from edge to edge, nor from inside where they overlap.)
+  const ps = link.fromSide ?? nearestSide(a, center(b)), qs = link.toSide ?? nearestSide(b, center(a));
+  return curveBetween(endAt(a, ps, 0, link.fromSide ? link.fromAt : 0.5), ps, endAt(b, qs, 0, link.toSide ? link.toAt : 0.5), qs, angleOf(a), angleOf(b));
 }
 
 /** How a link runs: through these points, and, a smooth one, as this curve (its points then along it). */

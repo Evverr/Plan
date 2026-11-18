@@ -1693,6 +1693,11 @@ export const checks = {
     await sleep(300);
     expect(await p.ev(`planx.editor.cells.join()`), 'that cell picked').toBe(String(cellUnder));
     expect(await plus(), 'away over it').toBe(null);
+    // (A fresh table's four columns: the plus on the line between two, on the one beside it in part.)
+    await click(cellUnder - 1);
+    await sleep(300);
+    expect(await p.ev(`planx.editor.cells.join()`), 'the one beside it picked').toBe(String(cellUnder - 1));
+    expect(await plus(), 'away over that one too, standing on it in part').toBe(null);
     await click(0);
     await sleep(300);
     expect(await plus(), 'back with another cell picked').toBe('row');

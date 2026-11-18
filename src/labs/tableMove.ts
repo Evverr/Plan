@@ -1,7 +1,7 @@
 import type { Editor } from '../editor/editor';
 import type { Item } from '../model/types';
 import type { Point } from '../canvas/geometry';
-import { cellAt, cellText, colsOf, rowsOf, withCount } from '../model/table';
+import { cellRect, cellText, colsOf, rowsOf, withCount } from '../model/table';
 import { isLocked } from './labs';
 import { PICK_FRAME } from '../canvas/renderer';
 import { inDocLimit } from './docObjects';
@@ -234,10 +234,16 @@ function insertPluses(ed: Editor, it: Item): Array<{ key: TablePlus; p: Point; s
   insAt = out.filter((q) => q.seen).map((q) => ({ id: it.id, p: q.p }));
   return out;
 }
-/** Whether a plus at the end is away: the cell it stands on picked, or typed in (not to stand over its text). */
+/** Whether a plus at the end is away: on a cell picked or typed in, even in part (not to stand over its text). */
 function plusAway(ed: Editor, it: Item, w: EndPlus): boolean {
-  const c = plusAt(ed, it, w), i = cellAt(it, ed.toWorld(c.x, c.y));
-  return i !== null && ((ed.editingId === it.id && ed.editingCell === i) || ed.cells.includes(i));
+  const cells = [...ed.cells, ...(ed.editingId === it.id && ed.editingCell !== null ? [ed.editingCell] : [])];
+  if (!cells.length) return false;
+  const c = plusAt(ed, it, w);
+  return cells.some((i) => {
+    const r = cellRect(it, i), a = ed.toScreen({ x: r.x, y: r.y }), b = ed.toScreen({ x: r.x + r.w, y: r.y + r.h });
+    const dx = Math.max(a.x - c.x, 0, c.x - b.x), dy = Math.max(a.y - c.y, 0, c.y - b.y);
+    return Math.hypot(dx, dy) < PLUS_R;
+  });
 }
 /** The plus under a point on the canvas. */
 export function tablePlusAt(ed: Editor, sp: Point): TablePlus | null {

@@ -89,7 +89,8 @@ export function docLines(it: Item): DocLine[] {
   const placed = new Set<string>();
   const put = (s: number, e: number, size: number, h: number, first: boolean, obj?: Item) => {
     const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
-    if (y + gap + tall > PAGE_TEXT.h && y > 0) { page++; y = 0; }
+    // (A pixel's grace: a table stretched to the page's bottom, its rows rounded a little over, kept there.)
+    if (y + gap + tall > PAGE_TEXT.h + 1 && y > 0) { page++; y = 0; }
     else y += gap;
     lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }), ...(first && box && { box }), ...(a && { a }), ...(k && { k }), ...(obj && { o: obj.id, tall }) });
     y += tall;
