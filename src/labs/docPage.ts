@@ -20,8 +20,8 @@ const shown = new Map<string, number>();
 
 /** A heading's size against the text's own (1, 2, 3), and the room over one that isn't a page's first. */
 export const HEADING_SIZE = [1, 1.75, 1.375, 1.125], HEADING_GAP = 0.6;
-/** Its lines a third further apart than text elsewhere on the board. */
-export const DOC_LINE = LINE_HEIGHT * 4 / 3;
+/** Its lines 20% further apart than text elsewhere on the board. */
+export const DOC_LINE = LINE_HEIGHT * 1.2;
 
 /** A list's paragraphs: how far in their lines stand (their marker in that room, at its left). */
 export const LIST_IN = 28;
