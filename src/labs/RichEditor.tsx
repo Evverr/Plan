@@ -498,21 +498,26 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     // What's picked in it kept, for the panel's buttons to work on after a press there.
     const keep = () => { const s = getSelection(); if (active && s?.rangeCount && el.contains(s.anchorNode)) active.range = s.getRangeAt(0).cloneRange(); };
     document.addEventListener('selectionchange', keep);
-    // Typed over what's picked with a table in it («Таблица в документе»): the text taken out and typed
-    // in anew, the table kept (after what's typed). Taken out by Backspace or Delete, it goes as ever.
+    // Typed over, or taken out (Backspace, Delete, cut), what's picked with a table in it («Таблица в
+    // документе»: a double click picks its page's text, the table among it): the text alone taken out (and
+    // typed in anew), the table kept, after it. A table goes by Backspace or Delete by it, nothing picked.
     const typedOver = (e: InputEvent) => {
-      const s = getSelection();
-      if ((e.inputType !== 'insertText' && e.inputType !== 'insertParagraph' && e.inputType !== 'insertLineBreak') || !s?.rangeCount || s.isCollapsed) return;
+      const s = getSelection(), t = e.inputType;
+      const typing = t === 'insertText' || t === 'insertParagraph' || t === 'insertLineBreak', taking = t.startsWith('delete');
+      if ((!typing && !taking) || !s?.rangeCount || s.isCollapsed) return;
       const r = s.getRangeAt(0), objs = [...el.querySelectorAll<HTMLElement>('.rich-obj')].filter((o) => r.intersectsNode(o));
       if (!objs.length) return;
       e.preventDefault();
       const kept = objs.map((o) => o.cloneNode(true) as HTMLElement);
+      if (t === 'deleteByCut') void navigator.clipboard?.writeText?.(s.toString()).catch(() => {});
       document.execCommand('delete');
-      if (e.inputType === 'insertText') document.execCommand('insertText', false, e.data ?? '');
-      else document.execCommand('insertParagraph');
+      if (t === 'insertText') document.execCommand('insertText', false, e.data ?? '');
+      else if (typing) document.execCommand('insertParagraph');
       const at = paragraphAt(el);
       if (at) at.after(...kept);
       else el.append(...kept);
+      // (The caret where the text was, not on the table: see caretOffObject.)
+      caretOffObject(el);
     };
     el.addEventListener('beforeinput', typedOver);
     const onCommit = () => commit();

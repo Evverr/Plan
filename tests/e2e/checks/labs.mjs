@@ -1372,6 +1372,13 @@ export const checks = {
     await sleep(300);
     expect(JSON.stringify([await p.ev(`!!planx.board.get('${tid}')`), await p.ev(`planx.board.get('${id}').text`), await p.ev(`planx.board.get('${tid}').inDoc`)]), 'typed over: the table kept, after what\'s typed')
       .toBe(JSON.stringify([true, 'Новый\n', id]));
+    // Its page picked again (a double click), Backspace: the text gone, the table kept.
+    await p.ev(`planx.editor.startEditing('${id}', null, 'all')`);
+    await sleep(400);
+    await p.key('Backspace', 'Backspace', 8);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(JSON.stringify([await p.ev(`!!planx.board.get('${tid}')`), await p.ev(`planx.board.get('${id}').rs.filter((r) => r.o).length`)]), 'taken out: the table kept, in its text').toBe(JSON.stringify([true, 1]));
   },
 
   async '"Таблица в документе": typed on under one last in the text (its place not copied by Enter), places copied before cleaned up; made a page tall, its page shown'(p) {
