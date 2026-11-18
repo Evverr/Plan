@@ -1146,6 +1146,27 @@ export const checks = {
     expect(await p.ev(`(planx.board.get('${id}').rs ?? []).filter((r) => r.a === 'right').length`), 'kept on it alone').toBe(1);
   },
 
+  async '"Документ": typed in on a page, a selection dragged past its top: not scrolled past that page, picked from its first line'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 40, y: 20, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 420, y: 420 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), b = planx.board;
+      b.update('${id}', { text: Array.from({ length: 120 }, (_, i) => 'Строка ' + (i + 1)).join('\\n') });
+      d.showPage('${id}', 2); planx.editor.startEditing('${id}'); })()`);
+    await sleep(500);
+    const st = () => p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'), first = d.docLines(it).find((l) => l.page === 2), el = document.querySelector('.rich-edit');
+      return [Math.round(el.scrollTop), getSelection().toString().startsWith(it.text.slice(first.s, first.e))].join(); })()`);
+    const before = (await st()).split(',')[0];
+    const mid = await p.ev(`(() => { const el = document.querySelector('.rich-edit'), top = el.getBoundingClientRect().top, c = [...el.children].filter((x) => x.getBoundingClientRect().top > top + 60)[0], r = c.getBoundingClientRect(); return [r.x + 10, r.y + 4]; })()`);
+    await p.mouse('mouseMoved', mid[0], mid[1]);
+    await p.mouse('mousePressed', mid[0], mid[1]);
+    for (let y = mid[1]; y > 20; y -= 30) { await p.mouse('mouseMoved', mid[0], y); await sleep(40); }
+    for (let k = 0; k < 15; k++) { await p.mouse('mouseMoved', mid[0], 10); await sleep(60); }
+    await p.mouse('mouseReleased', mid[0], 10);
+    await sleep(200);
+    expect(await st(), 'not scrolled, picked from its first line').toBe(`${before},true`);
+  },
+
   async '"Документ": pasted with its styling (bold, italic, headings; fonts and sizes left out), lines as paragraphs of their own, a piece of a line into the line'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import type { Editor } from '../editor/editor';
 import { PAGE, type Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
-import { DOC_LINE, docLines, PAGE_TEXT, pageShown } from './docPage';
+import { DOC_LINE, docLines, PAGE_TEXT, pagesOf, pageShown } from './docPage';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
 
 /**
@@ -161,19 +161,36 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
       const top = (q.getClientRects()[0] ?? (at[0].nodeType === Node.TEXT_NODE ? at[0].parentElement : at[0] as Element)?.getBoundingClientRect())?.top;
       if (top !== undefined) el.scrollTop += (top - el.getBoundingClientRect().top) / editor.cam.z;
     };
-    // (Held there a moment: the browser bringing what's picked into sight later on, put back; a wheel or
-    // a key of the person's own lets it go.)
-    let hold = page > 0 ? performance.now() + 600 : 0, target = 0;
-    const settle = () => { if (performance.now() < hold && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target; };
-    const own = () => { hold = 0; };
+    // Kept on its page while it's typed in: scrolled back there whatever scrolls it (the browser bringing
+    // what's picked into sight, a selection dragged past its top or bottom, a wheel).
+    // (Of several pages only: one alone scrolls on as it's typed past its end.)
+    const paged = pagesOf(item).length > 1, last = page === pagesOf(item).length - 1;
+    let target = 0;
+    const settle = () => { if (paged && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target; };
     if (page > 0) {
       toPage();
       target = el.scrollTop;
       requestAnimationFrame(() => { toPage(); target = el.scrollTop; });
-      el.addEventListener('scroll', settle);
-      el.addEventListener('wheel', own, { passive: true });
-      el.addEventListener('keydown', own);
     }
+    el.addEventListener('scroll', settle);
+    // And a selection dragged with the mouse past its first or last line held there (`span` follows the text
+    // as it's typed in, see Range; the last page's to the end of it all).
+    const span = document.createRange(), on = docLines(item).filter((l) => l.page === page);
+    const a0 = on.length ? domAt(el, on[0].s) : null, b0 = on.length ? domAt(el, on[on.length - 1].e) : null;
+    if (a0 && b0) { span.setStart(a0[0], a0[1]); span.setEnd(b0[0], b0[1]); }
+    let dragging = false;
+    const down = () => { dragging = true; }, up = () => { dragging = false; };
+    el.addEventListener('pointerdown', down);
+    window.addEventListener('pointerup', up);
+    const clamp = () => {
+      const s = getSelection();
+      if (!paged || !dragging || !a0 || !b0 || !s?.rangeCount || !el.contains(s.anchorNode) || !s.focusNode) return;
+      if (last) span.setEnd(el, el.childNodes.length);
+      const fit = (n: Node, o: number): [Node, number] => { const c = span.comparePoint(n, o); return c < 0 ? [span.startContainer, span.startOffset] : c > 0 ? [span.endContainer, span.endOffset] : [n, o]; };
+      const [an, ao] = fit(s.anchorNode!, s.anchorOffset), [fn, fo] = fit(s.focusNode, s.focusOffset);
+      if (an !== s.anchorNode || ao !== s.anchorOffset || fn !== s.focusNode || fo !== s.focusOffset) s.setBaseAndExtent(an, ao, fn, fo);
+    };
+    document.addEventListener('selectionchange', clamp);
     // What's picked in it kept, for the panel's buttons to work on after a press there.
     const keep = () => { const s = getSelection(); if (active && s?.rangeCount && el.contains(s.anchorNode)) active.range = s.getRangeAt(0).cloneRange(); };
     document.addEventListener('selectionchange', keep);
@@ -181,8 +198,9 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     window.addEventListener('planx:commit-edit', onCommit);
     return () => {
       el.removeEventListener('scroll', settle);
-      el.removeEventListener('wheel', own);
-      el.removeEventListener('keydown', own);
+      el.removeEventListener('pointerdown', down);
+      window.removeEventListener('pointerup', up);
+      document.removeEventListener('selectionchange', clamp);
       document.removeEventListener('selectionchange', keep);
       window.removeEventListener('planx:commit-edit', onCommit);
       commit();
