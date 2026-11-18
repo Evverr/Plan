@@ -1194,6 +1194,34 @@ export const checks = {
     }
   },
 
+  async '"Документ": pasted from Google Docs, Word, Notion and a site: what a document has kept, their fonts, sizes and black or grey text colours left out, nothing bold that isn\'t'(p) {
+    const SAMPLES = {
+      gdocs: `<meta charset="utf-8"><b style="font-weight:normal;" id="docs-internal-guid-1"><p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:0pt;"><span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;background-color:transparent;font-weight:400;font-style:normal;text-decoration:none;">Обычный текст из гугл доков </span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:700;">жирный</span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;"> и </span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#ff0000;font-weight:400;font-style:italic;">красный курсив</span></p><h2 dir="ltr"><span style="font-size:16pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;">Заголовок два</span></h2><ul><li dir="ltr"><p dir="ltr"><span style="font-size:11pt;font-family:Arial;color:#000000;">пункт</span></p></li></ul></b>`,
+      word: `<html xmlns:o="urn:schemas-microsoft-com:office:office"><body><p class=MsoNormal><span style='font-size:12.0pt;font-family:"Times New Roman",serif;color:black'>Абзац из Word <b>жирно</b></span></p><p class=MsoNormal><span style='font-size:14.0pt;font-family:"Calibri",sans-serif'>Второй абзац</span></p></body></html>`,
+      notion: `<h1>Notion заголовок</h1><p>Текст с <code>inline code</code> и <a href="https://x.y">ссылкой</a></p><ul><li>раз<ul><li>вложенный</li></ul></li><li>два</li></ul><blockquote>цитата</blockquote><pre><code>line1\n  line2</code></pre><ul><li><input type="checkbox" checked>сделано</li></ul><hr><p>конец</p>`,
+      site: `<div style="font-family: Georgia; font-size: 20px; color: rgb(51, 51, 51)"><p>Статья с сайта <strong>важно</strong> <em>курсив</em></p><table><tr><td>a</td><td>b</td></tr></table><img src="x.png"><p>после картинки</p></div>`,
+    };
+    const WANT = {"gdocs": ["Начало\nОбычный текст из гугл доков жирный и красный курсив\nЗаголовок два\nпункт", [{"s": 35, "e": 41, "b": true}, {"s": 44, "e": 58, "i": true, "c": "#FF0000"}, {"s": 72, "e": 73, "h": 2}, {"s": 78, "e": 79, "l": "bullet"}]], "word": ["Начало\nАбзац из Word жирно\nВторой абзац", [{"s": 21, "e": 26, "b": true}]], "site": ["Начало\nСтатья с сайта важно курсив\na b\nпосле картинки", [{"s": 22, "e": 27, "b": true}, {"s": 28, "e": 34, "i": true}]]};
+
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    for (const [name, html] of Object.entries(SAMPLES)) {
+      await p.ev(`(() => { planx.board.update('${id}', { text: 'Начало', rs: undefined }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+      await sleep(350);
+      await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' });
+      await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter' });
+      await p.ev(`(() => { const dt = new DataTransfer(); dt.setData('text/html', ${JSON.stringify(html)}); dt.setData('text/plain', 'x'); document.querySelector('.rich-edit').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); })()`);
+      await sleep(150);
+      const fieldFonts = await p.ev(`[...new Set([...document.querySelectorAll('.rich-edit *')].map((e) => e.style.fontFamily).filter(Boolean))].join(' | ')`);
+      await p.key('Escape', 'Escape', 27);
+      await sleep(250);
+      const it = await p.ev(`(() => { const i = planx.board.get('${id}'); return { text: i.text, rs: i.rs }; })()`);
+      expect(fieldFonts, `${name}: no fonts of its own in the field (but code's)`).toBe(name === 'notion' ? '"JetBrains Mono", ui-monospace, monospace' : '');
+      if (WANT[name]) expect(JSON.stringify([it.text, it.rs]), `${name}: its text and styles`).toBe(JSON.stringify(WANT[name]));
+    }
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

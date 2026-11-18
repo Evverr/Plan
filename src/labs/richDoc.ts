@@ -95,11 +95,13 @@ export function cleanPaste(html: string, fs: number): string {
     if (quoted && line) flush();
     if (quoted) quote++;
     if (tag === 'B' || tag === 'STRONG' || (parseInt(s.fontWeight) || (s.fontWeight === 'bold' ? 700 : 0)) >= 600) next.b = true;
-    if (s.fontWeight && (parseInt(s.fontWeight) || 0) > 0 && parseInt(s.fontWeight) < 600) next.b = false;
+    // (Not bold as its own style says: Google Docs puts all it gives in a <b style="font-weight:normal">.)
+    if (s.fontWeight === 'normal' || s.fontWeight === 'lighter' || ((parseInt(s.fontWeight) || 0) > 0 && parseInt(s.fontWeight) < 600)) next.b = false;
     if (tag === 'I' || tag === 'EM' || s.fontStyle === 'italic') next.i = true;
     if (tag === 'U' || s.textDecoration.includes('underline') || s.textDecorationLine.includes('underline')) next.u = true;
     if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL' || s.textDecoration.includes('line-through') || s.textDecorationLine.includes('line-through')) next.x = true;
-    if (s.color) next.c = s.color;
+    // (Its colour, but a black or dark grey one, the text's own as it's given everywhere: the document's then.)
+    if (s.color) next.c = inkLike(s.color) ? undefined : s.color;
     const block = BLOCK.test(tag), h = /^H([1-6])$/.exec(tag)?.[1] ?? (node.dataset.h && node.dataset.h !== '0' ? node.dataset.h : undefined);
     if (block && line) flush();
     if (h) level = Number(h);
@@ -115,12 +117,26 @@ export function cleanPaste(html: string, fs: number): string {
     // (A heading's text bold as it is.)
     if (h) next.b = false;
     node.childNodes.forEach((c) => walk(c, next));
+    // (A table's cells pasted: their texts a space apart, each row a paragraph.)
+    if ((tag === 'TD' || tag === 'TH') && node.nextElementSibling && line && !line.endsWith(' ')) line += ' ';
     if (block && (line || h)) flush();
     if (quoted) quote--;
   };
   walk(doc.body, {});
   if (line) flush();
   return out.join('');
+}
+
+/** Whether a CSS colour is the text's own as it's pasted from anywhere: black, or a dark grey (not a colour). */
+function inkLike(css: string): boolean {
+  const probe = document.createElement('span');
+  probe.style.color = css;
+  document.body.append(probe);
+  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(getComputedStyle(probe).color);
+  probe.remove();
+  if (!m) return /^(windowtext|inherit|initial|currentcolor)$/i.test(css.trim());
+  const [r, g, b] = [m[1], m[2], m[3]].map(Number);
+  return Math.max(r, g, b) - Math.min(r, g, b) < 24 && (r + g + b) / 3 < 100;
 }
 
 /** '#rrggbb' of a CSS colour ('rgb(…)'), a key of TEXT_COLORS when it's one of them. */
