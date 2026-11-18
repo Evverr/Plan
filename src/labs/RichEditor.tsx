@@ -76,7 +76,7 @@ export function richHeading(level: number): boolean {
   if (!restore() || !active) return false;
   for (const p of pickedParagraphs()) {
     p.dataset.h = String(level);
-    p.setAttribute('style', headingStyle(level, active.fs, p === active.el.firstElementChild, Number(p.dataset.z) || undefined));
+    p.setAttribute('style', headingStyle(level, active.fs, p === active.el.firstElementChild, Number(p.dataset.z) || undefined, p.dataset.a));
   }
   return true;
 }
@@ -86,7 +86,17 @@ export function richSize(size: number): boolean {
   if (!restore() || !active) return false;
   for (const p of pickedParagraphs()) {
     p.dataset.z = String(size);
-    p.setAttribute('style', headingStyle(Number(p.dataset.h) || 0, active.fs, p === active.el.firstElementChild, size));
+    p.setAttribute('style', headingStyle(Number(p.dataset.h) || 0, active.fs, p === active.el.firstElementChild, size, p.dataset.a));
+  }
+  return true;
+}
+
+/** The paragraphs what's picked is in aligned on their own (left, centre or right). */
+export function richAlign(a: string): boolean {
+  if (!restore() || !active) return false;
+  for (const p of pickedParagraphs()) {
+    p.dataset.a = a;
+    p.setAttribute('style', headingStyle(Number(p.dataset.h) || 0, active.fs, p === active.el.firstElementChild, Number(p.dataset.z) || undefined, a));
   }
   return true;
 }
@@ -101,11 +111,11 @@ export function richList(kind: string): boolean {
 }
 
 /** What's on what's picked: bold, italic, underlined, struck through, the caret's paragraph's level and list. */
-export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; h: number; l: string | undefined; z: number | undefined } | null {
+export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; h: number; l: string | undefined; z: number | undefined; a: string | undefined } | null {
   if (!active) return null;
   const q = (c: string) => { try { return document.queryCommandState(c); } catch { return false; } };
   const p = pickedParagraphs()[0], h = Number(p?.dataset.h) || 0;
-  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), h, l: p?.dataset.l, z: Number(p?.dataset.z) || undefined };
+  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), h, l: p?.dataset.l, z: Number(p?.dataset.z) || undefined, a: p?.dataset.a };
 }
 
 export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
@@ -127,14 +137,18 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     active = { el, fs, range: null };
     document.execCommand('defaultParagraphSeparator', false, 'div');
     el.focus();
-    // The caret at its end (or all of it picked, as text opened for typing has it).
-    const sel = getSelection(), r = document.createRange();
+    // The caret at its end (or all of the page shown picked, as text opened for typing has all of it: of
+    // several pages, that one's alone).
+    const sel = getSelection(), r = document.createRange(), page = pageShown(item);
     r.selectNodeContents(el);
     if (editor.editCaret === 'end') r.collapse(false);
+    else {
+      const on = docLines(item).filter((l) => l.page === page), a = on.length ? domAt(el, on[0].s) : null, b = on.length ? domAt(el, on[on.length - 1].e) : null;
+      if (a && b) { r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); }
+    }
     sel?.removeAllRanges();
     sel?.addRange(r);
     // Opened on a page past the first (its pager turned): scrolled to where that page starts, not the top.
-    const page = pageShown(item);
     if (page > 0) {
       const first = docLines(item).find((l) => l.page === page), at = first && domAt(el, first.s);
       if (at) {

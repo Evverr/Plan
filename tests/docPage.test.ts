@@ -21,7 +21,7 @@ describe('«Документ» laid out', () => {
   });
 
   it('goes on to the next page when a page is full, ten pages at most', () => {
-    expect(pageCount(page('строка\n'.repeat(80)))).toBe(2);
+    expect(pageCount(page('строка\n'.repeat(50)))).toBe(2);
     expect(pageCount(page('строка\n'.repeat(2000)))).toBe(10);
   });
 });

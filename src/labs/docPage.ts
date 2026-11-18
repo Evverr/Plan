@@ -1,4 +1,4 @@
-import { PAGE, type Item } from '../model/types';
+import { PAGE, type Item, type TextAlign } from '../model/types';
 import type { Point } from '../canvas/geometry';
 import { font, fontOf, LINE_HEIGHT } from '../canvas/text';
 import type { TextRun } from '../model/textLinks';
@@ -29,7 +29,7 @@ export const LIST_IN = 28;
 /** A line as laid out: where it starts and ends in the text, its paragraph's size (a heading's level, 0
  *  for none), on its page how far down its top is; in a list, how far in it stands, and on its
  *  paragraph's first line, its marker («•» or its number with a dot). */
-export interface DocLine { s: number; e: number; size: number; h: number; page: number; y: number; indent: number; mark?: string }
+export interface DocLine { s: number; e: number; size: number; h: number; page: number; y: number; indent: number; mark?: string; a?: TextAlign }
 
 let measure: CanvasRenderingContext2D | null = null;
 const laidOut = new Map<string, { key: string; lines: DocLine[] }>();
@@ -59,12 +59,12 @@ export function docLines(it: Item): DocLine[] {
     return w;
   };
   const lines: DocLine[] = [];
-  let page = 0, y = 0, at = 0, n = 0, indent = 0, mark: string | undefined;
+  let page = 0, y = 0, at = 0, n = 0, indent = 0, mark: string | undefined, a: TextAlign | undefined;
   const put = (s: number, e: number, size: number, h: number, first: boolean) => {
     const tall = size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
     if (y + gap + tall > PAGE_TEXT.h && y > 0) { page++; y = 0; }
     else y += gap;
-    lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }) });
+    lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }), ...(a && { a }) });
     y += tall;
   };
   for (const para of text.split('\n')) {
@@ -74,6 +74,8 @@ export function docLines(it: Item): DocLine[] {
     // (Its own size of text, as set for it alone, over its level's.)
     const h = runs.find((r) => r.h && r.s <= e0 && r.e > e0)?.h ?? 0, z = runs.find((r) => r.z && r.s <= e0 && r.e > e0)?.z;
     const size = z ?? Math.round(fs * HEADING_SIZE[h]);
+    // (Its own alignment, as set for it alone, over the whole of it's.)
+    a = runs.find((r) => r.a && r.s <= e0 && r.e > e0)?.a as TextAlign | undefined;
     const list = runs.find((r) => r.l && r.s <= e0 && r.e > e0)?.l;
     // A numbered list counts on while its paragraphs follow one another.
     n = list === 'number' ? n + 1 : 0;
@@ -135,7 +137,8 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
     });
     const lw = pieces.reduce((s, p) => s + p.w, 0);
     const room = PAGE_TEXT.w - l.indent;
-    let x = it.x + PAGE.LEFT + l.indent + (align === 'center' ? (room - lw) / 2 : align === 'right' ? room - lw : 0);
+    const la = l.a ?? align;
+    let x = it.x + PAGE.LEFT + l.indent + (la === 'center' ? (room - lw) / 2 : la === 'right' ? room - lw : 0);
     ctx.font = font(l.size, l.h ? 700 : st.weight, st.family, st.italic);
     const fm = ctx.measureText('Hg'), base = top + (tall - fm.fontBoundingBoxAscent - fm.fontBoundingBoxDescent) / 2 + fm.fontBoundingBoxAscent, mid = top + tall / 2;
     // A list's marker in the room on its left.

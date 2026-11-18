@@ -15,7 +15,7 @@ import { useLabs } from '../labs/labs';
 import { ItemMenuButton } from '../labs/ContextMenu';
 import { linkPartPatch, linkPatch } from '../labs/textLink';
 import { headingAt, paraAt, remapLinks, runsHave, setHeading, setPara, setRun, type RunStyle } from '../model/textLinks';
-import { richActive, richHeading, richList, richSize, richState, richStyle } from '../labs/RichEditor';
+import { richActive, richAlign, richHeading, richList, richSize, richState, richStyle } from '../labs/RichEditor';
 
 function Btn({ icon, label, on, off, swatch, menu, onClick }: {
   icon: IconName; label: string; on?: boolean; off?: boolean; swatch?: string; menu?: boolean; onClick?: () => void;
@@ -197,7 +197,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   const rich = item.type === 'page' && editor.editingId === item.id && richActive() ? richState() : null;
   const picked = !rich && item.type === 'page' ? pickedPart(editor, item) : null;
   const runsOf = (p: Part) => remapLinks(item.text ?? '', p.text, item.rs);
-  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && !!rich[key]
+  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && !!rich[key]
     : !!picked && runsHave(runsOf(picked), picked.s, picked.e, key, value));
   /** Where the caret is in a document being typed in (or what's picked there). */
   const caretIn = (): Part | null => {
@@ -218,7 +218,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   /** Sets (or takes off) a style on the part picked (as it's picked now); false with none picked (the
    *  whole text's then). */
   const stylePart = (key: keyof RunStyle, value?: string): boolean => {
-    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && richStyle(key, value)) { setMenu(null); return true; }
+    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && richStyle(key, value)) { setMenu(null); return true; }
     const now = item.type === 'page' ? pickedPart(editor, item) : null;
     if (!now) return false;
     const runs = runsOf(now), on = key === 'c' ? value !== undefined : !runsHave(runs, now.s, now.e, key);
@@ -238,6 +238,16 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   };
   // (The caret's paragraph's own, in a document being typed in.)
   const partSize = (rich ? rich.z : caret ? paraAt(caret.text, runsOf(caret), caret.s, 'z') : undefined) ?? fs;
+  /** Aligns the paragraphs the caret's in (or what's picked) on their own; false with no document being
+   *  typed in (the whole text's then). The menu stays open. */
+  const alignPart = (a: TextAlign): boolean => {
+    if (rich && richAlign(a)) { redraw(); return true; }
+    const now = caretIn();
+    if (!now) return false;
+    editor.board.update(item.id, { text: now.text, rs: setPara(now.text, runsOf(now), now.s, now.e, 'a', a) });
+    return true;
+  };
+  const partAlign = ((rich ? rich.a : caret ? paraAt(caret.text, runsOf(caret), caret.s, 'a') : undefined) ?? align) as TextAlign;
   const mark = hex(item.mk, MARK_COLORS);
 
   return (
@@ -294,7 +304,8 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
         align: <span className="sort-wrap"><Drop open={menu === 'align'} menu={<div className="tf-row">
           {(['left', 'center', 'right'] as TextAlign[]).map((a) => (
             // (The menu stays: across and up or down, both without opening it again.)
-            <Btn key={a} icon={ALIGN_ICONS[a]} label={ALIGN_LABELS[a]} on={align === a} onClick={() => set({ ta: a }, true)} />
+            // (In a document being typed in, the paragraphs picked alone: see alignPart.)
+            <Btn key={a} icon={ALIGN_ICONS[a]} label={ALIGN_LABELS[a]} on={partAlign === a} onClick={() => alignPart(a) || set({ ta: a }, true)} />
           ))}
           {/* (Up and down, in what has room round its text: a sticker, a shape, a table's cell.) */}
           {['sticky', 'rect', 'ellipse', 'polygon', 'table'].includes(item.type) && !item.code && <>
@@ -304,7 +315,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
             ))}
           </>}
         </div>}>
-          <Btn icon={ALIGN_ICONS[align] ?? 'align-left'} label="Выравнивание" menu on={menu === 'align'} onClick={() => toggle('align')} />
+          <Btn icon={ALIGN_ICONS[partAlign] ?? 'align-left'} label="Выравнивание" menu on={menu === 'align'} onClick={() => toggle('align')} />
         </Drop></span>,
         sep3: <div className="fsep line" />,
         list: <span className="sort-wrap"><Drop open={menu === 'list'} menu={<div className="tf-row">

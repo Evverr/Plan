@@ -1119,6 +1119,33 @@ export const checks = {
     expect(r, 'scrolled to its second page\'s first line').toBe('true,true');
   },
 
+  async '"Документ": typed in on its third page, that page\'s text alone picked and shown; a paragraph aligned right alone'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 40, y: 20, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 420, y: 420 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const r = await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), b = planx.board;
+      b.update('${id}', { text: Array.from({ length: 120 }, (_, i) => 'Строка ' + (i + 1)).join('\\n') });
+      const it = b.get('${id}'), on = d.docLines(it).filter((l) => l.page === 2);
+      d.showPage('${id}', 2); planx.editor.startEditing('${id}');
+      await new Promise((r) => setTimeout(r, 400));
+      const el = document.querySelector('.rich-edit'), top = el.getBoundingClientRect().top;
+      const at = [...el.children].find((c) => c.getBoundingClientRect().bottom > top + 2);
+      const picked = getSelection().toString().replace(/\\n+/g, '\\n').trim(), want = it.text.slice(on[0].s, on[on.length - 1].e).trim();
+      return [d.pageShown(it), at?.textContent === it.text.slice(on[0].s, on[0].e).trim(), picked === want].join(); })()`);
+    expect(r, 'page 3: its first line at the top, its text alone picked').toBe('2,true,true');
+    // A paragraph (its first) aligned right alone.
+    await p.ev(`(() => { const d = document.querySelector('.rich-edit'), para = [...d.children].find((c) => c.getBoundingClientRect().top >= d.getBoundingClientRect().top), t = para.firstChild, r = document.createRange(); r.setStart(t, 0); r.setEnd(t, 2); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); })()`);
+    await sleep(150);
+    await p.click(await p.at('.tfmt button[aria-label="Выравнивание"]'));
+    await sleep(150);
+    await p.ev(`document.querySelector('.tfmt button[aria-label="По правому краю"]').click()`);
+    await sleep(150);
+    expect(await p.ev(`(() => { const d = document.querySelector('.rich-edit'); return [...d.children].filter((c) => getComputedStyle(c).textAlign === 'right').length; })()`), 'that paragraph alone').toBe(1);
+    await p.ev(`document.querySelector('.rich-edit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+    await sleep(200);
+    expect(await p.ev(`(planx.board.get('${id}').rs ?? []).filter((r) => r.a === 'right').length`), 'kept on it alone').toBe(1);
+  },
+
   async '"Документ": pasted with its styling (bold, italic, headings; fonts and sizes left out), lines as paragraphs of their own, a piece of a line into the line'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

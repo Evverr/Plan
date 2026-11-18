@@ -51,7 +51,7 @@ export function drawnLinks<T extends { s: number; e: number }>(text: string, lis
 /** A style on part of an item's text («Документ», src/labs/docPage.ts): bold, italic, underlined, struck
  *  through, its colour (a key of TEXT_COLORS or '#rrggbb'). Kept by character as the links are, moving
  *  with the text as it's typed in (remapLinks). */
-export interface TextRun { s: number; e: number; b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; h?: number; l?: string; z?: number }
+export interface TextRun { s: number; e: number; b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; h?: number; l?: string; z?: number; a?: string }
 export type RunStyle = Omit<TextRun, 's' | 'e'>;
 
 /** The style on each character of s…e, from the runs. */
@@ -79,7 +79,7 @@ export function setRun(runs: TextRun[] | undefined, s: number, e: number, key: k
   const all = stylesIn(runs, Math.min(s, ...(runs ?? []).map((r) => r.s)), end, [s, e]).map((p) => {
     if (p.e <= s || p.s >= e) return p;
     const st = { ...p.st } as Record<string, unknown>;
-    if (on) st[key] = key === 'c' || key === 'h' || key === 'l' || key === 'z' ? value : true; else delete st[key];
+    if (on) st[key] = key === 'c' || key === 'h' || key === 'l' || key === 'z' || key === 'a' ? value : true; else delete st[key];
     return { ...p, st: st as RunStyle };
   });
   // (Styles told apart by what's set in them, whatever the order.)
@@ -99,8 +99,8 @@ export function setRun(runs: TextRun[] | undefined, s: number, e: number, key: k
 const anchorOf = (text: string, at: number) => { const n = text.indexOf('\n', at); return n < 0 ? text.length : n; };
 
 /** What a paragraph is, kept on the character after it (anchorOf): its heading level (`h`: 1…3), its
- *  list (`l`: 'bullet', 'number') or its own size of text (`z`, px). */
-type ParaKey = 'h' | 'l' | 'z';
+ *  list (`l`: 'bullet', 'number'), its own size of text (`z`, px) or its own alignment (`a`). */
+type ParaKey = 'h' | 'l' | 'z' | 'a';
 /** That of the paragraph a character's in (undefined for none). */
 export function paraAt<K extends ParaKey>(text: string, runs: TextRun[] | undefined, at: number, key: K): TextRun[K] | undefined {
   const a = anchorOf(text, at);
