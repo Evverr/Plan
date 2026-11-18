@@ -1042,7 +1042,8 @@ function drawFolded(ctx: CanvasRenderingContext2D, it: Item, s: Scene, editing: 
     }
     ctx.fillText(title, it.x + FOLD_PAD, it.y + it.h / 2);
   }
-  for (const b of frameButtons(it)) drawIcon(ctx, b.icon, b.x, b.y, b.s, theme.icon);
+  // (Half seen, all of it under the pointer.)
+  for (const b of frameButtons(it)) { ctx.globalAlpha = s.hotPlus === `fb:${it.id}:${b.kind}` ? 1 : 0.5; drawIcon(ctx, b.icon, b.x, b.y, b.s, theme.icon); ctx.globalAlpha = 1; }
 }
 
 /** A grid on the panel colour with round corners and each cell's text; the cell being edited is

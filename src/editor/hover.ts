@@ -352,6 +352,8 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
     ?? (over?.form && onFormButton(over, w) ? `form:${over.id}` : null)
     ?? (over?.poll ? pollHot(over, w) : null)
     ?? kanbanHot(ed.board.list(), w, over)
+    // (A folded frame's magnifier.)
+    ?? ((fb) => (fb ? `fb:${fb.id}:${fb.kind}` : null))(frameButtonUnder(ed, w))
     // (A kanban's, timeline's or table's «…» by its title, «Троеточие у титула».)
     ?? (over?.hd && over.tie && headerPartAt(over, w) === 'more' ? `more:${over.id}` : null)
     ?? (labOn('docPage') ? pagerHot(ed.board.list(), w) : null);

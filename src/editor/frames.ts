@@ -228,7 +228,8 @@ export function peekView(board: Board, id: string, theme: Theme, w: number, h: n
   const open: Item = { ...f, ...(f.fold ?? {}), fold: undefined, text: '' };
   // Frames inside it, folded or not, are shown as they are; what they hold stays hidden if folded.
   const inner = hiddenIn(board, items.filter((i) => held.has(i.id) && i.id !== f.id));
-  const shown = [open, ...stacked(board, items.filter((i) => held.has(i.id) && i.id !== f.id && !inner.has(i.id)))];
+  // (What it holds alone, not the frame itself.)
+  const shown = stacked(board, items.filter((i) => held.has(i.id) && i.id !== f.id && !inner.has(i.id)));
   const ids = new Set(shown.map((i) => i.id));
   const z = Math.min((w - pad * 2) / open.w, (h - padY * 2) / open.h);
   return {

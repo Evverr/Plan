@@ -15,5 +15,7 @@ export type FrameButton = 'peek';
  *  what it holds, at its right end; an unfolded one has none. */
 export function frameButtons(it: Item): Array<{ kind: FrameButton; icon: string; x: number; y: number; s: number }> {
   if (it.type !== 'frame' || !it.fold) return [];
-  return [{ kind: 'peek', icon: 'search', x: it.x + it.w - FOLD_RIGHT - FOLD_ICON, y: it.y + (it.h - FOLD_ICON) / 2, s: FOLD_ICON }];
+  // (Its magnifier 10% bigger than the folded bar's icons, its right edge where theirs is.)
+  const s = Math.round(FOLD_ICON * 1.1);
+  return [{ kind: 'peek', icon: 'search', x: it.x + it.w - FOLD_RIGHT - s, y: it.y + (it.h - s) / 2, s }];
 }
