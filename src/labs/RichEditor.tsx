@@ -154,18 +154,35 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     const toPage = () => {
       const first = docLines(item).find((l) => l.page === page), at = first && domAt(el, first.s);
       if (!at) return;
+      // (Its first letter's box: where a line wraps, the place before it is the end of the line above.)
       const q = document.createRange();
       q.setStart(at[0], at[1]);
+      if (at[0].nodeType === Node.TEXT_NODE && at[1] < (at[0].textContent ?? '').length) q.setEnd(at[0], at[1] + 1);
       const top = (q.getClientRects()[0] ?? (at[0].nodeType === Node.TEXT_NODE ? at[0].parentElement : at[0] as Element)?.getBoundingClientRect())?.top;
       if (top !== undefined) el.scrollTop += (top - el.getBoundingClientRect().top) / editor.cam.z;
     };
-    if (page > 0) { toPage(); requestAnimationFrame(toPage); }
+    // (Held there a moment: the browser bringing what's picked into sight later on, put back; a wheel or
+    // a key of the person's own lets it go.)
+    let hold = page > 0 ? performance.now() + 600 : 0, target = 0;
+    const settle = () => { if (performance.now() < hold && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target; };
+    const own = () => { hold = 0; };
+    if (page > 0) {
+      toPage();
+      target = el.scrollTop;
+      requestAnimationFrame(() => { toPage(); target = el.scrollTop; });
+      el.addEventListener('scroll', settle);
+      el.addEventListener('wheel', own, { passive: true });
+      el.addEventListener('keydown', own);
+    }
     // What's picked in it kept, for the panel's buttons to work on after a press there.
     const keep = () => { const s = getSelection(); if (active && s?.rangeCount && el.contains(s.anchorNode)) active.range = s.getRangeAt(0).cloneRange(); };
     document.addEventListener('selectionchange', keep);
     const onCommit = () => commit();
     window.addEventListener('planx:commit-edit', onCommit);
     return () => {
+      el.removeEventListener('scroll', settle);
+      el.removeEventListener('wheel', own);
+      el.removeEventListener('keydown', own);
       document.removeEventListener('selectionchange', keep);
       window.removeEventListener('planx:commit-edit', onCommit);
       commit();
@@ -178,7 +195,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
   return (
     <div ref={ref} className="rich-edit" contentEditable suppressContentEditableWarning spellCheck={false} role="textbox" aria-multiline aria-label="Текст документа"
       style={{
-        left: p.x, top: p.y, width: PAGE_TEXT.w, height: PAGE_TEXT.h, transform: `scale(${z})`,
+        // (Room under its text a page tall: a last page half full scrolled to its first line at the top too.)
+        left: p.x, top: p.y, width: PAGE_TEXT.w, height: PAGE_TEXT.h, paddingBottom: PAGE_TEXT.h, transform: `scale(${z})`,
         fontSize: fs, lineHeight: DOC_LINE, fontWeight: st.weight, fontStyle: st.italic ? 'italic' : undefined,
         fontFamily: FONTS[st.family ?? 'onest']?.css, color: item.tc ? cssColor(item.tc) : undefined, textAlign: item.ta ?? 'left',
       }}
