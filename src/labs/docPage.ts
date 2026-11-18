@@ -169,6 +169,8 @@ export function docLines(it: Item): DocLine[] {
  *  blue and underlined (`onLink` noting where, to be Cmd+clicked). */
 export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, look: {
   ink: string; link: string; tint: (c: string) => string; onLink?: (r: { x: number; y: number; w: number; h: number; url: string }) => void;
+  /** The sheet's own colour: a ticked box's tick in it (as if cut out), in the dark theme too. */
+  paper?: string;
 }): void {
   const text = it.text ?? '', st = fontOf(it), runs = (it.rs ?? []) as TextRun[], links = it.links ?? [];
   const align = it.ta ?? 'left', alpha = it.to ?? 1, ink = it.tc ? look.tint(it.tc) : look.ink, area = textArea(it);
@@ -235,7 +237,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
     // A list's marker in the room on its left (past a quote's bar); a checklist's box there.
     const markX = left + l.indent - LIST_IN + 4;
     if (l.mark) { ctx.fillStyle = ink; ctx.fillText(l.mark, markX, base); }
-    if (l.box) drawBox(ctx, markX, mid, l.size, l.box === 'done', ink);
+    if (l.box) drawBox(ctx, markX, mid, l.size, l.box === 'done', ink, look.paper ?? '#fff');
     for (const p of pieces) {
       const color = p.link ? look.link : p.r.c ? look.tint(p.r.c) : ink;
       // Code: on a rounded grey of its own.
@@ -269,7 +271,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
 const paraEnd = (text: string, at: number) => { const n = text.indexOf('\n', at); return n < 0 ? text.length : n; };
 
 /** A checklist's box, `size` the text's: its left at x, its middle at y; ticked, filled with a tick in it. */
-function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ticked: boolean, ink: string): void {
+function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ticked: boolean, ink: string, paper: string): void {
   const s = Math.round(size * 0.8), top = y - s / 2;
   ctx.save();
   ctx.beginPath();
@@ -277,7 +279,9 @@ function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: numb
   if (ticked) {
     ctx.fillStyle = ink;
     ctx.fill();
-    ctx.strokeStyle = '#fff';
+    // (Its tick in the sheet's colour, as if cut out of it: seen whatever the theme.)
+    ctx.strokeStyle = paper;
+    ctx.globalAlpha = 1;
     ctx.lineWidth = Math.max(1.5, s / 8);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';

@@ -693,7 +693,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       const of = pageCount(it), n = pageShown(it, of);
       if (!editing && (it.fs ?? 16) * s.cam.z >= 2.5) {
         drawDocPage(ctx, it, n, {
-          ink: theme.ink, link: shade(LINK_INK, theme.dim), onLink: it.rot ? undefined : (r) => textLinkRects.push(r),
+          ink: theme.ink, paper: theme.surface, link: shade(LINK_INK, theme.dim), onLink: it.rot ? undefined : (r) => textLinkRects.push(r),
           tint: (c) => shade(c.startsWith('#') ? c : TEXT_COLORS[c] || theme.ink, theme.dim),
         });
       }
