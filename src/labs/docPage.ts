@@ -69,7 +69,9 @@ export function docLines(it: Item): DocLine[] {
     const s0 = at, e0 = at + para.length;
     at = e0 + 1;
     // (Its level and list kept on the character after it: see setPara in model/textLinks.ts.)
-    const h = runs.find((r) => r.h && r.s <= e0 && r.e > e0)?.h ?? 0, size = Math.round(fs * HEADING_SIZE[h]);
+    // (Its own size of text, as set for it alone, over its level's.)
+    const h = runs.find((r) => r.h && r.s <= e0 && r.e > e0)?.h ?? 0, z = runs.find((r) => r.z && r.s <= e0 && r.e > e0)?.z;
+    const size = z ?? Math.round(fs * HEADING_SIZE[h]);
     const list = runs.find((r) => r.l && r.s <= e0 && r.e > e0)?.l;
     // A numbered list counts on while its paragraphs follow one another.
     n = list === 'number' ? n + 1 : 0;

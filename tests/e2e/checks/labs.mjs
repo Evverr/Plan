@@ -1084,6 +1084,26 @@ export const checks = {
     expect(it, 'kept').toBe(JSON.stringify({ text: 'Договор\nПервое важное слово и обычный текст', rs: [{ s: 7, e: 8, h: 2 }, { s: 8, e: 14, c: 'red' }, { s: 15, e: 21, b: true }] }));
   },
 
+  async '"Документ": a line picked given a size of its own, the others as they were'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 40, y: 20, z: 0.8 }; e.camChanged(); e.dropItem('page', { x: 420, y: 500 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Один\\nДва\\nТри' }); planx.editor.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    // The second line picked.
+    await p.ev(`(() => { const d = document.querySelector('.rich-edit'); d.focus(); const t = d.children[1].firstChild, r = document.createRange(); r.setStart(t, 0); r.setEnd(t, 3); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); })()`);
+    await sleep(150);
+    await p.click(await p.at('.tfmt button[aria-label^="Размер"]'));
+    await sleep(150);
+    // (Its menu low on the screen here, 32 under the panel: pressed as it is.)
+    await p.ev(`[...document.querySelectorAll('.tf-menu .tf-item.num')].find((x) => x.textContent === '32').click()`);
+    await sleep(150);
+    expect(await p.ev(`[...document.querySelector('.rich-edit').children].map((d) => getComputedStyle(d).fontSize).join()`), 'that line alone bigger as it\'s typed in').toBe('16px,32px,16px');
+    await p.ev(`document.querySelector('.rich-edit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+    await sleep(200);
+    expect(await p.ev(`JSON.stringify([planx.board.get('${id}').fs ?? 16, planx.board.get('${id}').rs])`), 'kept: its own size on it alone').toBe(JSON.stringify([16, [{ s: 8, e: 9, z: 32 }]]));
+  },
+
   async '"Документ": pasted with its styling (bold, italic, headings; fonts and sizes left out), lines as paragraphs of their own, a piece of a line into the line'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

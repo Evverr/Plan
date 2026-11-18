@@ -14,8 +14,8 @@ import { EDGE, fitPopovers } from '../layout';
 import { useLabs } from '../labs/labs';
 import { ItemMenuButton } from '../labs/ContextMenu';
 import { linkPartPatch, linkPatch } from '../labs/textLink';
-import { headingAt, remapLinks, runsHave, setHeading, setRun, type RunStyle } from '../model/textLinks';
-import { richActive, richHeading, richList, richState, richStyle } from '../labs/RichEditor';
+import { headingAt, paraAt, remapLinks, runsHave, setHeading, setPara, setRun, type RunStyle } from '../model/textLinks';
+import { richActive, richHeading, richList, richSize, richState, richStyle } from '../labs/RichEditor';
 
 function Btn({ icon, label, on, off, swatch, menu, onClick }: {
   icon: IconName; label: string; on?: boolean; off?: boolean; swatch?: string; menu?: boolean; onClick?: () => void;
@@ -197,7 +197,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   const rich = item.type === 'page' && editor.editingId === item.id && richActive() ? richState() : null;
   const picked = !rich && item.type === 'page' ? pickedPart(editor, item) : null;
   const runsOf = (p: Part) => remapLinks(item.text ?? '', p.text, item.rs);
-  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && rich[key]
+  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && !!rich[key]
     : !!picked && runsHave(runsOf(picked), picked.s, picked.e, key, value));
   /** Where the caret is in a document being typed in (or what's picked there). */
   const caretIn = (): Part | null => {
@@ -218,7 +218,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   /** Sets (or takes off) a style on the part picked (as it's picked now); false with none picked (the
    *  whole text's then). */
   const stylePart = (key: keyof RunStyle, value?: string): boolean => {
-    if (rich && key !== 'h' && key !== 'l' && richStyle(key, value)) { setMenu(null); return true; }
+    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && richStyle(key, value)) { setMenu(null); return true; }
     const now = item.type === 'page' ? pickedPart(editor, item) : null;
     if (!now) return false;
     const runs = runsOf(now), on = key === 'c' ? value !== undefined : !runsHave(runs, now.s, now.e, key);
@@ -226,6 +226,18 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
     setMenu(null);
     return true;
   };
+  /** Gives the paragraphs the caret's in (or what's picked) their own size of text; false with no document
+   *  being typed in (the whole text's then). */
+  const sizePart = (n: number): boolean => {
+    if (rich && richSize(n)) { setMenu(null); return true; }
+    const now = caretIn();
+    if (!now) return false;
+    editor.board.update(item.id, { text: now.text, rs: setPara(now.text, runsOf(now), now.s, now.e, 'z', n) });
+    setMenu(null);
+    return true;
+  };
+  // (The caret's paragraph's own, in a document being typed in.)
+  const partSize = (rich ? rich.z : caret ? paraAt(caret.text, runsOf(caret), caret.s, 'z') : undefined) ?? fs;
   const mark = hex(item.mk, MARK_COLORS);
 
   return (
@@ -254,11 +266,12 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
           <Pick value={level !== null ? (level ? HEADINGS[level - 1][0] : 'Обычный') : heading?.[0] ?? 'Обычный'} label="Стиль" onClick={() => toggle('style')} />
         </Drop></span>,
         gap2: <div className="fsep" />,
+        // (In a document being typed in, the paragraphs picked alone: see sizePart.)
         size: <span className="sort-wrap"><Drop open={menu === 'size'} menu={SIZES.map((s) => (
-          <button key={s} className={`tf-item num ${s === fs ? 'on' : ''}`} onClick={() => set({ fs: s })}>{s}</button>
+          <button key={s} className={`tf-item num ${s === partSize ? 'on' : ''}`} onClick={() => sizePart(s) || set({ fs: s })}>{s}</button>
         ))}>
           {/* Several picked of different sizes (fs 0): none to show. */}
-          <Pick value={fs ? String(fs) : '—'} label="Размер" onClick={() => toggle('size')} />
+          <Pick value={partSize ? String(partSize) : '—'} label="Размер" onClick={() => toggle('size')} />
         </Drop></span>,
         gap3: <div className="fsep" />,
         bold: <span className="sort-wrap"><Btn icon="bold" label="Жирный" on={picked || rich ? partHas('b') : bold} onClick={() => stylePart('b') || set({ fw: bold ? 400 : 700 })} /></span>,

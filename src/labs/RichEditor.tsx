@@ -61,7 +61,17 @@ export function richHeading(level: number): boolean {
   if (!restore() || !active) return false;
   for (const p of pickedParagraphs()) {
     p.dataset.h = String(level);
-    p.setAttribute('style', headingStyle(level, active.fs, p === active.el.firstElementChild));
+    p.setAttribute('style', headingStyle(level, active.fs, p === active.el.firstElementChild, Number(p.dataset.z) || undefined));
+  }
+  return true;
+}
+
+/** The paragraphs what's picked is in given their own size of text (px), the rest as they are. */
+export function richSize(size: number): boolean {
+  if (!restore() || !active) return false;
+  for (const p of pickedParagraphs()) {
+    p.dataset.z = String(size);
+    p.setAttribute('style', headingStyle(Number(p.dataset.h) || 0, active.fs, p === active.el.firstElementChild, size));
   }
   return true;
 }
@@ -76,11 +86,11 @@ export function richList(kind: string): boolean {
 }
 
 /** What's on what's picked: bold, italic, underlined, struck through, the caret's paragraph's level and list. */
-export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; h: number; l: string | undefined } | null {
+export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; h: number; l: string | undefined; z: number | undefined } | null {
   if (!active) return null;
   const q = (c: string) => { try { return document.queryCommandState(c); } catch { return false; } };
   const p = pickedParagraphs()[0], h = Number(p?.dataset.h) || 0;
-  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), h, l: p?.dataset.l };
+  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), h, l: p?.dataset.l, z: Number(p?.dataset.z) || undefined };
 }
 
 export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {

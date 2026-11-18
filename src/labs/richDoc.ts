@@ -14,9 +14,10 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 export const cssColor = (c: string) => (c.startsWith('#') ? c : TEXT_COLORS[c] || '');
 
 /** A paragraph's look as a heading (or plain), as the page draws it. */
-export function headingStyle(level: number, fs: number, first: boolean): string {
-  const size = Math.round(fs * HEADING_SIZE[level]);
-  return level ? `font-size:${size}px;font-weight:700;margin-top:${first ? 0 : Math.round(size * HEADING_GAP)}px` : '';
+export function headingStyle(level: number, fs: number, first: boolean, own?: number): string {
+  // (Its own size of text, set for it alone, over its level's.)
+  const size = own ?? Math.round(fs * HEADING_SIZE[level]);
+  return level ? `font-size:${size}px;font-weight:700;margin-top:${first ? 0 : Math.round(size * HEADING_GAP)}px` : own ? `font-size:${own}px` : '';
 }
 
 /** Its text as the field's HTML: a <div> a paragraph (data-h its level), a <span> a styled piece. */
@@ -24,7 +25,7 @@ export function toHtml(it: Item): string {
   const text = it.text ?? '', runs = (it.rs ?? []) as TextRun[], fs = it.fs ?? 16;
   let at = 0;
   return text.split('\n').map((para, n) => {
-    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l');
+    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z');
     at += para.length + 1;
     const cuts = [...new Set([0, para.length, ...runs.flatMap((r) => [r.s - s0, r.e - s0]).filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
     const inner = cuts.slice(0, -1).map((c, i) => {
@@ -34,7 +35,7 @@ export function toHtml(it: Item): string {
       const t = esc(para.slice(c, e));
       return css ? `<span style="${css}">${t}</span>` : t;
     }).join('');
-    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''} style="${headingStyle(h, fs, n === 0)}">${inner || '<br>'}</div>`;
+    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''} style="${headingStyle(h, fs, n === 0, z)}">${inner || '<br>'}</div>`;
   }).join('');
 }
 
@@ -93,7 +94,7 @@ function colorKey(css: string): string {
 /** The text and its styles as the field has them now: `ink` the text's own colour (no colour of its own). */
 export function fromDom(root: HTMLElement, ink: string): { text: string; rs: TextRun[] | undefined } {
   let text = '';
-  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [];
+  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [];
   const own = colorKey(ink);
   /** The look of a piece of text by the element it's in, up to its paragraph. */
   const look = (el: Element, para: Element, heading: boolean): RunStyle => {
@@ -140,10 +141,13 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     if (h) heads.push([start, h]);
     const l = (para as HTMLElement).dataset.l;
     if (l === 'bullet' || l === 'number') lists.push([start, l]);
+    const z = Number((para as HTMLElement).dataset.z) || 0;
+    if (z) sizes.push([start, z]);
   });
   let rs: TextRun[] | undefined;
   for (const m of marks) for (const [k, v] of Object.entries(m.st)) rs = setRun(rs, m.s, m.e, k as keyof RunStyle, true, v as string | number);
   for (const [at, h] of heads) rs = setHeading(text, rs, at, at, h);
   for (const [at, l] of lists) rs = setPara(text, rs, at, at, 'l', l);
+  for (const [at, z] of sizes) rs = setPara(text, rs, at, at, 'z', z);
   return { text, rs };
 }
