@@ -26,4 +26,15 @@ describe('«Документ» as Markdown', () => {
     const it = { id: 'd', type: 'page', x: 0, y: 0, w: 794, h: 1123, z: 0, text, rs: [{ s: 7, e: 8, h: 1 }, { s: text.length, e: text.length + 1, h: 2 }] } as Item;
     expect(docMarkdown(it)).toBe('# Договор\n\nТекст договора\n\n## Раздел 1\n');
   });
+
+  it('has its quotes, dividers, checklists, code in a line and headings to six', () => {
+    const text = 'Мысль\nвторая\n\nкупить\nготово\nвызов run()\nМелкий';
+    const end = (w: string) => text.indexOf(w) + w.length, at = (w: string) => text.indexOf(w);
+    const it = { id: 'd', type: 'page', x: 0, y: 0, w: 794, h: 1123, z: 0, text, rs: [
+      { s: end('Мысль'), e: end('Мысль') + 1, k: 'quote' }, { s: end('вторая'), e: end('вторая') + 1, k: 'quote' },
+      { s: end('вторая') + 1, e: end('вторая') + 2, k: 'hr' },
+      { s: end('купить'), e: end('купить') + 1, l: 'todo' }, { s: end('готово'), e: end('готово') + 1, l: 'done' },
+      { s: at('run()'), e: end('run()'), m: true }, { s: text.length, e: text.length + 1, h: 5 }] } as Item;
+    expect(docMarkdown(it)).toBe('> Мысль\n>\n> вторая\n\n---\n\n- [ ] купить\n- [x] готово\n\nвызов `run()`\n\n##### Мелкий\n');
+  });
 });

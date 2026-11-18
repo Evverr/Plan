@@ -15,7 +15,7 @@ import { useLabs } from '../labs/labs';
 import { ItemMenuButton } from '../labs/ContextMenu';
 import { linkPartPatch, linkPatch } from '../labs/textLink';
 import { headingAt, paraAt, remapLinks, runsHave, setHeading, setPara, setRun, type RunStyle } from '../model/textLinks';
-import { richActive, richAlign, richHeading, richList, richSize, richState, richStyle } from '../labs/RichEditor';
+import { richActive, richAlign, richCode, richDivider, richHeading, richList, richQuote, richSize, richState, richStyle } from '../labs/RichEditor';
 
 function Btn({ icon, label, on, off, swatch, menu, onClick }: {
   icon: IconName; label: string; on?: boolean; off?: boolean; swatch?: string; menu?: boolean; onClick?: () => void;
@@ -91,10 +91,14 @@ export const MIXED = 'mixed';
 /** In a sticker or a shape, the text at its top, in its middle (unset) or at its bottom. */
 const VALIGNS: Array<[Item['va'], IconName, string]> = [['top', 'align-items-top', 'Прижать кверху'], [undefined, 'align-items-middle', 'Посередине'], ['bottom', 'align-items-bottom', 'Прижать книзу']];
 const LISTS: Array<[ListKind, IconName, string]> = [['bullet', 'bulleted-list', 'Маркированный список'], ['number', 'numbered-list', 'Нумерованный список']];
+/** In a document typed in («Markdown в документе»): six levels of heading (their sizes in the menu as
+ *  HEADING_SIZE has them, the first three as the rest's), a checklist besides the lists. */
+const DOC_HEADINGS: Array<[string, number]> = [...HEADINGS, ['Заголовок 4', 20], ['Заголовок 5', 18], ['Заголовок 6', 16]];
+const DOC_LISTS = [...LISTS, ['todo', 'circle-check', 'Чек-лист']] as Array<[ListKind, IconName, string]>;
 
 const hex = (c: string | undefined, table: Record<string, string>) => (c ? (c.startsWith('#') ? c : table[c]) : undefined);
 
-const ORDER = ['font', 'gap', 'style', 'gap2', 'size', 'gap3', 'bold', 'italic', 'underline', 'strike', 'sep', 'color', 'mark', 'sep2', 'align', 'sep3', 'list', 'link'];
+const ORDER = ['font', 'gap', 'style', 'gap2', 'size', 'gap3', 'bold', 'italic', 'underline', 'strike', 'code', 'sep', 'color', 'mark', 'sep2', 'align', 'sep3', 'list', 'link'];
 
 type Menu = 'font' | 'style' | 'size' | 'color' | 'mark' | 'align' | 'list' | 'link';
 
@@ -195,6 +199,8 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   }, [item.type]);
   // (Typed in as it looks, RichEditor.tsx: on what's picked in that field, as the browser has it.)
   const rich = item.type === 'page' && editor.editingId === item.id && richActive() ? richState() : null;
+  // («Markdown в документе»: its quotes, dividers, checklists, code and headings to six, while typed in.)
+  const md = rich && labs.docMd ? rich : null;
   const picked = !rich && item.type === 'page' ? pickedPart(editor, item) : null;
   const runsOf = (p: Part) => remapLinks(item.text ?? '', p.text, item.rs);
   const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && !!rich[key]
@@ -218,7 +224,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   /** Sets (or takes off) a style on the part picked (as it's picked now); false with none picked (the
    *  whole text's then). */
   const stylePart = (key: keyof RunStyle, value?: string): boolean => {
-    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && richStyle(key, value)) { setMenu(null); return true; }
+    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'k' && key !== 'm' && richStyle(key, value)) { setMenu(null); return true; }
     const now = item.type === 'page' ? pickedPart(editor, item) : null;
     if (!now) return false;
     const runs = runsOf(now), on = key === 'c' ? value !== undefined : !runsHave(runs, now.s, now.e, key);
@@ -267,13 +273,19 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
         gap: <div className="fsep" />,
         style: <span className="sort-wrap"><Drop open={menu === 'style'} menu={<>
           {/* (In a document being typed in, the caret's paragraph's: see headPart.) */}
-          <button className={`tf-item ${(level ?? (heading ? 1 : 0)) ? '' : 'on'}`} onClick={() => headPart(0) || set({ fs: task ? undefined : DEFAULTS[item.type].fs, fw: undefined })}>Обычный</button>
-          {HEADINGS.map(([label, size], i) => (
+          <button className={`tf-item ${(level ?? (heading ? 1 : 0)) || md?.k === 'quote' ? '' : 'on'}`} onClick={() => { if (md?.k === 'quote') richQuote(); if (!headPart(0)) set({ fs: task ? undefined : DEFAULTS[item.type].fs, fw: undefined }); }}>Обычный</button>
+          {(md ? DOC_HEADINGS : HEADINGS).map(([label, size], i) => (
             <button key={label} className={`tf-item ${(level !== null ? level === i + 1 : heading?.[0] === label) ? 'on' : ''}`} style={{ fontSize: Math.round(size * 0.55), fontWeight: 700 }}
               onClick={() => headPart(i + 1) || set({ fs: size, fw: 700 })}>{label}</button>
           ))}
+          {/* «Markdown в документе»: a quote, a divider where the caret is. */}
+          {md && <>
+            <div className="tf-menu-sep" />
+            <button className={`tf-item ${md.k === 'quote' ? 'on' : ''}`} onClick={() => { richQuote(); setMenu(null); }}>Цитата</button>
+            <button className="tf-item" onClick={() => { richDivider(); setMenu(null); }}>Разделитель</button>
+          </>}
         </>}>
-          <Pick value={level !== null ? (level ? HEADINGS[level - 1][0] : 'Обычный') : heading?.[0] ?? 'Обычный'} label="Стиль" onClick={() => toggle('style')} />
+          <Pick value={level ? `Заголовок ${level}` : md?.k === 'quote' ? 'Цитата' : level !== null ? 'Обычный' : heading?.[0] ?? 'Обычный'} label="Стиль" onClick={() => toggle('style')} />
         </Drop></span>,
         gap2: <div className="fsep" />,
         // (In a document being typed in, the paragraphs picked alone: see sizePart.)
@@ -288,6 +300,8 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
         italic: <span className="sort-wrap"><Btn icon="italic" label="Курсив" on={picked || rich ? partHas('i') : item.fi} onClick={() => stylePart('i') || set({ fi: item.fi ? undefined : true })} /></span>,
         underline: <span className="sort-wrap"><Btn icon="underline" label="Подчёркнутый" on={picked || rich ? partHas('u') : item.fu} onClick={() => stylePart('u') || set({ fu: item.fu ? undefined : true })} /></span>,
         strike: <span className="sort-wrap"><Btn icon="strike" label="Зачёркнутый" on={picked || rich ? partHas('x') : item.fx} onClick={() => stylePart('x') || set({ fx: item.fx ? undefined : true })} /></span>,
+        // «Markdown в документе»: code in a line, on what's picked.
+        code: md ? <span className="sort-wrap"><Btn icon="code" label="Код" on={md.m} onClick={() => { richCode(); redraw(); }} /></span> : undefined,
         sep: <div className="fsep line" />,
         // The text's colour and its highlight: the same row of colours and opacity as in «Параметры».
         color: <span className="sort-wrap"><Drop open={menu === 'color'} params menu={
@@ -319,13 +333,13 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
         </Drop></span>,
         sep3: <div className="fsep line" />,
         list: <span className="sort-wrap"><Drop open={menu === 'list'} menu={<div className="tf-row">
-          {LISTS.map(([kind, icon, label]) => (
+          {(md ? DOC_LISTS : LISTS).map(([kind, icon, label]) => (
             // (In a document typed in as it looks, the caret's paragraphs': see richList.)
-            <Btn key={kind} icon={icon} label={label} on={rich ? rich.l === kind : item.ls === kind}
+            <Btn key={kind} icon={icon} label={label} on={rich ? rich.l === kind || ((kind as string) === 'todo' && rich.l === 'done') : item.ls === kind}
               onClick={() => { if (rich && richList(kind)) { setMenu(null); return; } set({ ls: item.ls === kind ? undefined : kind }); }} />
           ))}
         </div>}>
-          <Btn icon={(rich ? rich.l : item.ls) === 'number' ? 'numbered-list' : 'list'} label="Список" menu on={!!(rich ? rich.l : item.ls) || menu === 'list'} onClick={() => toggle('list')} />
+          <Btn icon={(rich ? rich.l : item.ls) === 'number' ? 'numbered-list' : rich && (rich.l === 'todo' || rich.l === 'done') ? 'circle-check' : 'list'} label="Список" menu on={!!(rich ? rich.l : item.ls) || menu === 'list'} onClick={() => toggle('list')} />
         </Drop></span>,
         // "Ссылка в тексте" (src/labs): an address for the item, typed in its menu.
         // A part of the text picked while typing in it: just that part; else the whole item.

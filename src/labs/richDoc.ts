@@ -1,6 +1,7 @@
 import { TEXT_COLORS, type Item } from '../model/types';
 import { headingAt, paraAt, setHeading, setPara, setRun, type RunStyle, type TextRun } from '../model/textLinks';
-import { HEADING_GAP, HEADING_SIZE } from './docPage';
+import { FONTS } from '../canvas/text';
+import { CODE_SIZE, HEADING_GAP, HEADING_SIZE } from './docPage';
 
 /**
  * «Документ» typed in as it looks (RichEditor.tsx): its text and the styles on its parts (model/textLinks.ts)
@@ -12,6 +13,9 @@ import { HEADING_GAP, HEADING_SIZE } from './docPage';
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 /** A colour of the text panel's as CSS ('#rrggbb' as it is). */
 export const cssColor = (c: string) => (c.startsWith('#') ? c : TEXT_COLORS[c] || '');
+
+/** Code in a line, as the field shows it (its grey round it, no room taken: as the page draws it). */
+export const CODE_CSS = `font-family:${FONTS.mono.css.replace(/"/g, "'")};font-size:${CODE_SIZE}em;background:rgba(127,127,127,.14);border-radius:4px`;
 
 /** A paragraph's look as a heading (or plain), as the page draws it. */
 export function headingStyle(level: number, fs: number, first: boolean, own?: number, align?: string): string {
@@ -25,58 +29,69 @@ export function toHtml(it: Item): string {
   const text = it.text ?? '', runs = (it.rs ?? []) as TextRun[], fs = it.fs ?? 16;
   let at = 0;
   return text.split('\n').map((para, n) => {
-    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a');
+    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a'), k = paraAt(text, runs, s0, 'k');
     at += para.length + 1;
     const cuts = [...new Set([0, para.length, ...runs.flatMap((r) => [r.s - s0, r.e - s0]).filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
-    const inner = cuts.slice(0, -1).map((c, i) => {
+    const inner = k === 'hr' ? '' : cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => !k.h && k.s <= s0 + c && k.e >= s0 + e).reduce((m, k) => ({ ...m, ...k }), {} as RunStyle);
       const css = [r.b && 'font-weight:700', r.i && 'font-style:italic', (r.u || r.x) && `text-decoration:${[r.u && 'underline', r.x && 'line-through'].filter(Boolean).join(' ')}`,
-        r.c && `color:${cssColor(r.c)}`].filter(Boolean).join(';');
+        r.c && `color:${cssColor(r.c)}`, r.m && CODE_CSS].filter(Boolean).join(';');
       const t = esc(para.slice(c, e));
       return css ? `<span style="${css}">${t}</span>` : t;
     }).join('');
-    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
+    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''}${k ? ` data-k="${k}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
   }).join('');
 }
 
 /** Pasted HTML (copied here, or from anywhere) as the field's own: paragraphs (a heading's level from
- *  <h1>…<h3> or a paragraph of ours), and in them only what a document has, bold, italic, underlined,
- *  struck through and coloured, by the tags or the inline styles it comes with; the rest (fonts, sizes,
- *  backgrounds, tables, pictures) left out, their text kept. */
+ *  <h1>…<h6> or a paragraph of ours; lists, checklists, quotes, dividers), and in them only what a
+ *  document has, bold, italic, underlined, struck through, coloured and code, by the tags or the inline
+ *  styles it comes with; the rest (fonts, sizes, backgrounds, tables, pictures) left out, their text kept. */
 export function cleanPaste(html: string, fs: number): string {
   const doc = new DOMParser().parseFromString(html, 'text/html'), out: string[] = [];
-  let line = '', level = 0, list = '';
-  const flush = () => { out.push(`<div data-h="${level}"${list ? ` data-l="${list}"` : ''} style="${headingStyle(level, fs, !out.length)}">${line || '<br>'}</div>`); line = ''; level = 0; list = ''; };
+  // (In a quote while `quote` is over 0: a <blockquote>, or a paragraph of ours one.)
+  let line = '', level = 0, list = '', quote = 0;
+  const flush = () => { out.push(`<div data-h="${level}"${list ? ` data-l="${list}"` : ''}${quote ? ' data-k="quote"' : ''} style="${headingStyle(level, fs, !out.length)}">${line || '<br>'}</div>`); line = ''; level = 0; list = ''; };
   const BLOCK = /^(DIV|P|LI|H[1-6]|TR|BLOCKQUOTE|PRE|UL|OL|TABLE|SECTION|ARTICLE)$/;
-  const walk = (node: Node, st: { b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string }) => {
+  const walk = (node: Node, st: { b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; m?: boolean }) => {
     if (node.nodeType === Node.TEXT_NODE) {
       const t = esc((node.textContent ?? '').replace(/\s+/g, ' '));
       if (!t.trim() && !line) return;
       const css = [st.b && 'font-weight:700', st.i && 'font-style:italic', (st.u || st.x) && `text-decoration:${[st.u && 'underline', st.x && 'line-through'].filter(Boolean).join(' ')}`,
-        st.c && `color:${st.c}`].filter(Boolean).join(';');
+        st.c && `color:${st.c}`, st.m && CODE_CSS].filter(Boolean).join(';');
       line += css ? `<span style="${css}">${t}</span>` : t;
       return;
     }
     if (!(node instanceof HTMLElement)) return;
     const tag = node.tagName, s = node.style, next = { ...st };
     if (tag === 'BR') { flush(); return; }
+    // A divider (<hr>, or one of ours): a paragraph of its own.
+    if (tag === 'HR' || node.dataset.k === 'hr') { if (line) flush(); out.push(`<div data-h="0" data-k="hr"><br></div>`); return; }
+    // A checklist's box (as GitHub's Markdown puts one in its item): that item one of a checklist.
+    if (tag === 'INPUT') { if ((node as HTMLInputElement).type === 'checkbox') list = (node as HTMLInputElement).checked ? 'done' : 'todo'; return; }
     if (/^(SCRIPT|STYLE|IMG|SVG|VIDEO|IFRAME|HEAD|META)$/.test(tag)) return;
+    // Code in a line (not a block of it, <pre>: its text as it is).
+    if ((tag === 'CODE' && !node.closest('pre')) || (tag === 'SPAN' && s.fontFamily.includes('JetBrains Mono'))) next.m = true;
+    const quoted = tag === 'BLOCKQUOTE' || node.dataset.k === 'quote';
+    if (quoted && line) flush();
+    if (quoted) quote++;
     if (tag === 'B' || tag === 'STRONG' || (parseInt(s.fontWeight) || (s.fontWeight === 'bold' ? 700 : 0)) >= 600) next.b = true;
     if (s.fontWeight && (parseInt(s.fontWeight) || 0) > 0 && parseInt(s.fontWeight) < 600) next.b = false;
     if (tag === 'I' || tag === 'EM' || s.fontStyle === 'italic') next.i = true;
     if (tag === 'U' || s.textDecoration.includes('underline') || s.textDecorationLine.includes('underline')) next.u = true;
     if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL' || s.textDecoration.includes('line-through') || s.textDecorationLine.includes('line-through')) next.x = true;
     if (s.color) next.c = s.color;
-    const block = BLOCK.test(tag), h = /^H([1-3])$/.exec(tag)?.[1] ?? (node.dataset.h && node.dataset.h !== '0' ? node.dataset.h : undefined);
+    const block = BLOCK.test(tag), h = /^H([1-6])$/.exec(tag)?.[1] ?? (node.dataset.h && node.dataset.h !== '0' ? node.dataset.h : undefined);
     if (block && line) flush();
     if (h) level = Number(h);
     // A list's item (of ours, or of a list pasted: numbered in an <ol>).
     const l = tag === 'LI' ? (node.closest('ol') ? 'number' : 'bullet') : node.dataset.l;
-    if (l === 'bullet' || l === 'number') list = l;
+    if (l === 'bullet' || l === 'number' || l === 'todo' || l === 'done') list = l;
     // (A heading's text bold as it is.)
     if (h) next.b = false;
     node.childNodes.forEach((c) => walk(c, next));
     if (block && (line || h)) flush();
+    if (quoted) quote--;
   };
   walk(doc.body, {});
   if (line) flush();
@@ -94,7 +109,7 @@ function colorKey(css: string): string {
 /** The text and its styles as the field has them now: `ink` the text's own colour (no colour of its own). */
 export function fromDom(root: HTMLElement, ink: string): { text: string; rs: TextRun[] | undefined } {
   let text = '';
-  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [];
+  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [], kinds: Array<[number, string]> = [];
   const own = colorKey(ink);
   /** The look of a piece of text by the element it's in, up to its paragraph. */
   const look = (el: Element, para: Element, heading: boolean): RunStyle => {
@@ -102,7 +117,10 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     // (A heading's text is bold as it is: bold in it only beyond that.)
     if (!heading && (parseInt(cs.fontWeight) || 400) >= 600) st.b = true;
     if (cs.fontStyle === 'italic') st.i = true;
-    for (let e: Element | null = el; e && e !== para.parentElement; e = e.parentElement) {
+    // Code: in the monospaced font, the paragraph not.
+    if (cs.fontFamily.includes('JetBrains Mono') && !getComputedStyle(para).fontFamily.includes('JetBrains Mono')) st.m = true;
+    // (A ticked item of a checklist is struck through as it is: its text by that alone, not.)
+    for (let e: Element | null = el; e && e !== ((para as HTMLElement).dataset.l === 'done' ? para : para.parentElement); e = e.parentElement) {
       const d = getComputedStyle(e).textDecorationLine;
       if (d.includes('underline') || e.tagName === 'U') st.u = true;
       if (d.includes('line-through') || e.tagName === 'S' || e.tagName === 'STRIKE') st.x = true;
@@ -125,10 +143,12 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     const walk = (node: Node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const t = (node.textContent ?? '').replace(/ /g, ' ');
-        if (!t) return;
+        // (Not the gap put after code to type past it, RichEditor.tsx.)
+        const bare = t.replace(/\u200B/g, '');
+        if (!bare) return;
         const st = look(node.parentElement ?? para, para, h > 0);
-        if (Object.keys(st).length) marks.push({ s: text.length, e: text.length + t.length, st });
-        text += t;
+        if (Object.keys(st).length) marks.push({ s: text.length, e: text.length + bare.length, st });
+        text += bare;
       } else if (node.nodeName === 'BR') {
         // A line break inside a paragraph (Shift+Enter): a paragraph of its own; one at its end, nothing.
         if (node.nextSibling || (node.parentNode !== para && node.parentNode?.nextSibling)) text += '\n';
@@ -140,7 +160,9 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     para.childNodes.forEach(walk);
     if (h) heads.push([start, h]);
     const l = (para as HTMLElement).dataset.l;
-    if (l === 'bullet' || l === 'number') lists.push([start, l]);
+    if (l === 'bullet' || l === 'number' || l === 'todo' || l === 'done') lists.push([start, l]);
+    const k = (para as HTMLElement).dataset.k;
+    if (k === 'quote' || k === 'hr') kinds.push([start, k]);
     const z = Number((para as HTMLElement).dataset.z) || 0;
     if (z) sizes.push([start, z]);
     const al = (para as HTMLElement).dataset.a;
@@ -152,5 +174,6 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
   for (const [at, l] of lists) rs = setPara(text, rs, at, at, 'l', l);
   for (const [at, z] of sizes) rs = setPara(text, rs, at, at, 'z', z);
   for (const [at, a] of aligns) rs = setPara(text, rs, at, at, 'a', a);
+  for (const [at, k] of kinds) rs = setPara(text, rs, at, at, 'k', k);
   return { text, rs };
 }

@@ -6,8 +6,8 @@ import type { TextRun } from '../model/textLinks';
 /**
  * «Документ» (src/labs): a sheet of A4 on the board, its margins as ГОСТ has them, its text typed in as a
  * sticker's, at its own size, from the top: what doesn't fit on a page goes on to the next. Words in it
- * may be bold, italic… (styles on parts of it, model/textLinks.ts), a paragraph a heading (1, 2 or 3,
- * bigger and bold, see setHeading there); its lines wrap as wide as their words come out in
+ * may be bold, italic… or code (styles on parts of it, model/textLinks.ts), a paragraph a heading (1…6,
+ * bigger and bold, see setHeading there), a list's item, a checklist's, a quote or a divider; its lines wrap as wide as their words come out in
  * their own styles, each as tall as its paragraph's size. The sheet shows one page at a time, the pager
  * under it («‹ 1 / 3 ›», ten pages at most) turning them, for whoever's looking (not for everyone).
  */
@@ -18,18 +18,23 @@ export const PAGE_TEXT = { w: PAGE.W - PAGE.LEFT - PAGE.RIGHT, h: PAGE.H - PAGE.
 /** The page each sheet shows here, by id. */
 const shown = new Map<string, number>();
 
-/** A heading's size against the text's own (1, 2, 3), and the room over one that isn't a page's first. */
-export const HEADING_SIZE = [1, 1.75, 1.375, 1.125], HEADING_GAP = 0.6;
+/** A heading's size against the text's own (1…6), and the room over one that isn't a page's first. */
+export const HEADING_SIZE = [1, 1.75, 1.375, 1.125, 1, 0.875, 0.75], HEADING_GAP = 0.6;
 /** Its lines 20% further apart than text elsewhere on the board. */
 export const DOC_LINE = LINE_HEIGHT * 1.2;
 
 /** A list's paragraphs: how far in their lines stand (their marker in that room, at its left). */
 export const LIST_IN = 28;
+/** A quote's paragraphs: how far in (a bar down their left), and how faint against the rest. */
+export const QUOTE_IN = 20, QUOTE_ALPHA = 0.75;
+/** Code in a line («Markdown в документе»): its size against the text round it. */
+export const CODE_SIZE = 0.9;
 
 /** A line as laid out: where it starts and ends in the text, its paragraph's size (a heading's level, 0
  *  for none), on its page how far down its top is; in a list, how far in it stands, and on its
- *  paragraph's first line, its marker («•» or its number with a dot). */
-export interface DocLine { s: number; e: number; size: number; h: number; page: number; y: number; indent: number; mark?: string; a?: TextAlign }
+ *  paragraph's first line, its marker («•» or its number with a dot) or a checklist's box (`box`, ticked
+ *  or not); its paragraph's kind (`k`: a quote's, or a divider's). */
+export interface DocLine { s: number; e: number; size: number; h: number; page: number; y: number; indent: number; mark?: string; a?: TextAlign; box?: 'todo' | 'done'; k?: string }
 
 let measure: CanvasRenderingContext2D | null = null;
 const laidOut = new Map<string, { key: string; lines: DocLine[] }>();
@@ -37,7 +42,7 @@ const laidOut = new Map<string, { key: string; lines: DocLine[] }>();
 /** The style on each character of s…e (by the runs), as pieces. */
 function piecesOf(runs: TextRun[], s: number, e: number): Array<{ s: number; e: number; r?: TextRun }> {
   const cuts = [...new Set([s, e, ...runs.flatMap((r) => [r.s, r.e]).filter((c) => c > s && c < e)])].sort((a, b) => a - b);
-  return cuts.slice(0, -1).map((c, i) => ({ s: c, e: cuts[i + 1], r: runs.find((r) => r.s <= c && r.e >= cuts[i + 1] && (r.b || r.i)) }));
+  return cuts.slice(0, -1).map((c, i) => ({ s: c, e: cuts[i + 1], r: runs.filter((r) => r.s <= c && r.e >= cuts[i + 1] && (r.b || r.i || r.m)).reduce<TextRun | undefined>((m, r) => ({ ...m, ...r }), undefined) }));
 }
 
 /** Its lines, laid out: each paragraph wrapped at the sheet's width, its words measured in their own
@@ -47,24 +52,24 @@ export function docLines(it: Item): DocLine[] {
   const key = `${text}|${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}`, was = laidOut.get(it.id);
   if (was?.key === key) return was.lines;
   if (typeof document !== 'undefined') measure ??= document.createElement('canvas').getContext('2d');
-  const styled = runs.filter((r) => r.b || r.i);
+  const styled = runs.filter((r) => r.b || r.i || r.m);
   /** How wide s…e is at `size`, `bold` (a heading) or as each piece's style has it. */
   const width = (s: number, e: number, size: number, bold: boolean) => {
     if (!measure) return (e - s) * size * 0.55;
     let w = 0;
     for (const p of piecesOf(styled, s, e)) {
-      measure.font = font(size, bold || p.r?.b ? 700 : st.weight, st.family, !!p.r?.i || st.italic);
+      measure.font = font(p.r?.m ? size * CODE_SIZE : size, bold || p.r?.b ? 700 : st.weight, p.r?.m ? 'mono' : st.family, !!p.r?.i || st.italic);
       w += measure.measureText(text.slice(p.s, p.e)).width;
     }
     return w;
   };
   const lines: DocLine[] = [];
-  let page = 0, y = 0, at = 0, n = 0, indent = 0, mark: string | undefined, a: TextAlign | undefined;
+  let page = 0, y = 0, at = 0, n = 0, indent = 0, mark: string | undefined, a: TextAlign | undefined, box: DocLine['box'], k: string | undefined;
   const put = (s: number, e: number, size: number, h: number, first: boolean) => {
     const tall = size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
     if (y + gap + tall > PAGE_TEXT.h && y > 0) { page++; y = 0; }
     else y += gap;
-    lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }), ...(a && { a }) });
+    lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }), ...(first && box && { box }), ...(a && { a }), ...(k && { k }) });
     y += tall;
   };
   for (const para of text.split('\n')) {
@@ -77,10 +82,14 @@ export function docLines(it: Item): DocLine[] {
     // (Its own alignment, as set for it alone, over the whole of it's.)
     a = runs.find((r) => r.a && r.s <= e0 && r.e > e0)?.a as TextAlign | undefined;
     const list = runs.find((r) => r.l && r.s <= e0 && r.e > e0)?.l;
+    // (A quote's, or a divider: a line across, its text if any left out.)
+    k = runs.find((r) => r.k && r.s <= e0 && r.e > e0)?.k;
+    if (k === 'hr') { n = 0; indent = 0; mark = undefined; box = undefined; put(s0, e0, size, 0, true); continue; }
     // A numbered list counts on while its paragraphs follow one another.
     n = list === 'number' ? n + 1 : 0;
-    indent = list ? LIST_IN : 0;
-    mark = list === 'number' ? `${n}.` : list ? '•' : undefined;
+    indent = (list ? LIST_IN : 0) + (k === 'quote' ? QUOTE_IN : 0);
+    box = list === 'todo' || list === 'done' ? list : undefined;
+    mark = list === 'number' ? `${n}.` : list === 'bullet' ? '•' : undefined;
     const room = PAGE_TEXT.w - indent;
     if (s0 === e0) { put(s0, e0, size, h, true); continue; }
     let ls = s0, first = true;
@@ -126,11 +135,29 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   ctx.textAlign = 'left';
   for (const l of docLines(it)) {
     if (l.page !== n) continue;
-    const top = it.y + PAGE.TOP + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14);
+    const top = it.y + PAGE.TOP + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14), left = it.x + PAGE.LEFT;
+    // A divider: a faint line across, in the middle of its line.
+    if (l.k === 'hr') {
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = alpha * 0.2;
+      ctx.fillRect(left, Math.round(top + tall / 2), PAGE_TEXT.w, 1);
+      ctx.globalAlpha = alpha;
+      continue;
+    }
+    // A quote: a bar down its left, its text fainter; a ticked item of a checklist fainter still.
+    const pe = paraEnd(text, l.s), done = runs.find((r) => r.l && r.s <= pe && r.e > pe)?.l === 'done';
+    const faint = (l.k === 'quote' ? QUOTE_ALPHA : 1) * (done ? 0.5 : 1);
+    ctx.globalAlpha = alpha * faint;
+    if (l.k === 'quote') {
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = alpha * faint * 0.2;
+      ctx.fillRect(left, top, 3, tall);
+      ctx.globalAlpha = alpha * faint;
+    }
     const cuts = [...new Set([l.s, l.e, ...[...runs, ...links].flatMap((r) => [r.s, r.e]).filter((c) => c > l.s && c < l.e)])].sort((a, b) => a - b);
     const pieces = cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => k.s <= c && k.e >= e).reduce((m, k) => ({ ...m, ...k }), {} as Partial<TextRun>);
-      const f = font(l.size, l.h || r.b ? 700 : st.weight, st.family, !!r.i || st.italic);
+      const f = font(r.m ? l.size * CODE_SIZE : l.size, l.h || r.b ? 700 : st.weight, r.m ? 'mono' : st.family, !!r.i || st.italic);
       ctx.font = f;
       const t = text.slice(c, e);
       return { t, r, f, w: ctx.measureText(t).width, link: links.find((k) => k.s <= c && k.e >= e) };
@@ -138,28 +165,85 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
     const lw = pieces.reduce((s, p) => s + p.w, 0);
     const room = PAGE_TEXT.w - l.indent;
     const la = l.a ?? align;
-    let x = it.x + PAGE.LEFT + l.indent + (la === 'center' ? (room - lw) / 2 : la === 'right' ? room - lw : 0);
+    let x = left + l.indent + (la === 'center' ? (room - lw) / 2 : la === 'right' ? room - lw : 0);
     ctx.font = font(l.size, l.h ? 700 : st.weight, st.family, st.italic);
     const fm = ctx.measureText('Hg'), base = top + (tall - fm.fontBoundingBoxAscent - fm.fontBoundingBoxDescent) / 2 + fm.fontBoundingBoxAscent, mid = top + tall / 2;
-    // A list's marker in the room on its left.
-    if (l.mark) { ctx.fillStyle = ink; ctx.fillText(l.mark, it.x + PAGE.LEFT + 4, base); }
+    // A list's marker in the room on its left (past a quote's bar); a checklist's box there.
+    const markX = left + l.indent - LIST_IN + 4;
+    if (l.mark) { ctx.fillStyle = ink; ctx.fillText(l.mark, markX, base); }
+    if (l.box) drawBox(ctx, markX, mid, l.size, l.box === 'done', ink);
     for (const p of pieces) {
       const color = p.link ? look.link : p.r.c ? look.tint(p.r.c) : ink;
+      // Code: on a rounded grey of its own.
+      if (p.r.m) {
+        ctx.fillStyle = ink;
+        ctx.globalAlpha = alpha * faint * 0.07;
+        ctx.beginPath();
+        ctx.roundRect(x - 2, mid - l.size * 0.65, p.w + 4, l.size * 1.3, 4);
+        ctx.fill();
+        ctx.globalAlpha = alpha * faint;
+      }
       ctx.font = p.f;
       ctx.fillStyle = color;
       ctx.fillText(p.t, x, base);
       if (p.r.u || it.fu) ctx.fillRect(x, mid + l.size * 0.42, p.w, rule);
-      if (p.r.x || it.fx) ctx.fillRect(x, mid + l.size * 0.04 - rule / 2, p.w, rule);
+      if (p.r.x || it.fx || done) ctx.fillRect(x, mid + l.size * 0.04 - rule / 2, p.w, rule);
       if (p.link) {
-        ctx.globalAlpha = alpha * 0.4;
+        ctx.globalAlpha = alpha * faint * 0.4;
         ctx.fillRect(x, base + fm.fontBoundingBoxDescent - rule, p.w, rule);
-        ctx.globalAlpha = alpha;
+        ctx.globalAlpha = alpha * faint;
         look.onLink?.({ x, y: top, w: p.w, h: tall, url: p.link.url });
       }
       x += p.w;
     }
+    ctx.globalAlpha = alpha;
   }
   ctx.restore();
+}
+
+/** Where the paragraph a character's in ends (its line break, or the end of the text). */
+const paraEnd = (text: string, at: number) => { const n = text.indexOf('\n', at); return n < 0 ? text.length : n; };
+
+/** A checklist's box, `size` the text's: its left at x, its middle at y; ticked, filled with a tick in it. */
+function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ticked: boolean, ink: string): void {
+  const s = Math.round(size * 0.8), top = y - s / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(x + 0.75, top + 0.75, s - 1.5, s - 1.5, 4);
+  if (ticked) {
+    ctx.fillStyle = ink;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = Math.max(1.5, s / 8);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x + s * 0.27, top + s * 0.52);
+    ctx.lineTo(x + s * 0.43, top + s * 0.68);
+    ctx.lineTo(x + s * 0.73, top + s * 0.34);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha *= 0.5;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** The box of a checklist's item a point's on, on the page shown of a sheet: the sheet, and the
+ *  paragraph's start in its text (to tick it, or not). */
+export function docBoxAt(items: Item[], w: Point): { it: Item; at: number } | null {
+  for (const it of items) {
+    if (it.type !== 'page' || w.x < it.x || w.x > it.x + it.w || w.y < it.y || w.y > it.y + it.h) continue;
+    const n = pageShown(it);
+    for (const l of docLines(it)) {
+      if (l.page !== n || !l.box) continue;
+      const x = it.x + PAGE.LEFT + l.indent - LIST_IN + 4, mid = it.y + PAGE.TOP + l.y + l.size * DOC_LINE / 2, s = Math.round(l.size * 0.8);
+      if (w.x >= x - 3 && w.x <= x + s + 3 && Math.abs(w.y - mid) <= s / 2 + 3) return { it, at: l.s };
+    }
+  }
+  return null;
 }
 
 /** How many pages it has (one at least). */

@@ -298,6 +298,19 @@
 .rich-edit > div[data-l="number"] { counter-increment: rich-n; }
 .rich-edit > div:not([data-l="number"]) + div[data-l="number"], .rich-edit > div[data-l="number"]:first-child { counter-reset: rich-n; }
 .rich-edit > div[data-l="number"]::before { content: counter(rich-n) "."; }
+/* A checklist's box (as drawBox in docPage.ts): clicked, ticked; a ticked item faint and struck through. */
+.rich-edit > div:is([data-l="todo"], [data-l="done"])::before { content: ""; box-sizing: border-box; width: .8em; height: .8em;
+  top: calc((1lh - .8em) / 2); border: 1.5px solid color-mix(in srgb, currentColor 50%, transparent); border-radius: 4px; cursor: pointer; }
+.rich-edit > div[data-l="done"] { opacity: .5; text-decoration: line-through; }
+.rich-edit > div[data-l="done"]::before { border: 0; background: currentColor url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.7 5.2l1.6 1.6 3-3.4' fill='none' stroke='%23fff' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat; }
+/* A quote: 20 in (QUOTE_IN), a bar down its left, its text fainter; a list in it, its marker past the bar. */
+.rich-edit > div[data-k="quote"] { padding-left: 20px; opacity: .75; box-shadow: inset 3px 0 0 color-mix(in srgb, currentColor 20%, transparent); }
+.rich-edit > div[data-k="quote"][data-l] { padding-left: 48px; }
+.rich-edit > div[data-k="quote"][data-l]::before { left: 24px; }
+.rich-edit > div[data-k="quote"][data-l="done"] { opacity: .375; }
+/* A divider: a faint line across its middle. */
+.rich-edit > div[data-k="hr"] { position: relative; }
+.rich-edit > div[data-k="hr"]::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); pointer-events: none; }
 
 /* «Быстрое создание»: its window, the field alone for now. */
 .quick-pop .confirm-input { margin-bottom: 0; }

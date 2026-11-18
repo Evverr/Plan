@@ -13,7 +13,7 @@ import { headerPartAt } from '../labs/header';
 import { onFormButton } from '../labs/formObject';
 import { pollHot } from '../labs/poll';
 import { kanbanHot } from '../labs/kanban';
-import { pagerHot } from '../labs/docPage';
+import { docBoxAt, pagerHot } from '../labs/docPage';
 import { branchBase, buttonKey, foldBadge, foldedWays, mindButtons, mindWay, ringRadius, type MindButtonAt, type Way } from '../model/mind';
 import { frameButtonAt } from './frames';
 import { rotateCursor } from './cursors';
@@ -356,7 +356,9 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
     ?? ((fb) => (fb ? `fb:${fb.id}:${fb.kind}` : null))(frameButtonUnder(ed, w))
     // (A kanban's, timeline's or table's «…» by its title, «Троеточие у титула».)
     ?? (over?.hd && over.tie && headerPartAt(over, w) === 'more' ? `more:${over.id}` : null)
-    ?? (labOn('docPage') ? pagerHot(ed.board.list(), w) : null);
+    ?? (labOn('docPage') ? pagerHot(ed.board.list(), w) : null)
+    // (A checklist's box on a document's page, «Markdown в документе».)
+    ?? (labOn('docPage') && ed.editingId !== over?.id ? ((b) => (b ? `box:${b.it.id}:${b.at}` : null))(docBoxAt(ed.board.list(), w)) : null);
   if (hot !== ed.hotPlus) { ed.hotPlus = hot; ed.requestRender(); }
   if (hot || frameButtonUnder(ed, w) || foldBadgeAt(ed, w)) cursor = 'pointer';
   else if (linkHandleAt(ed, w)) cursor = 'move';

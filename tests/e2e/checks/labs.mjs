@@ -1209,6 +1209,48 @@ export const checks = {
     expect(await p.ev(`JSON.stringify(planx.board.get('${id}').rs)`), 'two items in the list').toBe(JSON.stringify([{ s: 15, e: 16, l: 'number' }, { s: 26, e: 27, l: 'number' }]));
   },
 
+  async '"Markdown в документе": a quote, a checklist, a divider, a heading 4 and code typed as Markdown; the box clicked on the page ticked; the panel\'s menus'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { const it = planx.board.get('${id}'); planx.board.update('${id}', { text: 'Заметки' }); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    const key = async (k, code, vk, text) => { await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: k, code, windowsVirtualKeyCode: vk, text }); await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: k, code }); await sleep(60); };
+    const enter = () => key('Enter', 'Enter', 13, '\r'), space = () => key(' ', 'Space', 32, ' '), type = (text) => p.cdp('Input.insertText', { text });
+    await enter();
+    await type('>'); await space(); await type('Цитата');
+    await enter(); await enter();
+    await type('[]'); await space(); await type('купить хлеб');
+    await enter(); await type('---'); await enter();
+    await type('####'); await space(); await type('Мелкий');
+    await enter(); await type('вызов `run()'); await key('`', 'Backquote', 192, '`'); await type(' и дальше');
+    await sleep(100);
+    expect(await p.ev(`[...document.querySelector('.rich-edit').children].map((d) => [d.dataset.k ?? '', d.dataset.l ?? '', d.dataset.h].join(':')).join(' ')`), 'its paragraphs as typed in')
+      .toBe('::0 quote::0 :todo:0 hr::0 ::4 ::0');
+    // The panel: headings to six, a quote and a divider in «Стиль», a checklist in the lists, code lit.
+    await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
+    await sleep(150);
+    expect(await p.ev(`[...document.querySelectorAll('.tf-menu .tf-item')].map((b) => b.textContent).join()`), 'its style menu').toBe('Обычный,Заголовок 1,Заголовок 2,Заголовок 3,Заголовок 4,Заголовок 5,Заголовок 6,Цитата,Разделитель');
+    await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
+    await key('Escape', 'Escape', 27);
+    await sleep(300);
+    const it = await p.ev(`planx.board.get('${id}')`);
+    expect(it.text, 'its text').toBe('Заметки\nЦитата\nкупить хлеб\n\nМелкий\nвызов run() и дальше');
+    const at = (w) => it.text.indexOf(w), end = (w) => at(w) + w.length;
+    expect(JSON.stringify(it.rs), 'kept: a quote, a checklist\'s item, a divider, a heading 4, code on run() alone').toBe(JSON.stringify([
+      { s: end('Цитата'), e: end('Цитата') + 1, k: 'quote' }, { s: end('хлеб'), e: end('хлеб') + 1, l: 'todo' }, { s: end('хлеб') + 1, e: end('хлеб') + 2, k: 'hr' },
+      { s: end('Мелкий'), e: end('Мелкий') + 1, h: 4 }, { s: at('run()'), e: end('run()'), m: true }]));
+    // Its box clicked on the page: ticked.
+    await p.ev(`planx.editor.setSelection([])`);
+    const box = await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'), l = d.docLines(it).find((x) => x.box), P = (await import('/src/model/types.ts')).PAGE;
+      const s = planx.editor.toScreen({ x: it.x + P.LEFT + l.indent - d.LIST_IN + 4 + 6, y: it.y + P.TOP + l.y + l.size * d.DOC_LINE / 2 }); return [s.x, s.y]; })()`);
+    await p.click(box);
+    await sleep(150);
+    expect(await p.ev(`(async () => (await import('/src/model/textLinks.ts')).paraAt(planx.board.get('${id}').text, planx.board.get('${id}').rs, ${at('купить')}, 'l'))()`), 'ticked by a click on its box').toBe('done');
+    const md = await p.ev(`(async () => (await import('/src/labs/docExport.ts')).docMarkdown(planx.board.get('${id}')))()`);
+    expect(md, 'as Markdown').toBe('Заметки\n\n> Цитата\n\n- [x] купить хлеб\n\n---\n\n#### Мелкий\n\nвызов `run()` и дальше\n');
+  },
+
   async '"Голосование в объектах": set up in its fields, started, an answer clicked voted for (the shares shown), clicked again unvoted'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.addPoll({ x: 600, y: 360 }); })()`);
     await sleep(300);

@@ -2,8 +2,10 @@ import { useLayoutEffect, useRef } from 'react';
 import type { Editor } from '../editor/editor';
 import { PAGE, type Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
-import { DOC_LINE, docLines, PAGE_TEXT, pagesOf, pageShown } from './docPage';
+import { remapLinks, runsHave, setRun, type TextRun } from '../model/textLinks';
+import { DOC_LINE, docLines, LIST_IN, PAGE_TEXT, pagesOf, pageShown } from './docPage';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
+import { labOn } from './labs';
 
 /**
  * «Документ» typed in as it looks: a field the browser edits laid over the sheet's text (scaled with the
@@ -101,21 +103,141 @@ export function richAlign(a: string): boolean {
   return true;
 }
 
-/** The paragraphs what's picked is in made a list (`kind` 'bullet' or 'number'), or not one any more
- *  (all of them that list already). */
+/** The paragraphs what's picked is in made a list (`kind` 'bullet', 'number' or a checklist's 'todo'),
+ *  or not one any more (all of them that list already: a checklist's ticked or not). */
 export function richList(kind: string): boolean {
   if (!restore() || !active) return false;
-  const ps = pickedParagraphs(), off = ps.length > 0 && ps.every((p) => p.dataset.l === kind);
-  for (const p of ps) { if (off) delete p.dataset.l; else p.dataset.l = kind; }
+  const ps = pickedParagraphs(), has = (p: HTMLElement) => p.dataset.l === kind || (kind === 'todo' && p.dataset.l === 'done');
+  const off = ps.length > 0 && ps.every(has);
+  for (const p of ps) { if (off) delete p.dataset.l; else if (!has(p)) p.dataset.l = kind; }
   return true;
 }
 
-/** What's on what's picked: bold, italic, underlined, struck through, the caret's paragraph's level and list. */
-export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; h: number; l: string | undefined; z: number | undefined; a: string | undefined } | null {
+/** The paragraphs what's picked is in made a quote, or not one any more (all of them quotes already). */
+export function richQuote(): boolean {
+  if (!restore() || !active) return false;
+  const ps = pickedParagraphs(), off = ps.length > 0 && ps.every((p) => p.dataset.k === 'quote');
+  for (const p of ps) { if (off) delete p.dataset.k; else if (p.dataset.k !== 'hr') p.dataset.k = 'quote'; }
+  return true;
+}
+
+/** A plain paragraph, empty. */
+function emptyPara(): HTMLDivElement {
+  const d = document.createElement('div');
+  d.dataset.h = '0';
+  d.appendChild(document.createElement('br'));
+  return d;
+}
+/** The caret at the start of a paragraph. */
+function caretTo(p: HTMLElement): void {
+  const r = document.createRange();
+  r.setStart(p, 0);
+  r.collapse(true);
+  getSelection()?.removeAllRanges();
+  getSelection()?.addRange(r);
+}
+/** A divider: `para` made one (empty), or one put after it; the caret in a paragraph after it. */
+function divider(para: HTMLElement, replace: boolean): void {
+  let hr: HTMLElement = para;
+  if (replace) {
+    para.innerHTML = '<br>';
+    para.dataset.h = '0';
+    para.removeAttribute('style');
+    delete para.dataset.l;
+  } else { hr = emptyPara(); para.after(hr); }
+  hr.dataset.k = 'hr';
+  const next = hr.nextElementSibling as HTMLElement | null;
+  const to = next && !next.textContent && next.dataset.k !== 'hr' ? next : emptyPara();
+  if (to !== next) hr.after(to);
+  caretTo(to);
+}
+
+/** A divider where the caret is (its paragraph, if empty, made one). */
+export function richDivider(): boolean {
+  if (!restore() || !active) return false;
+  const p = pickedParagraphs().pop();
+  if (!p) return false;
+  divider(p, !p.textContent);
+  return true;
+}
+
+/** Where a place in the field is in its text (its paragraphs one each, a line break between: see fromDom). */
+function indexAt(root: HTMLElement, node: Node, off: number): number {
+  // (Not counting the gap put after code to type past it: see rewrite.)
+  let base = 0;
+  const paras = [...root.children], len = (s: string | null) => (s ?? '').replace(/\u200B/g, '').length;
+  if (node === root) { for (const p of paras.slice(0, off)) base += len(p.textContent) + 1; return Math.max(0, base - (off >= paras.length ? 1 : 0)); }
+  for (const para of paras) {
+    if (para === node || para.contains(node)) {
+      const r = document.createRange();
+      r.setStart(para, 0);
+      r.setEnd(node, off);
+      return base + len(r.toString());
+    }
+    base += len(para.textContent) + 1;
+  }
+  return Math.max(0, base - 1);
+}
+
+/** The field remade from its text and styles changed by `fn` (on what's picked, s…e), what it gives back
+ *  picked then. */
+function rewrite(fn: (text: string, rs: TextRun[] | undefined, s: number, e: number) => { text: string; rs: TextRun[] | undefined; s: number; e: number } | null): boolean {
+  if (!active) return false;
+  const el = active.el, sel = getSelection();
+  if (!sel?.rangeCount || !el.contains(sel.anchorNode)) return false;
+  const r = sel.getRangeAt(0), s = indexAt(el, r.startContainer, r.startOffset), e = indexAt(el, r.endContainer, r.endOffset);
+  const was = fromDom(el, getComputedStyle(el).color), out = fn(was.text, was.rs, s, e);
+  if (!out) return false;
+  el.innerHTML = toHtml({ text: out.text, rs: out.rs, fs: active.fs } as Item);
+  const a = domAt(el, out.s), b = domAt(el, out.e);
+  if (a && b) {
+    const q = document.createRange();
+    q.setStart(a[0], a[1]);
+    q.setEnd(b[0], b[1]);
+    // (The caret at the end of code: past it, what's typed next not code.)
+    const code = out.s === out.e && a[0].nodeType === Node.TEXT_NODE && a[1] === (a[0].textContent ?? '').length ? (a[0].parentElement as HTMLElement | null) : null;
+    if (code && code !== el && code.style.fontFamily.includes('JetBrains Mono')) {
+      const gap = document.createTextNode('\u200B');
+      code.after(gap);
+      q.setStart(gap, 1);
+      q.collapse(true);
+    }
+    sel.removeAllRanges();
+    sel.addRange(q);
+  }
+  return true;
+}
+
+/** Code on what's picked (off again if it's code already). */
+export function richCode(): boolean {
+  if (!restore()) return false;
+  return rewrite((text, rs, s, e) => (e > s ? { text, rs: setRun(rs, s, e, 'm', !runsHave(rs, s, e, 'm')), s, e } : null));
+}
+
+/** Whether the caret (or what's picked) is in code. */
+function inCode(root: HTMLElement): boolean {
+  const n = getSelection()?.anchorNode, el = n?.nodeType === Node.TEXT_NODE ? n.parentElement : (n as Element | null);
+  return !!el && el !== root && root.contains(el) && !!el.closest('span')?.style.fontFamily.includes('JetBrains Mono');
+}
+
+/** What's on what's picked: bold, italic, underlined, struck through, code; the caret's paragraph's level,
+ *  list, size, alignment and kind. */
+export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; m: boolean; h: number; l: string | undefined; z: number | undefined; a: string | undefined; k: string | undefined } | null {
   if (!active) return null;
   const q = (c: string) => { try { return document.queryCommandState(c); } catch { return false; } };
   const p = pickedParagraphs()[0], h = Number(p?.dataset.h) || 0;
-  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), h, l: p?.dataset.l, z: Number(p?.dataset.z) || undefined, a: p?.dataset.a };
+  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), m: inCode(active.el), h, l: p?.dataset.l, z: Number(p?.dataset.z) || undefined, a: p?.dataset.a, k: p?.dataset.k };
+}
+
+/** Markdown typed at a paragraph's start, before a space («Markdown в документе»): what it makes it. */
+function markdownStart(before: string): { h?: number; l?: string; k?: string } | null {
+  if (/^#{1,6}$/.test(before)) return { h: before.length };
+  if (before === '>') return { k: 'quote' };
+  if (/^[-*+]$/.test(before)) return { l: 'bullet' };
+  if (/^\d+\.$/.test(before)) return { l: 'number' };
+  if (/^\[ ?\]$/.test(before)) return { l: 'todo' };
+  if (/^\[[xх]\]$/i.test(before)) return { l: 'done' };
+  return null;
 }
 
 export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
@@ -230,7 +352,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         const clean = html && cleanPaste(html, fs), tpl = document.createElement('div');
         tpl.innerHTML = clean || '';
         const blocks = [...tpl.children] as HTMLElement[];
-        if (blocks.length === 1 && blocks[0].dataset.h === '0') document.execCommand('insertHTML', false, blocks[0].innerHTML);
+        if (blocks.length === 1 && blocks[0].dataset.h === '0' && !blocks[0].dataset.l && !blocks[0].dataset.k) document.execCommand('insertHTML', false, blocks[0].innerHTML);
         else if (blocks.length && ref.current) {
           // Paragraphs, or a heading: put in as paragraphs of their own where the caret is (the paragraph
           // it's in split there), the caret after them.
@@ -255,17 +377,83 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         let n: Node | null = s?.anchorNode ?? null;
         while (n && n.parentNode !== el) n = n.parentNode;
         const para = n as HTMLElement | null;
-        if (para?.dataset && para.dataset.h !== '0' && !para.textContent && para.previousElementSibling) { para.dataset.h = '0'; para.removeAttribute('style'); }
+        if (!para?.dataset) return;
+        const prev = para.previousElementSibling as HTMLElement | null;
+        if (para.dataset.h !== '0' && !para.textContent && prev) { para.dataset.h = '0'; para.removeAttribute('style'); }
+        // Typed in a divider: text again. A new paragraph after one (Enter on it): plain, and after a ticked
+        // item of a checklist, one not ticked.
+        if (para.dataset.k === 'hr' && (para.textContent || prev?.dataset.k === 'hr')) delete para.dataset.k;
+        if (para.dataset.l === 'done' && !para.textContent && prev?.dataset.l) para.dataset.l = 'todo';
+      }}
+      onPointerDown={(e) => {
+        // A checklist's box clicked: ticked, or not any more (the caret where it was).
+        const el = ref.current, t = e.target as HTMLElement;
+        const para = el && t.parentElement === el ? t : null;
+        if (!para || (para.dataset.l !== 'todo' && para.dataset.l !== 'done')) return;
+        const box = parseFloat(getComputedStyle(para).paddingLeft) * editor.cam.z, x = e.clientX - para.getBoundingClientRect().left;
+        if (x < box - 4 * editor.cam.z && x > box - LIST_IN * editor.cam.z) {
+          e.preventDefault();
+          para.dataset.l = para.dataset.l === 'done' ? 'todo' : 'done';
+        }
       }}
       onKeyDown={(e) => {
         // In a list: Enter in an empty item ends the list there, Backspace at an item's start takes it out
-        // of the list (as in Word).
+        // of the list (as in Word). In a quote, the same: out of the quote.
         const para = ref.current && paragraphAt(ref.current), sel = getSelection();
         const atStart = !!para && !!sel?.isCollapsed && (() => { const r = document.createRange(); r.selectNodeContents(para); r.setEnd(sel.anchorNode!, sel.anchorOffset); return !r.toString(); })();
-        if (para?.dataset.l && ((e.key === 'Enter' && !e.shiftKey && !para.textContent) || (e.key === 'Backspace' && atStart))) {
+        const out = (e.key === 'Enter' && !e.shiftKey && !para?.textContent) || (e.key === 'Backspace' && atStart);
+        if (para?.dataset.l && out) {
           e.preventDefault();
           delete para.dataset.l;
           return;
+        }
+        if (para?.dataset.k === 'quote' && out) {
+          e.preventDefault();
+          delete para.dataset.k;
+          return;
+        }
+        // Backspace just after a divider: the divider gone.
+        const prev = para?.previousElementSibling as HTMLElement | null;
+        if (e.key === 'Backspace' && atStart && prev?.dataset.k === 'hr') {
+          e.preventDefault();
+          prev.remove();
+          return;
+        }
+        // Markdown as it's typed («Markdown в документе»): at a paragraph's start «# » a heading (to six
+        // #s), «> » a quote, «- » a list, «1. » a numbered one, «[] » a checklist; «---» and Enter a
+        // divider; `code` in a line.
+        if (labOn('docMd') && para && sel?.isCollapsed && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          const r = document.createRange();
+          r.selectNodeContents(para);
+          r.setEnd(sel.anchorNode!, sel.anchorOffset);
+          const before = r.toString().replace(/​/g, '');
+          const md = e.key === ' ' ? markdownStart(before) : null;
+          if (md) {
+            e.preventDefault();
+            getSelection()?.removeAllRanges();
+            getSelection()?.addRange(r);
+            document.execCommand('delete');
+            if (md.h) { para.dataset.h = String(md.h); para.setAttribute('style', headingStyle(md.h, fs, para === ref.current!.firstElementChild, Number(para.dataset.z) || undefined, para.dataset.a)); }
+            if (md.l) para.dataset.l = md.l;
+            if (md.k) para.dataset.k = md.k;
+            return;
+          }
+          if (e.key === 'Enter' && !e.shiftKey && /^(-{3,}|\*{3,}|_{3,})$/.test((para.textContent ?? '').trim())) {
+            e.preventDefault();
+            divider(para, true);
+            return;
+          }
+          // (The closing `: what's between it and the one before it, code; the two of them gone.)
+          const open = before.lastIndexOf('`');
+          if (e.key === '`' && open >= 0 && open < before.length - 1) {
+            e.preventDefault();
+            rewrite((text, rs, s) => {
+              const o = s - before.length + open;
+              const t = text.slice(0, o) + text.slice(o + 1);
+              return { text: t, rs: setRun(remapLinks(text, t, rs), o, s - 1, 'm', true), s: s - 1, e: s - 1 };
+            });
+            return;
+          }
         }
         if (e.key === 'Escape') { e.preventDefault(); commit(); }
         else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); commit(); editor.setSelection([]); }

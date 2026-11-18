@@ -36,6 +36,7 @@
 .tf-item.num { text-align: center; font-variant-numeric: tabular-nums; }
 .tf-item:hover { background: var(--fmt-hover); }
 .tf-item.on { background: var(--fmt-on); }
+.tf-menu-sep { flex: none; height: 1px; margin: var(--s4) var(--s6); background: var(--line); }
 .tf-row { display: flex; gap: var(--s14); padding: var(--s8) var(--s10); }
 .fb { position: relative; isolation: isolate; flex: none; min-width: var(--e30); height: var(--e30); border: 0; background: transparent; display: flex; align-items: center; justify-content: center; gap: var(--s5); padding: 0; cursor: pointer; }
 /* Highlight is 42px tall (6px past the 30px icon on each side), as in the Figma "Ato / Hover icon". */

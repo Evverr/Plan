@@ -9,7 +9,8 @@ import { pagesOf, showPage } from './docPage';
 
 /**
  * «Документ» (docPage.ts) saved as a file: Markdown (its styles as Markdown has them: bold **, italic *,
- * struck through ~~, underlined as <u>; colours left out; each line a paragraph), or a PDF of its pages,
+ * struck through ~~, underlined as <u>, code `…`; colours left out; each line a paragraph: headings,
+ * lists, checklists, quotes and dividers as Markdown has them), or a PDF of its pages,
  * each an A4 page as the sheet shows it.
  */
 
@@ -25,6 +26,7 @@ export function docMarkdown(it: Item): string {
       const m = /^(\s*)(.*?)(\s*)$/.exec(line)!;
       if (!r || !m[2]) return line;
       let core = m[2];
+      if (r.m) core = `\`${core}\``;
       if (r.u) core = `<u>${core}</u>`;
       if (r.x) core = `~~${core}~~`;
       if (r.i) core = `*${core}*`;
@@ -34,14 +36,18 @@ export function docMarkdown(it: Item): string {
   }
   // Each paragraph on its own, a heading's after its #s.
   let at = 0;
-  const paras = text.split('\n').map((p) => { const k = { h: headingAt(text, runs, at), l: paraAt(text, runs, at, 'l') }; at += p.length + 1; return k; });
-  // A list's items one under another (numbered from 1 as they follow one another), the rest a blank line apart.
+  const paras = text.split('\n').map((p) => { const k = { h: headingAt(text, runs, at), l: paraAt(text, runs, at, 'l'), k: paraAt(text, runs, at, 'k') }; at += p.length + 1; return k; });
+  // A list's items one under another (numbered from 1 as they follow one another; a checklist's with its
+  // box, ticked or not), the rest a blank line apart; a quote's after «> » (its paragraphs a «>» apart), a
+  // divider «---».
   let n = 0;
+  const marker = (l: string | undefined) => (l === 'number' ? `${n}.` : l === 'todo' ? '- [ ]' : l === 'done' ? '- [x]' : '-');
   return out.split('\n').map((p, i) => {
-    const { h, l } = paras[i];
+    const { h, l, k } = paras[i], q = k === 'quote' ? '> ' : '';
     n = l === 'number' ? n + 1 : 0;
-    const line = h && p.trim() ? `${'#'.repeat(h)} ${p.replace(/^\*\*(.*)\*\*$/, '$1')}` : l ? `${l === 'number' ? `${n}.` : '-'} ${p}` : p;
-    return i === 0 ? line : `${l && paras[i - 1].l ? '\n' : '\n\n'}${line}`;
+    const line = k === 'hr' ? '---' : q + (h && p.trim() ? `${'#'.repeat(h)} ${p.replace(/^\*\*(.*)\*\*$/, '$1')}` : l ? `${marker(l)} ${p}` : p);
+    const prev = paras[i - 1];
+    return i === 0 ? line : `${l && prev.l && prev.k === k ? '\n' : q && prev.k === 'quote' ? '\n>\n' : '\n\n'}${line}`;
   }).join('') + '\n';
 }
 
