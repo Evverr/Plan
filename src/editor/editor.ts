@@ -44,6 +44,8 @@ import { keepMyObject, myObjects } from '../labs/myObjects';
 import { finishNib, nibPoints } from '../labs/nib';
 import { nodeEditing, shapedBy } from '../labs/paths';
 import { hiddenByLayers, layersVersion, newItemLayer } from '../labs/layers';
+import { pagesTurned, setDocObjects } from '../labs/docPage';
+import { offPage, tidyDocObjects } from '../labs/docObjects';
 import { zoomsWithKey } from '../labs/wheelZoom';
 import { codeFit, scrollCode } from '../labs/codeBlock';
 import { FORM_H, FORM_RAD, FORM_W } from '../labs/formObject';
@@ -255,7 +257,7 @@ export class Editor {
   private plusTimer = 0;
   /** What's in sight, worked out once for each change of the board (it's asked for on every move
    *  of the pointer and every frame drawn). */
-  private sight: { version: number; lv: number; hidden: Set<string>; folded: Map<string, Map<Way, number>>; shown: Item[]; links: Link[] } | null = null;
+  private sight: { version: number; lv: number; pt: number; hidden: Set<string>; folded: Map<string, Map<Way, number>>; shown: Item[]; links: Link[] } | null = null;
   /** Steps undone along with the board's though they aren't on it (the panels put back as by
    *  default), each at the place in the board's history it was taken. */
   private outside: Array<{ undo: () => void; depth: number; along?: boolean }> = [];
@@ -264,6 +266,8 @@ export class Editor {
     // (Links meet an instance by its contents.)
     setInstanceBox((it) => instanceBounds(it, this.board.list()));
     this.board = board;
+    // What's put in a document's text («Таблица в документе», src/labs) found on this board.
+    setDocObjects((id) => this.board.get(id));
     this.presence = opts.presence;
     this.camKey = opts.storageKey ?? 'planx-cam';
     const saved = readJSON<Camera>(this.camKey);
@@ -436,6 +440,8 @@ export class Editor {
       if ((tr.origin === LOCAL || tr.origin === this.board.undoManager) && !this.gesture && labOn('kanban')) queueMicrotask(() => tidyKanbans(this.board));
       // A header tied to a kanban or timeline (src/labs/header.ts) over its corner, as it's moved too.
       if (tr.origin === LOCAL || tr.origin === this.board.undoManager) queueMicrotask(() => tidyTies(this.board));
+      // A table put in a document's text where its room there is («Таблица в документе», src/labs), not while something's dragged.
+      if ((tr.origin === LOCAL || tr.origin === this.board.undoManager) && !this.gesture) queueMicrotask(() => tidyDocObjects(this.board));
     };
     doc.on('afterTransaction', tidy);
     offs.push(() => doc.off('afterTransaction', tidy));
@@ -2110,14 +2116,16 @@ export class Editor {
   /* ---------- frames and what's in sight ---------- */
 
   private inSight() {
-    const version = this.board.getVersion(), lv = layersVersion();
-    if (this.sight?.version !== version || this.sight.lv !== lv) {
+    const version = this.board.getVersion(), lv = layersVersion(), pt = pagesTurned();
+    if (this.sight?.version !== version || this.sight.lv !== lv || this.sight.pt !== pt) {
       const items = this.board.list(), hidden = hiddenIn(this.board, items);
       // Hidden layers ("Слои", src/labs): out of sight, their links too.
       const layered = hiddenByLayers(this.board, items);
       for (const id of layered) hidden.add(id);
       // A header tied to what's hidden (in a folded frame, say) hidden with it («Титул в объектах», src/labs).
       for (const i of items) if (i.tie && hidden.has(i.tie)) hidden.add(i.id);
+      // A table put in a document's text on a page it doesn't show, out of sight («Таблица в документе», src/labs).
+      for (const i of items) if (i.inDoc && (hidden.has(i.inDoc) || offPage(i, (id) => this.board.get(id)))) hidden.add(i.id);
       // How many nodes each folded mind map node hides, each way.
       const get = (id: string) => this.board.get(id), folded = new Map<string, Map<Way, number>>();
       for (const i of items) {
@@ -2129,7 +2137,7 @@ export class Editor {
       const piled = pileHidden(items, (id) => this.board.get(id));
       const shown = stacked(this.board, items.filter((i) => !hidden.has(i.id) && !piled.has(i.id) && !unseen(i)));
       const links = linksIn(this.board, items, hidden).filter((l) => !piled.has(l.from) && !piled.has(l.to));
-      this.sight = { version, lv, hidden, folded, shown, links: layered.size ? links.filter((l) => !layered.has(l.from) && !layered.has(l.to)) : links };
+      this.sight = { version, lv, pt, hidden, folded, shown, links: layered.size ? links.filter((l) => !layered.has(l.from) && !layered.has(l.to)) : links };
     }
     return this.sight;
   }

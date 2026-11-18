@@ -33,6 +33,15 @@ export function copiesOf(src: Item[], srcLinks: Link[], offset: number, maxZ: nu
     if (it.gp) it.gp = groups(it.gp);
     // (A header tied to what's copied with it, tied to its copy; without it, its own.)
     if (it.tie) it.tie = map.get(it.tie);
+    // (A table put in a document's text, «Таблица в документе», in its copy's; its place there, its own copy's.)
+    if (it.inDoc) it.inDoc = map.get(it.inDoc);
+    if (it.type === 'page' && it.rs?.some((r) => r.o)) {
+      it.rs = it.rs.map((r) => {
+        if (!r.o) return r;
+        const { o, ...rest } = r;
+        return map.has(o) ? { ...rest, o: map.get(o) } : rest;
+      }).filter((r) => Object.keys(r).length > 2);
+    }
     return it;
   });
   // A link copied with its instance is named as the instance's sync names it.

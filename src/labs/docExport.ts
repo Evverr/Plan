@@ -5,7 +5,9 @@ import { drawScene } from '../canvas/renderer';
 import { fileName, saveFile } from '../files';
 import { pdfOfPages } from './exportPdf';
 import { lightTheme } from './exportPng';
-import { pagesOf, showPage } from './docPage';
+import { docObject, pagesOf, showPage } from './docPage';
+import { objectsIn, slotOf } from './docObjects';
+import { cellText, colsOf, rowsOf } from '../model/table';
 
 /**
  * «Документ» (docPage.ts) saved as a file: Markdown (its styles as Markdown has them: bold **, italic *,
@@ -39,7 +41,7 @@ export function docMarkdown(it: Item): string {
   const raw = text.split('\n');
   const paras = raw.map((p) => {
     const k = paraAt(text, runs, at, 'k'), code = k === 'code';
-    const o = { h: code ? 0 : headingAt(text, runs, at), l: code ? undefined : paraAt(text, runs, at, 'l'), k, d: code ? 0 : paraAt(text, runs, at, 'd') ?? 0 };
+    const o = { h: code ? 0 : headingAt(text, runs, at), l: code ? undefined : paraAt(text, runs, at, 'l'), k, d: code ? 0 : paraAt(text, runs, at, 'd') ?? 0, o: paraAt(text, runs, at, 'o') };
     at += p.length + 1;
     return o;
   });
@@ -56,9 +58,21 @@ export function docMarkdown(it: Item): string {
       const line = `${prev?.k === 'code' ? '' : '```\n'}${raw[i]}${next?.k === 'code' ? '' : '\n```'}`;
       return i === 0 ? line : `${prev.k === 'code' ? '\n' : '\n\n'}${line}`;
     }
+    // A table put in its place («Таблица в документе»): as Markdown has one, its first row the header.
+    const table = paras[i].o ? docObject(paras[i].o!) : undefined;
+    if (table) { const line = tableMarkdown(table); return i === 0 ? line : `\n\n${line}`; }
     const line = k === 'hr' ? '---' : q + (h && p.trim() ? `${'#'.repeat(h)} ${p.replace(/^\*\*(.*)\*\*$/, '$1')}` : l ? `${'    '.repeat(d)}${marker(l, d)} ${p}` : p);
     return i === 0 ? line : `${l && prev.l && prev.k === k ? '\n' : q && prev.k === 'quote' ? '\n>\n' : '\n\n'}${line}`;
   }).join('') + '\n';
+}
+
+/** A table as Markdown has one: a row a line, its cells between «|»s (a «|» in them as «\|», their lines
+ *  run together), a «---» under the first. */
+export function tableMarkdown(t: Item): string {
+  const n = colsOf(t).length, m = rowsOf(t).length;
+  const cell = (i: number) => cellText(t, i).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ').trim();
+  const row = (r: number) => `| ${Array.from({ length: n }, (_, c) => cell(r * n + c)).join(' | ')} |`;
+  return [row(0), `|${' --- |'.repeat(n)}`, ...Array.from({ length: m - 1 }, (_, r) => row(r + 1))].join('\n');
 }
 
 /** Saves it as Markdown, named after its first line. */
@@ -78,8 +92,11 @@ export async function savePdf(ed: Editor, it: Item): Promise<void> {
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     const sheet = { ...it, x: 0, y: 0 }, was = showPage(it.id, n);
+    // (With the tables put in its text on that page, «Таблица в документе», where they stand on it.)
+    const tables = objectsIn(it).map((id) => ed.board.get(id)).filter((t): t is Item => !!t && slotOf(it, t.id)?.page === n)
+      .map((t) => ({ ...t, x: t.x - it.x, y: t.y - it.y, inDoc: undefined }));
     drawScene(ctx, {
-      items: [sheet], links: [], get: (id) => (id === it.id ? sheet : ed.board.get(id)), cam: { x: 0, y: 0, z: scale }, theme: lightTheme(),
+      items: [sheet, ...tables], links: [], get: (id) => (id === it.id ? sheet : tables.find((t) => t.id === id) ?? ed.board.get(id)), cam: { x: 0, y: 0, z: scale }, theme: lightTheme(),
       width: canvas.width, height: canvas.height, dpr: 1, noBackground: true, selection: new Set(), editingId: null, marquee: null, linkPreview: null,
       peers: [], showHandle: false, byFinger: false, hotDot: null, hotPlus: null, plusFade: 0, mindMove: null, tableLines: [], editingCell: null,
       guides: [], pickedCells: null, stroke: null,

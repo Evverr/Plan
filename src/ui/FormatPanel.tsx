@@ -15,7 +15,7 @@ import { useLabs } from '../labs/labs';
 import { ItemMenuButton } from '../labs/ContextMenu';
 import { linkPartPatch, linkPatch } from '../labs/textLink';
 import { headingAt, paraAt, remapLinks, runsHave, setHeading, setPara, setRun, type RunStyle } from '../model/textLinks';
-import { richActive, richAlign, richCode, richDivider, richHeading, richKind, richList, richQuote, richSize, richState, richStyle } from '../labs/RichEditor';
+import { richActive, richAlign, richCode, richDivider, richHeading, richKind, richList, richQuote, richSize, richState, richStyle, richTable } from '../labs/RichEditor';
 
 function Btn({ icon, label, on, off, swatch, menu, onClick }: {
   icon: IconName; label: string; on?: boolean; off?: boolean; swatch?: string; menu?: boolean; onClick?: () => void;
@@ -203,7 +203,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   const md = rich && labs.docMd ? rich : null;
   const picked = !rich && item.type === 'page' ? pickedPart(editor, item) : null;
   const runsOf = (p: Part) => remapLinks(item.text ?? '', p.text, item.rs);
-  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && !!rich[key]
+  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'o' && !!rich[key]
     : !!picked && runsHave(runsOf(picked), picked.s, picked.e, key, value));
   /** Where the caret is in a document being typed in (or what's picked there). */
   const caretIn = (): Part | null => {
@@ -224,7 +224,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   /** Sets (or takes off) a style on the part picked (as it's picked now); false with none picked (the
    *  whole text's then). */
   const stylePart = (key: keyof RunStyle, value?: string): boolean => {
-    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'k' && key !== 'm' && key !== 'd' && richStyle(key, value)) { setMenu(null); return true; }
+    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'k' && key !== 'm' && key !== 'd' && key !== 'o' && richStyle(key, value)) { setMenu(null); return true; }
     const now = item.type === 'page' ? pickedPart(editor, item) : null;
     if (!now) return false;
     const runs = runsOf(now), on = key === 'c' ? value !== undefined : !runsHave(runs, now.s, now.e, key);
@@ -284,6 +284,8 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
             <button className={`tf-item ${md.k === 'quote' ? 'on' : ''}`} onClick={() => { richQuote(); setMenu(null); }}>Цитата</button>
             <button className={`tf-item ${md.k === 'code' ? 'on' : ''}`} onClick={() => { richKind('code'); setMenu(null); }}>Блок кода</button>
             <button className="tf-item" onClick={() => { richDivider(); setMenu(null); }}>Разделитель</button>
+            {/* «Таблица в документе»: a new one in its text, after the caret's paragraph. */}
+            {labs.docTable && <button className="tf-item" onClick={() => { richTable(); setMenu(null); }}>Таблица</button>}
           </>}
         </>}>
           <Pick value={level ? `Заголовок ${level}` : md?.k === 'quote' ? 'Цитата' : md?.k === 'code' ? 'Блок кода' : level !== null ? 'Обычный' : heading?.[0] ?? 'Обычный'} label="Стиль" onClick={() => toggle('style')} />

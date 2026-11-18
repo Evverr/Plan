@@ -4,6 +4,8 @@ import { PAGE, type Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
 import { remapLinks, setRun, type TextRun } from '../model/textLinks';
 import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, PAGE_TEXT, pagesOf, pageShown } from './docPage';
+import { objectsIn } from './docObjects';
+import { newTable, tableLook } from '../model/table';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
 import { labOn } from './labs';
 
@@ -15,7 +17,7 @@ import { labOn } from './labs';
  */
 
 /** The field being typed in, and what was last picked in it (a press on the panel keeps it). */
-let active: { el: HTMLDivElement; fs: number; range: Range | null } | null = null;
+let active: { el: HTMLDivElement; fs: number; range: Range | null; ed: Editor; id: string } | null = null;
 export const richActive = (): boolean => !!active;
 
 /** What's picked in it, back as it was (the field focused again). */
@@ -73,8 +75,14 @@ function paragraphAt(root: HTMLElement): HTMLElement | null {
 function pickedParagraphs(): HTMLElement[] {
   const sel = getSelection(), root = active?.el;
   if (!root || !sel?.rangeCount) return [];
-  const r = sel.getRangeAt(0), top = (n: Node | null) => { while (n && n.parentNode !== root) n = n.parentNode; return n as HTMLElement | null; };
-  const a = top(r.startContainer), b = top(r.endContainer);
+  // (A place in the field itself, between its paragraphs, as the caret put at its end is: the paragraph
+  // before it, or the first.)
+  const r = sel.getRangeAt(0), top = (n: Node | null, off: number) => {
+    if (n === root) return (root.children[Math.max(0, Math.min(off, root.children.length) - 1)] as HTMLElement | undefined) ?? null;
+    while (n && n.parentNode !== root) n = n.parentNode;
+    return n as HTMLElement | null;
+  };
+  const a = top(r.startContainer, r.startOffset), b = top(r.endContainer, r.endOffset);
   if (!a) return root.firstElementChild ? [root.firstElementChild as HTMLElement] : [];
   const out: HTMLElement[] = [];
   for (let p: Element | null = a; p; p = p.nextElementSibling) { out.push(p as HTMLElement); if (p === b || !b) break; }
@@ -205,6 +213,35 @@ export function richDivider(): boolean {
   return true;
 }
 
+/** A new table put in its text after the caret's paragraph («Таблица в документе»): 3 by 3, as wide as
+ *  the text, a paragraph after it to type on in; the text kept on the board as it is now, for the table
+ *  to stand where its room is. */
+export function richTable(): boolean {
+  if (!restore() || !active) return false;
+  const { ed, id, el } = active, doc = ed.board.get(id), p = pickedParagraphs().pop();
+  if (!doc || !p) return false;
+  const n = 3, cw = Math.floor((PAGE_TEXT.w / n) * 10) / 10, cols = Array<number>(n).fill(cw);
+  const it = ed.newItem('table', doc.x + PAGE.LEFT, doc.y + PAGE.TOP, { ...newTable(n, 3), ...tableLook(n), cols, w: cw * n, inDoc: id });
+  ed.addItem(it);
+  const box = document.createElement('div');
+  box.dataset.h = '0';
+  box.dataset.o = it.id;
+  p.after(box);
+  // (Its look as the field has it, toHtml's: from the text with it.)
+  const now = fromDom(el, getComputedStyle(el).color);
+  const tpl = document.createElement('div');
+  tpl.innerHTML = toHtml({ text: now.text, rs: now.rs, fs: active.fs } as Item);
+  const made = [...tpl.children].find((c) => (c as HTMLElement).dataset.o === it.id);
+  if (made) box.replaceWith(made);
+  const placed = (made ?? box) as HTMLElement, next = placed.nextElementSibling as HTMLElement | null;
+  const to = next && !next.textContent && !next.dataset.o && !next.dataset.k ? next : emptyPara();
+  if (to !== next) placed.after(to);
+  caretTo(to);
+  const after = fromDom(el, getComputedStyle(el).color);
+  ed.board.update(id, { text: after.text, rs: after.rs, links: remapLinks(doc.text ?? '', after.text, doc.links) });
+  return true;
+}
+
 /** Where a place in the field is in its text (its paragraphs one each, a line break between: see fromDom). */
 function indexAt(root: HTMLElement, node: Node, off: number): number {
   // (Not counting the gap put after code to type past it: see rewrite.)
@@ -308,14 +345,18 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     if (done.current || !el) return;
     done.current = true;
     const { text, rs } = fromDom(el, getComputedStyle(el).color);
+    // (A table put in it whose place was taken out as it was typed in: gone with it, «Таблица в документе».)
+    const was = editor.board.get(id), kept = new Set((rs ?? []).filter((r) => r.o).map((r) => r.o));
+    const gone = was ? objectsIn(was).filter((o) => !kept.has(o)) : [];
     editor.board.update(id, { text, rs });
+    if (gone.length) editor.board.remove(gone);
     editor.commitText(id, text);
   };
 
   useLayoutEffect(() => {
     const el = ref.current!;
     el.innerHTML = toHtml(item);
-    active = { el, fs, range: null };
+    active = { el, fs, range: null, ed: editor, id };
     document.execCommand('defaultParagraphSeparator', false, 'div');
     // (Not scrolled by the browser to what's picked: to where its page starts, see below.)
     el.focus({ preventScroll: true });

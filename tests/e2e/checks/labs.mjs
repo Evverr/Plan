@@ -1240,7 +1240,7 @@ export const checks = {
     // The panel: headings to six, a quote and a divider in «Стиль», a checklist in the lists, code lit.
     await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
     await sleep(150);
-    expect(await p.ev(`[...document.querySelectorAll('.tf-menu .tf-item')].map((b) => b.textContent).join()`), 'its style menu').toBe('Обычный,Заголовок 1,Заголовок 2,Заголовок 3,Заголовок 4,Заголовок 5,Заголовок 6,Цитата,Блок кода,Разделитель');
+    expect(await p.ev(`[...document.querySelectorAll('.tf-menu .tf-item')].map((b) => b.textContent).join()`), 'its style menu').toBe('Обычный,Заголовок 1,Заголовок 2,Заголовок 3,Заголовок 4,Заголовок 5,Заголовок 6,Цитата,Блок кода,Разделитель,Таблица');
     await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
     await key('Escape', 'Escape', 27);
     await sleep(300);
@@ -1259,6 +1259,64 @@ export const checks = {
     expect(await p.ev(`(async () => (await import('/src/model/textLinks.ts')).paraAt(planx.board.get('${id}').text, planx.board.get('${id}').rs, ${at('купить')}, 'l'))()`), 'ticked by a click on its box').toBe('done');
     const md = await p.ev(`(async () => (await import('/src/labs/docExport.ts')).docMarkdown(planx.board.get('${id}')))()`);
     expect(md, 'as Markdown').toBe('Заметки\n\n> Цитата\n\n- [x] купить хлеб\n\n---\n\n#### Мелкий\n\nвызов `run()` и дальше\n');
+  },
+
+  async '"Таблица в документе": dragged onto a sheet, in its text (the text after it lower by its height), moved with it, dragged off out of it; one put in by «Стиль», gone with its place; as Markdown'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); })()`);
+    await p.ev(`(() => { const e = planx.editor; e.dropItem('page', { x: 400, y: 400 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Один\\nДва\\nТри' }); planx.editor.setSelection([]); planx.editor.dropItem('table', { x: 1000, y: 300 }); planx.editor.setSelection([]); })()`);
+    await sleep(200);
+    const T = async () => p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), b = planx.board, doc = b.get('${id}'), t = b.list().find((i) => i.type === 'table');
+      return { doc: { x: doc.x, y: doc.y, text: doc.text, rs: doc.rs }, t: t && { id: t.id, x: t.x, y: t.y, w: t.w, h: t.h, inDoc: t.inDoc ?? null }, lines: d.docLines(doc).map((l) => [l.s, l.y, l.o ?? '']) }; })()`);
+    const before = await T();
+    // Its top a little under the first line's middle: in after it.
+    const scr = (x, y) => p.ev(`(() => { const s = planx.editor.toScreen({ x: ${x}, y: ${y} }); return [s.x, s.y]; })()`);
+    const from = await scr(before.t.x + 20, before.t.y + 5), to = await scr(before.doc.x + 80 + 20, before.doc.y + 80 + 5 + 22);
+    await p.drag(from, to);
+    await sleep(200);
+    const ins = await T();
+    expect(ins.t.inDoc, 'in the document').toBe(id);
+    expect(ins.doc.text, 'a paragraph of its own after the first').toBe('Один\n\nДва\nТри');
+    expect(JSON.stringify(ins.doc.rs), 'that paragraph its place').toBe(JSON.stringify([{ s: 5, e: 6, o: ins.t.id }]));
+    expect(ins.t.w <= 794 - 80 - 60 + 1, 'as wide as the text at most').toBe(true);
+    const slot = ins.lines.find((l) => l[2]), two = ins.lines.find((l) => l[0] === 6);
+    const P = await p.ev(`(async () => (await import('/src/model/types.ts')).PAGE)()`);
+    expect(JSON.stringify([ins.t.x - ins.doc.x, Math.round(ins.t.y - ins.doc.y - slot[1])]), 'standing in its place').toBe(JSON.stringify([P.LEFT, P.TOP + 8]));
+    expect(Math.round(two[1] - slot[1]), 'the text after it lower by its height').toBe(Math.round(ins.t.h + 16));
+    // The sheet moved: the table with it.
+    await p.ev(`planx.board.update('${id}', { x: ${ins.doc.x + 100} })`);
+    await sleep(100);
+    expect((await T()).t.x - ins.t.x, 'moved with it').toBe(100);
+    // Dragged off: out of its text, its own again.
+    const now = await T();
+    await p.drag(await scr(now.t.x + 20, now.t.y + 5), await scr(now.doc.x + 1100, now.doc.y + 200));
+    await sleep(200);
+    const off = await T();
+    expect(JSON.stringify([off.t.inDoc, off.doc.text, off.doc.rs ?? null]), 'out of it').toBe(JSON.stringify([null, 'Один\nДва\nТри', null]));
+    // «Стиль» → «Таблица» as it's typed in: a new one in its text; its place taken out, the table gone.
+    await p.ev(`(() => { const b = planx.board; b.remove([b.list().find((i) => i.type === 'table').id]); const it = b.get('${id}'); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
+    await sleep(150);
+    await p.ev(`[...document.querySelectorAll('.tf-menu .tf-item')].find((b) => b.textContent === 'Таблица').click()`);
+    await sleep(200);
+    expect(await p.ev(`!!document.querySelector('.rich-edit .rich-obj')`), 'its picture in the field').toBe(true);
+    await p.cdp('Input.insertText', { text: 'Под таблицей' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    const made = await T();
+    expect(JSON.stringify([made.t?.inDoc, made.doc.text]), 'in its text, after the last paragraph, typed on under it').toBe(JSON.stringify([id, 'Один\nДва\nТри\n\nПод таблицей']));
+    await p.ev(`(() => { const b = planx.board, t = b.list().find((i) => i.type === 'table'); b.update(t.id, { cells: ['Имя', 'Роль', 'Срок', 'Аня', 'Дизайн', 'май', '', '', ''] }); })()`);
+    const md = await p.ev(`(async () => (await import('/src/labs/docExport.ts')).docMarkdown(planx.board.get('${id}')))()`);
+    expect(md, 'as Markdown').toBe('Один\n\nДва\n\nТри\n\n| Имя | Роль | Срок |\n| --- | --- | --- |\n| Аня | Дизайн | май |\n|  |  |  |\n\nПод таблицей\n');
+    await p.ev(`planx.editor.startEditing('${id}', null, 'end')`);
+    await sleep(400);
+    await p.ev(`document.querySelector('.rich-edit .rich-obj').remove()`);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(await p.ev(`planx.board.list().some((i) => i.type === 'table')`), 'its place taken out: gone').toBe(false);
   },
 
   async '"Markdown в документе": a list in a list by Tab (numbered at its depth), out by Shift+Tab and Enter; a block of code by «```», Tab two spaces in it, out by Enter'(p) {

@@ -76,9 +76,11 @@ export function pickedTies(items: Item[], ids: Set<string>): Set<string> {
 
 /** These ids with what each is tied to (a header and its kanban or timeline, `tie`). */
 export function withTies(items: Item[], ids: Set<string>): Set<string> {
-  if (!items.some((i) => i.tie)) return ids;
+  if (!items.some((i) => i.tie || i.inDoc)) return ids;
   const out = new Set(ids);
   for (const i of items) if (i.tie && (ids.has(i.id) || ids.has(i.tie))) { out.add(i.id); out.add(i.tie); }
+  // (And a document with the tables put in its text, «Таблица в документе»: those not without it.)
+  for (const i of items) if (i.inDoc && ids.has(i.inDoc)) out.add(i.id);
   return out;
 }
 

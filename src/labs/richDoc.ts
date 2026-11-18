@@ -1,7 +1,8 @@
 import { TEXT_COLORS, type Item } from '../model/types';
 import { headingAt, paraAt, setHeading, setPara, setRun, type RunStyle, type TextRun } from '../model/textLinks';
 import { FONTS } from '../canvas/text';
-import { CODE_SIZE, HEADING_GAP, HEADING_SIZE, LIST_DEPTH } from './docPage';
+import { CODE_SIZE, docObject, HEADING_GAP, HEADING_SIZE, LIST_DEPTH, OBJ_GAP } from './docPage';
+import { objectPicture } from './docObjects';
 
 /**
  * «Документ» typed in as it looks (RichEditor.tsx): its text and the styles on its parts (model/textLinks.ts)
@@ -31,6 +32,13 @@ export function toHtml(it: Item): string {
   return text.split('\n').map((para, n) => {
     const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a'), k = paraAt(text, runs, s0, 'k'), d = paraAt(text, runs, s0, 'd');
     at += para.length + 1;
+    // A table put in its place («Таблица в документе»): as tall as its room on the sheet, a picture of it
+    // there, not typed in (taken out whole, as a letter is).
+    const oid = paraAt(text, runs, s0, 'o'), obj = oid ? docObject(oid) : undefined;
+    if (obj) {
+      const pic = objectPicture(obj);
+      return `<div data-h="0" data-o="${oid}" contenteditable="false" class="rich-obj" style="height:${obj.h + OBJ_GAP * 2}px;background:url(${pic}) no-repeat 0 ${OBJ_GAP}px / ${obj.w}px ${obj.h}px"></div>`;
+    }
     const cuts = [...new Set([0, para.length, ...runs.flatMap((r) => [r.s - s0, r.e - s0]).filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
     const inner = k === 'hr' ? '' : cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => !k.h && k.s <= s0 + c && k.e >= s0 + e).reduce((m, k) => ({ ...m, ...k }), {} as RunStyle);
@@ -122,7 +130,7 @@ function colorKey(css: string): string {
 /** The text and its styles as the field has them now: `ink` the text's own colour (no colour of its own). */
 export function fromDom(root: HTMLElement, ink: string): { text: string; rs: TextRun[] | undefined } {
   let text = '';
-  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [], kinds: Array<[number, string]> = [], depths: Array<[number, number]> = [];
+  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [], kinds: Array<[number, string]> = [], depths: Array<[number, number]> = [], objs: Array<[number, string]> = [];
   const own = colorKey(ink);
   /** The look of a piece of text by the element it's in, up to its paragraph. */
   const look = (el: Element, para: Element, heading: boolean): RunStyle => {
@@ -178,6 +186,8 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     if (k === 'quote' || k === 'hr' || k === 'code') kinds.push([start, k]);
     const d = Number((para as HTMLElement).dataset.d) || 0;
     if (d) depths.push([start, d]);
+    const o = (para as HTMLElement).dataset.o;
+    if (o) objs.push([start, o]);
     const z = Number((para as HTMLElement).dataset.z) || 0;
     if (z) sizes.push([start, z]);
     const al = (para as HTMLElement).dataset.a;
@@ -191,5 +201,6 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
   for (const [at, a] of aligns) rs = setPara(text, rs, at, at, 'a', a);
   for (const [at, k] of kinds) rs = setPara(text, rs, at, at, 'k', k);
   for (const [at, d] of depths) rs = setPara(text, rs, at, at, 'd', d);
+  for (const [at, o] of objs) rs = setPara(text, rs, at, at, 'o', o);
   return { text, rs };
 }

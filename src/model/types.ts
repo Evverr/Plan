@@ -121,6 +121,9 @@ export interface Item {
   /** A header over a kanban or timeline, its id: one with it, picked, moved, copied and deleted with
    *  it, never apart; no description. */
   tie?: string;
+  /** A table put in a document's text («Таблица в документе», src/labs/docObjects.ts): the document's
+   *  id. It stands where its paragraph is there, moved, copied and deleted with it (picked on its own). */
+  inDoc?: string;
   /** Hidden («Скрыть объект», src/labs): not drawn, but picked as ever (its frame shows it then). */
   hid?: boolean;
   /** A task without its «ВАЖНОЕ» pill at the right of its top edge («Тег» unticked in its menu). */
@@ -241,7 +244,7 @@ export interface Item {
   links?: Array<{ s: number; e: number; url: string }>;
   /** Styles on parts of its text, by character, a document's («Документ»: bold, italic, underlined, struck
    *  through, a colour; see model/textLinks.ts). */
-  rs?: Array<{ s: number; e: number; b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; h?: number; l?: string }>;
+  rs?: Array<{ s: number; e: number; b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; h?: number; l?: string; z?: number; a?: string; m?: boolean; k?: string; d?: number; o?: string }>;
   /** Locked in place: not moved, resized, typed in or deleted (src/labs, "Замок"). */
   lock?: boolean;
   /** Reactions: for each emoji id, who put it, by their browser's id (src/labs, "Реакции"). */

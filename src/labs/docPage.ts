@@ -17,6 +17,9 @@ export const PAGE_TEXT = { w: PAGE.W - PAGE.LEFT - PAGE.RIGHT, h: PAGE.H - PAGE.
 
 /** The page each sheet shows here, by id. */
 const shown = new Map<string, number>();
+/** Counted on as any sheet's page turns here (what's seen on its pages, as editor's inSight has it, again). */
+let turned = 0;
+export const pagesTurned = (): number => turned;
 
 /** A heading's size against the text's own (1…6), and the room over one that isn't a page's first. */
 export const HEADING_SIZE = [1, 1.75, 1.375, 1.125, 1, 0.875, 0.75], HEADING_GAP = 0.6;
@@ -30,6 +33,12 @@ export const QUOTE_IN = 20, QUOTE_ALPHA = 0.75;
 /** Code in a line («Markdown в документе»): its size against the text round it; a block of code's, the
  *  room inside its grey each side. */
 export const CODE_SIZE = 0.9, CODE_IN = 12;
+/** What's put in the text in place of a paragraph («Таблица в документе», docObjects.ts): found by its id
+ *  (set by the editor, see setDocObjects), and the room over and under it. */
+let objectOf: (id: string) => Item | undefined = () => undefined;
+export const setDocObjects = (get: (id: string) => Item | undefined): void => { objectOf = get; };
+export const docObject = (id: string): Item | undefined => objectOf(id);
+export const OBJ_GAP = 8;
 /** A list in a list: how deep at most (0 the first), and its bullets at each depth. */
 export const LIST_DEPTH = 4, BULLETS = ['•', '◦', '▪'];
 
@@ -37,7 +46,9 @@ export const LIST_DEPTH = 4, BULLETS = ['•', '◦', '▪'];
  *  for none), on its page how far down its top is; in a list, how far in it stands, and on its
  *  paragraph's first line, its marker («•» or its number with a dot) or a checklist's box (`box`, ticked
  *  or not); its paragraph's kind (`k`: a quote's, or a divider's). */
-export interface DocLine { s: number; e: number; size: number; h: number; page: number; y: number; indent: number; mark?: string; a?: TextAlign; box?: 'todo' | 'done'; k?: string }
+export interface DocLine { s: number; e: number; size: number; h: number; page: number; y: number; indent: number; mark?: string; a?: TextAlign; box?: 'todo' | 'done'; k?: string;
+  /** The place of what's put in the text there (its id), as tall as it with the room over and under it. */
+  o?: string; tall?: number }
 
 let measure: CanvasRenderingContext2D | null = null;
 const laidOut = new Map<string, { key: string; lines: DocLine[] }>();
@@ -52,7 +63,9 @@ function piecesOf(runs: TextRun[], s: number, e: number): Array<{ s: number; e: 
  *  styles (a word too long for a line broken where it comes to), lines filling page after page. */
 export function docLines(it: Item): DocLine[] {
   const text = it.text ?? '', fs = it.fs ?? 16, st = fontOf(it), runs = (it.rs ?? []) as Array<TextRun & { h?: number }>;
-  const key = `${text}|${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}`, was = laidOut.get(it.id);
+  // (And the sizes of what's put in it.)
+  const objs = runs.filter((r) => r.o).map((r) => { const o = objectOf(r.o!); return o ? `${o.w}x${o.h}` : '-'; }).join();
+  const key = `${text}|${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}`, was = laidOut.get(it.id);
   if (was?.key === key) return was.lines;
   if (typeof document !== 'undefined') measure ??= document.createElement('canvas').getContext('2d');
   const styled = runs.filter((r) => r.b || r.i || r.m);
@@ -72,11 +85,11 @@ export function docLines(it: Item): DocLine[] {
   let page = 0, y = 0, at = 0, indent = 0, mark: string | undefined, a: TextAlign | undefined, box: DocLine['box'], k: string | undefined;
   // A numbered list's count at each depth, while its paragraphs follow one another.
   let nums: number[] = [];
-  const put = (s: number, e: number, size: number, h: number, first: boolean) => {
-    const tall = size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
+  const put = (s: number, e: number, size: number, h: number, first: boolean, obj?: Item) => {
+    const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
     if (y + gap + tall > PAGE_TEXT.h && y > 0) { page++; y = 0; }
     else y += gap;
-    lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }), ...(first && box && { box }), ...(a && { a }), ...(k && { k }) });
+    lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }), ...(first && box && { box }), ...(a && { a }), ...(k && { k }), ...(obj && { o: obj.id, tall }) });
     y += tall;
   };
   for (const para of text.split('\n')) {
@@ -95,6 +108,9 @@ export function docLines(it: Item): DocLine[] {
     a = block ? undefined : runs.find((r) => r.a && r.s <= e0 && r.e > e0)?.a as TextAlign | undefined;
     const list = own('l') as string | undefined, depth = Math.min(LIST_DEPTH, (own('d') as number | undefined) ?? 0);
     if (k === 'hr') { nums = []; indent = 0; mark = undefined; box = undefined; put(s0, e0, size, 0, true); continue; }
+    // A table put in its place: room as tall as it (on the next page whole, if not on this one).
+    const oid = runs.find((r) => r.o && r.s <= e0 && r.e > e0)?.o, obj = oid ? objectOf(oid) : undefined;
+    if (obj) { nums = []; indent = 0; mark = undefined; box = undefined; a = undefined; k = undefined; put(s0, e0, size, 0, true, obj); continue; }
     // A numbered list counts on at its depth while its paragraphs follow one another (deeper ones, started
     // again under each of its items; a bullet's at that depth, too).
     if (list) { nums.length = depth + 1; nums[depth] = list === 'number' ? (nums[depth] ?? 0) + 1 : 0; } else nums = [];
@@ -163,6 +179,8 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   ctx.restore();
 
   function drawLine(l: DocLine): void {
+    // (A table's place: the table itself drawn there, as it is on the board.)
+    if (l.o) return;
     const top = it.y + PAGE.TOP + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14), left = it.x + PAGE.LEFT, block = l.k === 'code';
     // A divider: a faint line across, in the middle of its line.
     if (l.k === 'hr') {
@@ -287,11 +305,13 @@ export const pageShown = (it: Item, count = pagesOf(it).length): number => Math.
 export function showPage(id: string, n: number): number {
   const was = shown.get(id) ?? 0;
   shown.set(id, n);
+  if (n !== was) turned++;
   return was;
 }
 export function turnPage(it: Item, dir: -1 | 1): void {
   const n = pagesOf(it).length;
   shown.set(it.id, Math.max(0, Math.min(n - 1, pageShown(it, n) + dir)));
+  turned++;
 }
 
 /** The pager under it: its middle, and its arrows' each side of it. */

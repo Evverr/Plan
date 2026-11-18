@@ -21,6 +21,7 @@ import { MIND_TOPIC, type PenTool } from './tools';
 import { clickTypes, onMindText, updateCursor } from './hover';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
+import { dropTables } from '../labs/docObjects';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
 import { addCodeAt } from '../labs/codeBlock';
@@ -544,6 +545,9 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       if (g.moved) {
         // What was dragged into a frame is in it now, and what was dragged out of one is out.
         ed.settle([...ed.selection].map((id) => board.get(id)?.host ?? id));
+        // A table let go on a document's sheet, in its text there; off the one it was in, out of it
+        // («Таблица в документе», src/labs).
+        if (labOn('docTable')) dropTables(board, g.orig.keys());
         // A mind map branch let go nearer another family: it hangs from that one now.
         const lead = board.get(g.id);
         if (g.mindTo && lead?.parent && g.mindTo !== lead.parent) hangBranch(ed, g.id, g.mindTo, { x: lead.x + lead.w / 2, y: lead.y + lead.h / 2 });

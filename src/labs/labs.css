@@ -326,6 +326,8 @@
 .rich-edit > div[data-k="quote"][data-l][data-d="2"]::before { left: 80px; }
 .rich-edit > div[data-k="quote"][data-l][data-d="3"]::before { left: 108px; }
 .rich-edit > div[data-k="quote"][data-l][data-d="4"]::before { left: 136px; }
+/* A table put in the text («Таблица в документе»): a picture of it in its room, taken out whole. */
+.rich-edit > div.rich-obj { min-height: 0; user-select: none; cursor: default; }
 /* A block of code (CODE_IN 12 inside its grey, a tenth smaller, monospaced), rounded where it starts and ends. */
 .rich-edit > div[data-k="code"] { padding: 0 12px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .9em;
   background: color-mix(in srgb, currentColor 7%, transparent); }
