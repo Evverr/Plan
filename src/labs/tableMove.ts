@@ -1,7 +1,7 @@
 import type { Editor } from '../editor/editor';
 import type { Item } from '../model/types';
 import type { Point } from '../canvas/geometry';
-import { cellText, colsOf, rowsOf, withCount } from '../model/table';
+import { cellAt, cellText, colsOf, rowsOf, withCount } from '../model/table';
 import { isLocked } from './labs';
 import { PICK_FRAME } from '../canvas/renderer';
 import { inDocLimit } from './docObjects';
@@ -234,11 +234,16 @@ function insertPluses(ed: Editor, it: Item): Array<{ key: TablePlus; p: Point; s
   insAt = out.filter((q) => q.seen).map((q) => ({ id: it.id, p: q.p }));
   return out;
 }
+/** Whether a plus at the end is away: the cell it stands on picked, or typed in (not to stand over its text). */
+function plusAway(ed: Editor, it: Item, w: EndPlus): boolean {
+  const c = plusAt(ed, it, w), i = cellAt(it, ed.toWorld(c.x, c.y));
+  return i !== null && ((ed.editingId === it.id && ed.editingCell === i) || ed.cells.includes(i));
+}
 /** The plus under a point on the canvas. */
 export function tablePlusAt(ed: Editor, sp: Point): TablePlus | null {
   const it = tableOf(ed);
   if (!it || drag) return null;
-  for (const w of ['row', 'col'] as const) { const c = plusAt(ed, it, w); if (Math.hypot(sp.x - c.x, sp.y - c.y) <= PLUS_R + 2) return w; }
+  for (const w of ['row', 'col'] as const) { const c = plusAt(ed, it, w); if (!plusAway(ed, it, w) && Math.hypot(sp.x - c.x, sp.y - c.y) <= PLUS_R + 2) return w; }
   return insertPluses(ed, it).find((q) => q.seen && Math.hypot(sp.x - q.p.x, sp.y - q.p.y) <= INS_NEAR)?.key ?? null;
 }
 let hotPlus: TablePlus | null = null;
@@ -451,17 +456,20 @@ export function drawGrips(ctx: CanvasRenderingContext2D, ed: Editor): void {
   }
   // The pluses, faint and a tenth smaller till the pointer's on one.
   if (!drag) for (const w of ['row', 'col'] as const) {
+    // (Away from a cell picked or typed in under it, see plusAway: going and coming back smoothly.)
+    const there = litNow(ed, `${it.id}:${w}:there`, !plusAway(ed, it, w), PLUS_TURN);
+    if (there <= 0) continue;
     // Under the pointer: full size and strength, growing there and back smoothly.
     const c = plusAt(ed, it, w), on = litNow(ed, `${it.id}:${w}:hot`, hotPlus === w, PLUS_TURN), r = PLUS_R * (0.9 + 0.1 * on);
     // Coming in at the new edge.
     const t = cameIn[w], k = t === undefined ? 1 : Math.min(1, (performance.now() - t) / PLUS_IN_MS);
     if (k < 1) ed.requestRender(); else delete cameIn[w];
-    ctx.globalAlpha = (0.5 + 0.5 * on) * k;
+    ctx.globalAlpha = (0.5 + 0.5 * on) * k * there;
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.globalAlpha = (0.75 + 0.25 * on) * k;
+    ctx.globalAlpha = (0.75 + 0.25 * on) * k * there;
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1.5 + 0.5 * on;
     ctx.lineCap = 'round';

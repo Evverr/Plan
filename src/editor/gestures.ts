@@ -21,7 +21,7 @@ import { MIND_TOPIC, type PenTool } from './tools';
 import { clickTypes, onMindText, updateCursor } from './hover';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
-import { DOC_OBJ_MAX, dropTables } from '../labs/docObjects';
+import { dropTables, roomFor } from '../labs/docObjects';
 import { belowText } from '../labs/docPage';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
@@ -285,7 +285,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       // (stretched taller, kept so: see headerFit).
       if (it.hd) { nw = Math.max(HEADER_MIN_W, nw); nh = Math.max(sy ? nh : it.hdH ? it.h : 0, headerHeight(it, { w: nw })); }
       // A table put in a document's text («Таблица в документе», src/labs): no wider than its text, no taller than a page.
-      if (it.type === 'table' && it.inDoc) { nw = Math.min(nw, DOC_OBJ_MAX.w); nh = Math.min(nh, DOC_OBJ_MAX.h); }
+      if (it.type === 'table' && it.inDoc) { const room = roomFor(it); nw = Math.min(nw, room.w); nh = Math.min(nh, Math.max(room.h, it.h)); }
       // Text wrapping onto more lines (or fewer) takes the text just under it along.
       const moves = pushedBelow(it, nh - it.h, board.list());
       board.transact(() => {
@@ -351,7 +351,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       const cols = g.lines.filter((l) => l.axis === 'col').map((l) => l.index);
       const rows = g.lines.filter((l) => l.axis === 'row').map((l) => l.index);
       // (In a document's text, «Таблица в документе»: as far as it stays as wide as the text, as tall as a page.)
-      const t = board.get(g.id)!, room = t.inDoc ? DOC_OBJ_MAX : null;
+      const t = board.get(g.id)!, room = t.inDoc ? { w: roomFor(t).w, h: Math.max(roomFor(t).h, g.rows0.reduce((a, b) => a + b, 0)) } : null;
       const sum = (v: number[]) => v.reduce((a, b) => a + b, 0);
       if (cols.length) {
         let dx = w.x - g.start.x;

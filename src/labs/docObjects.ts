@@ -2,7 +2,7 @@ import { PAGE, type Item } from '../model/types';
 import type { Board } from '../model/board';
 import { paraAt, setPara, type TextLink, type TextRun } from '../model/textLinks';
 import { colsOf, rowsOf } from '../model/table';
-import { DOC_LINE, docLines, OBJ_GAP, PAGE_TEXT, pageShown, showPage } from './docPage';
+import { DOC_LINE, docLines, docObject, OBJ_GAP, PAGE_TEXT, pageShown, showPage } from './docPage';
 import { drawScene, readTheme } from '../canvas/renderer';
 
 /**
@@ -46,7 +46,7 @@ export function tidyDocObjects(board: Board): void {
     if (s) lastSeen.set(it.id, { page: s.page, w: it.w, h: it.h });
     if (s && (Math.abs(s.x - it.x) > 0.01 || Math.abs(s.y - it.y) > 0.01)) Object.assign(p, { x: s.x, y: s.y });
     // (Grown past its text or a page some way not held back as it was done: back within them.)
-    const lim = inDocLimit(it, {});
+    const lim = inDocLimit(it, {}, false);
     if (lim?.cols || lim?.rows) Object.assign(p, lim);
     if (Object.keys(p).length) moves.set(it.id, p);
   }
@@ -114,20 +114,28 @@ const fitted = (it: Item, doc: string): Partial<Item> => inDocLimit({ ...it, inD
 /** How big a table put in a document may be: as wide as its text, as tall as a page of it. */
 export const DOC_OBJ_MAX = { w: PAGE_TEXT.w, h: PAGE_TEXT.h - OBJ_GAP * 2 };
 
+/** The room a table put in a document has where it is: as wide as the text; as tall as what's left of its
+ *  page under where it stands (a page, at a page's top), so it's never made to go past the sheet's bottom. */
+export function roomFor(it: Item): { w: number; h: number } {
+  const doc = it.inDoc ? docObject(it.inDoc) : undefined, l = doc && docLines(doc).find((d) => d.o === it.id);
+  return { w: DOC_OBJ_MAX.w, h: l ? DOC_OBJ_MAX.h - l.y : DOC_OBJ_MAX.h };
+}
+
 /** A change to a table's size, as one put in a document may have it (any other's as it is): no wider than
- *  its text (its columns narrowed alike to fit), no taller than a page (rows that would make it so not
- *  added: null; taller rows, made shorter alike to fit). */
-export function inDocLimit(it: Item, patch: Partial<Item>): Partial<Item> | null {
+ *  its text (its columns narrowed alike to fit), no taller than its room (`here`, see roomFor; or a page:
+ *  rows that would make it so not added, null; taller rows, made shorter alike to fit). */
+export function inDocLimit(it: Item, patch: Partial<Item>, here = true): Partial<Item> | null {
   if (!it.inDoc || it.type !== 'table') return patch;
+  const room = here ? roomFor(it) : DOC_OBJ_MAX;
   const out = { ...patch }, cols = out.cols ?? colsOf(it), rows = out.rows ?? rowsOf(it), w = cols.reduce((a, b) => a + b, 0), h = rows.reduce((a, b) => a + b, 0);
-  if (w > DOC_OBJ_MAX.w + 0.5) {
-    const k = DOC_OBJ_MAX.w / w;
+  if (w > room.w + 0.5) {
+    const k = room.w / w;
     out.cols = cols.map((v) => Math.floor(v * k * 10) / 10);
     out.w = out.cols.reduce((a, b) => a + b, 0);
   }
-  if (h > DOC_OBJ_MAX.h + 0.5) {
+  if (h > room.h + 0.5 && h > it.h) {
     if (rows.length > rowsOf(it).length) return null;
-    const k = DOC_OBJ_MAX.h / h;
+    const k = Math.max(room.h, it.h) / h;
     out.rows = rows.map((v) => Math.floor(v * k * 10) / 10);
     out.h = out.rows.reduce((a, b) => a + b, 0);
   }

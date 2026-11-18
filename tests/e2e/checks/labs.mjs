@@ -1360,8 +1360,10 @@ export const checks = {
     expect(wide.n, 'columns added').toBe(6);
     expect(wide.w <= max.w + 0.5, `no wider than its text (${wide.w} ≤ ${max.w})`).toBe(true);
     for (let i = 0; i < 40; i++) await p.ev(`planx.editor.changeTable('row', 1)`);
-    const tall = await size();
-    expect(tall.h <= max.h + 0.5 && tall.h + 40 > max.h, `rows added as long as it stays within a page (${tall.h} ≤ ${max.h})`).toBe(true);
+    const tall = await size(), room = await p.ev(`(async () => (await import('/src/labs/docObjects.ts')).roomFor(planx.board.get('${tid}')).h)()`);
+    // (Under the line over it: as far as the page's bottom, not on to the next page.)
+    expect(room < max.h && tall.h <= room + 0.5 && tall.h + 40 > room, `rows added as long as it stays on its page (${tall.h} ≤ ${room})`).toBe(true);
+    expect(await p.ev(`(async () => (await import('/src/labs/docObjects.ts')).slotOf(planx.board.get('${id}'), '${tid}').page)()`), 'on its page still').toBe(0);
     // Its page picked (as a double click opens it) and typed over: the text new, the table still there.
     await p.ev(`(() => { planx.board.update('${tid}', { rows: [40, 40, 40], h: 120, cells: Array(18).fill('') }); planx.editor.startEditing('${id}', null, 'all'); })()`);
     await sleep(400);
@@ -1677,6 +1679,23 @@ export const checks = {
     await carry(p, await p.at('.tools [data-key="sticky"]'), [[m[0] - 100, m[1] + 100], m]);
     const st = await p.ev(`(() => { const s = planx.board.list().find((i) => i.type === 'sticky'); return { joint: !!s?.joint, ls: planx.board.linkList().map((l) => l.from + '>' + l.to).sort().join() , s: s?.id }; })()`);
     expect(`${st.joint} ${st.ls}`, 'in the line').toBe(`true ${[`a>${st.s}`, `${st.s}>c`].sort().join()}`);
+  },
+
+  async '"Перестановка в таблице": the big plus away while the cell it stands on is picked, back as another is'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('table', { x: 640, y: 420 }); })()`);
+    await sleep(300);
+    const plusSp = await p.ev(`(() => { const e = planx.editor, t = planx.board.list().find((i) => i.type === 'table'), s = e.toScreen({ x: t.x + t.w / 2, y: t.y + t.h }); return { x: s.x, y: s.y - 14 }; })()`);
+    const plus = () => p.ev(`(async () => (await import('/src/labs/tableMove.ts')).tablePlusAt(planx.editor, ${JSON.stringify(plusSp)}))()`);
+    expect(await plus(), 'out').toBe('row');
+    const cellUnder = await p.ev(`(async () => { const m = await import('/src/model/table.ts'), e = planx.editor, t = planx.board.list().find((i) => i.type === 'table'); return m.cellAt(t, e.toWorld(${plusSp.x}, ${plusSp.y})); })()`);
+    const click = async (i) => p.click(await p.ev(`(async () => { const m = await import('/src/model/table.ts'), e = planx.editor, t = planx.board.list().find((i) => i.type === 'table'), r = m.cellRect(t, ${i}), s = e.toScreen({ x: r.x + 12, y: r.y + r.h / 2 }); return [s.x, s.y]; })()`));
+    await click(cellUnder);
+    await sleep(300);
+    expect(await p.ev(`planx.editor.cells.join()`), 'that cell picked').toBe(String(cellUnder));
+    expect(await plus(), 'away over it').toBe(null);
+    await click(0);
+    await sleep(300);
+    expect(await plus(), 'back with another cell picked').toBe('row');
   },
 
   async '"Перестановка в таблице": a table dropped on the board has its pills out at once'(p) {
