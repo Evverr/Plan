@@ -1410,6 +1410,33 @@ export const checks = {
     expect(await p.ev(`(async () => (await import('/src/labs/docObjects.ts')).slotOf(planx.board.get('${id}'), '${tid}').y - planx.board.get('${id}').y)()`), 'at the top of the text').toBe(76 + 8);
   },
 
+  async '"Таблица в документе": its document in a frame, the frame dragged: the table along with it all the way'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.4 }; e.camChanged(); e.dropItem('page', { x: 500, y: 400 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const tid = await p.ev(`(async () => { const o = await import('/src/labs/docObjects.ts'), b = planx.board, e = planx.editor;
+      const t = e.newItem('table', 0, 0, { cols: [200, 200, 200], rows: [40, 40, 40], cells: Array(9).fill(''), w: 600, h: 120, inDoc: '${id}' });
+      e.addItem(t);
+      const r = o.withObject({ text: 'Один\\nДва', rs: undefined, links: undefined }, t.id, 0);
+      b.update('${id}', { text: r.text, rs: r.rs }); e.setSelection(['${id}']); e.frameSelection(); return t.id; })()`);
+    await sleep(300);
+    await p.key('Escape', 'Escape', 27);
+    const fid = await p.ev(`planx.board.list().find((i) => i.type === 'frame')?.id`);
+    await p.ev(`planx.editor.setSelection([])`);
+    const f = await p.ev(`(() => { const f = planx.board.get('${fid}'), s = planx.editor.toScreen({ x: f.x + 12, y: f.y + 12 }); return [s.x, s.y]; })()`);
+    const pos = () => p.ev(`JSON.stringify([planx.board.get('${fid}').x, planx.board.get('${id}').x, planx.board.get('${tid}').x])`);
+    const was = JSON.parse(await pos());
+    await p.mouse('mouseMoved', f[0], f[1]);
+    await p.mouse('mousePressed', f[0], f[1]);
+    for (let k = 1; k <= 10; k++) { await p.mouse('mouseMoved', f[0] + k * 8, f[1] + k * 3); await sleep(30); }
+    const now = JSON.parse(await pos());
+    expect(now[2] - was[2], 'the table along with its document as the frame is dragged').toBe(now[1] - was[1]);
+    expect(now[1] - was[1] > 0, 'moved').toBe(true);
+    await p.mouse('mouseReleased', f[0] + 80, f[1] + 30);
+    await sleep(300);
+
+  },
+
   async '"Таблица в документе": dragged onto a sheet, in its text (the text after it lower by its height), moved with it, dragged off out of it; one put in by «Стиль», gone with its place; as Markdown'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); })()`);
     await p.ev(`(() => { const e = planx.editor; e.dropItem('page', { x: 400, y: 400 }); })()`);

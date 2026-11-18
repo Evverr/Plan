@@ -2207,7 +2207,11 @@ export class Editor {
     const picked = withTies(items, this.selection);
     const sel = new Map(items.filter((i) => picked.has(i.id)).map((i) => i.host ? this.board.get(i.host) : i)
       .filter((i): i is Item => !!i && !heldInPlace(i, items)).map((i) => [i.id, i]));
-    return carried(this.board, [...sel.values()], items);
+    // (And the tables put in the text of the documents carried, a frame's say, with them as they go: not
+    // left behind till they're let go, «Таблица в документе».)
+    const out = carried(this.board, [...sel.values()], items);
+    for (const i of items) if (i.inDoc && out.has(i.inDoc) && !out.has(i.id)) out.set(i.id, { x: i.x, y: i.y });
+    return out;
   }
 
   /** Shared: puts each of these items in the frame it lies in, or out of frames (see settled). */
