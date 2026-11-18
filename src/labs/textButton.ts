@@ -22,13 +22,20 @@ function settledRect(el: HTMLElement): DOMRect {
   return r;
 }
 
+/** The selection panel as it's seen: the one over what's picked («Панель над элементом», src/labs) when it's
+ *  out, the one at the bottom then not (it may still be there, not to be morphed from or to). */
+export const SELECTION_PANEL = '.bar.panel.panel-over:not(.gone):not(.leaving)';
+export function selectionPanel(): HTMLElement | null {
+  return document.querySelector<HTMLElement>(SELECTION_PANEL) ?? document.querySelector<HTMLElement>('.bar.panel:not(.gone):not(.leaving)');
+}
+
 /**
  * The panel `from` (a selector) turning into the one that `swap` brings ('tfmt' the text panel,
  * 'panel' the selection panel), standing where it stands. While it goes on, a body like theirs
  * (.panel-shell) stands in for both, and they show only what's on them (see labs.css).
  */
 export function morphPanel(from: string, to: 'tfmt' | 'panel', swap: () => void): void {
-  const a = document.querySelector<HTMLElement>(`${from}:not(.gone):not(.leaving)`);
+  const a = from === '.bar.panel' ? selectionPanel() : document.querySelector<HTMLElement>(`${from}:not(.gone):not(.leaving)`);
   if (!a || busy) { swap(); return; }
   busy = true;
   grow(a, a.getBoundingClientRect(), to, swap);
@@ -63,7 +70,7 @@ function grow(a: HTMLElement | null, r: DOMRect, to: 'tfmt' | 'panel', swap: () 
     swap();
     let tries = 0;
     const find = () => {
-      const b = document.querySelector<HTMLElement>(to === 'tfmt' ? '.tfmt:not(.gone):not(.leaving)' : '.bar.panel:not(.gone)');
+      const b = to === 'tfmt' ? document.querySelector<HTMLElement>('.tfmt:not(.gone):not(.leaving)') : selectionPanel();
       if (!b) { if (++tries < 10) requestAnimationFrame(find); else done(); return; }
       shell.style.boxShadow = getComputedStyle(b).boxShadow;
       b.dataset.morph = '';

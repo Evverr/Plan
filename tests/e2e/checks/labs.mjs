@@ -1514,6 +1514,26 @@ export const checks = {
     await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('panelOver', false); l.setLab('panelGlide', false); })()`);
   },
 
+  async '"Панель над элементом": a cell picked, typed in: the panel over the table turning into the text panel from where it stands, not from one left at the bottom'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
+    await sleep(200);
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('table', { x: 640, y: 450 }); e.setSelection([]); })()`);
+    await sleep(300);
+    const cell = (i) => p.ev(`(async () => { const m = await import('/src/model/table.ts'), e = planx.editor, t = planx.board.list().find((i) => i.type === 'table'), r = m.cellRect(t, ${i}), s = e.toScreen({ x: r.x + 20, y: r.y + r.h / 2 }); return [s.x, s.y]; })()`);
+    await p.click(await cell(5)); await sleep(300);
+    await p.click(await cell(6)); await sleep(400);
+    // (A selection panel at the bottom too, first in the page, as there may be one.)
+    await p.ev(`(() => { const d = document.createElement('div'); d.className = 'bar panel'; Object.assign(d.style, { position: 'fixed', left: '40px', top: '700px', width: '300px', height: '44px' }); document.body.prepend(d); })()`);
+    await p.ev(`(() => { window.__fr = []; window.__on = true; const f = () => { const s = document.querySelector('.panel-shell'); if (s) window.__fr.push(Math.round(s.getBoundingClientRect().top)); if (window.__on) requestAnimationFrame(f); }; requestAnimationFrame(f); })()`);
+    const top = await p.ev(`Math.round(document.querySelector('.bar.panel.panel-over').getBoundingClientRect().top)`);
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, text: 'a' });
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65 });
+    await sleep(600);
+    const fr = await p.ev(`(() => { window.__on = false; return window.__fr; })()`);
+    expect(fr.length > 0, 'turned into the text panel').toBe(true);
+    expect(Math.max(...fr) <= Math.max(top, fr[fr.length - 1]) + 2, `from the panel over the table (its top ${top}), never lower`).toBe(true);
+  },
+
   async '"Панель над элементом": the selection panel over what\'s picked, not at the bottom; under it near the top, what opens from it opening down; staying by it while it\'s moved or the board is; at the bottom for what\'s picked big or partly off the screen'(p) {
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('rect', 480, 300, { id: 'a', w: 240, h: 140 })); e.setSelection(['a']); })()`);

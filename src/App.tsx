@@ -36,7 +36,7 @@ import type { Item, Link } from './model/types';
 import { alignOf } from './model/types';
 import { Labs } from './labs/LabsLayer';
 import { labOn, useLabs } from './labs/labs';
-import { morphFrom, morphPanel } from './labs/textButton';
+import { morphFrom, morphPanel, selectionPanel } from './labs/textButton';
 import { FormFields } from './labs/FormFields';
 import { PollFields } from './labs/PollFields';
 import { KanbanStage } from './labs/KanbanStage';
@@ -410,9 +410,10 @@ export function App({ boardId }: { boardId: string }) {
     const at = (q: string) => document.querySelector<HTMLElement>(q)?.getBoundingClientRect() ?? null;
     if (was && selKey && was.sel === selKey && !tMode && was.text !== text) {
       if (text && was.panelAt && at('.tfmt:not(.gone):not(.leaving)')) morphFrom(was.panelAt, 'tfmt');
-      else if (!text && was.textAt && at('.bar.panel:not(.gone)')) morphFrom(was.textAt, 'panel');
+      else if (!text && was.textAt && selectionPanel()) morphFrom(was.textAt, 'panel');
     }
-    morphWas.current = { sel: selKey, text, textAt: at('.tfmt:not(.gone):not(.leaving)'), panelAt: at('.bar.panel:not(.gone)') };
+    // (The selection panel as it's seen: over what's picked when that one's out, not the one at the bottom.)
+    morphWas.current = { sel: selKey, text, textAt: at('.tfmt:not(.gone):not(.leaving)'), panelAt: selectionPanel()?.getBoundingClientRect() ?? null };
   });
   if (overWent.current.shown && !overShown) overWent.current.at = performance.now();
   overWent.current.shown = overShown;
@@ -423,7 +424,7 @@ export function App({ boardId }: { boardId: string }) {
   const toText = labs.textButton && tItem && !panelOn
     ? () => {
       if (editor.editingId) return;
-      const bar = document.querySelector('.bar.panel:not(.gone)'), r = bar?.getBoundingClientRect();
+      const bar = selectionPanel(), r = bar?.getBoundingClientRect();
       const dock = r && !bar!.classList.contains('panel-over') ? { cx: r.left + r.width / 2, bottom: r.bottom } : undefined;
       morphPanel('.bar.panel', 'tfmt', () => setTextMode({ id: tItem.id, dock }));
     } : undefined;
