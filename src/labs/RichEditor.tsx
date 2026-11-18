@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import type { Editor } from '../editor/editor';
 import { PAGE, type Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
-import { remapLinks, runsHave, setRun, type TextRun } from '../model/textLinks';
+import { remapLinks, setRun, type TextRun } from '../model/textLinks';
 import { DOC_LINE, docLines, LIST_IN, PAGE_TEXT, pagesOf, pageShown } from './docPage';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
 import { labOn } from './labs';
@@ -38,13 +38,21 @@ export function richStyle(key: 'b' | 'i' | 'u' | 'x' | 'c', value?: string): boo
 }
 
 /** Where character `i` of its text is in the field: its paragraphs one each, a line break between them. */
-function domAt(root: HTMLElement, i: number): [Node, number] | null {
+function domAt(root: HTMLElement, i: number, forward = false): [Node, number] | null {
+  // (Where two pieces meet: the end of the first, or with `forward` the start of the next, as what's
+  // picked from there starts in it.)
   let left = i;
   for (const para of root.children) {
     const len = (para.textContent ?? '').length;
     if (left <= len) {
       const w = document.createTreeWalker(para, NodeFilter.SHOW_TEXT);
-      for (let t = w.nextNode(); t; t = w.nextNode()) { const n = (t.textContent ?? '').length; if (left <= n) return [t, left]; left -= n; }
+      let seen = 0;
+      for (let t = w.nextNode(); t; t = w.nextNode()) {
+        const n = (t.textContent ?? '').length;
+        if (left < n || (left === n && !(forward && seen + n < len))) return [t, left];
+        left -= n;
+        seen += n;
+      }
       return [para, 0];
     }
     left -= len + 1;
@@ -189,7 +197,7 @@ function rewrite(fn: (text: string, rs: TextRun[] | undefined, s: number, e: num
   const was = fromDom(el, getComputedStyle(el).color), out = fn(was.text, was.rs, s, e);
   if (!out) return false;
   el.innerHTML = toHtml({ text: out.text, rs: out.rs, fs: active.fs } as Item);
-  const a = domAt(el, out.s), b = domAt(el, out.e);
+  const a = domAt(el, out.s, out.e > out.s), b = domAt(el, out.e);
   if (a && b) {
     const q = document.createRange();
     q.setStart(a[0], a[1]);
@@ -211,7 +219,8 @@ function rewrite(fn: (text: string, rs: TextRun[] | undefined, s: number, e: num
 /** Code on what's picked (off again if it's code already). */
 export function richCode(): boolean {
   if (!restore()) return false;
-  return rewrite((text, rs, s, e) => (e > s ? { text, rs: setRun(rs, s, e, 'm', !runsHave(rs, s, e, 'm')), s, e } : null));
+  // (Any of it code already: none of it code any more.)
+  return rewrite((text, rs, s, e) => (e > s ? { text, rs: setRun(rs, s, e, 'm', !(rs ?? []).some((r) => r.m && r.s < e && r.e > s)), s, e } : null));
 }
 
 /** Whether the caret (or what's picked) is in code. */
@@ -233,12 +242,25 @@ export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; m
 function markdownStart(before: string): { h?: number; l?: string; k?: string } | null {
   if (/^#{1,6}$/.test(before)) return { h: before.length };
   if (before === '>') return { k: 'quote' };
-  if (/^[-*+]$/.test(before)) return { l: 'bullet' };
+  if (/^[-*+–•]$/.test(before)) return { l: 'bullet' };
   if (/^\d+\.$/.test(before)) return { l: 'number' };
-  if (/^\[ ?\]$/.test(before)) return { l: 'todo' };
-  if (/^\[[xх]\]$/i.test(before)) return { l: 'done' };
+  // (As GitHub has it too, «- [ ] »; «[х]» typed in Russian.)
+  if (/^([-*+–] ?)?\[ ?\]$/.test(before)) return { l: 'todo' };
+  if (/^([-*+–] ?)?\[[xх]\]$/i.test(before)) return { l: 'done' };
   return null;
 }
+
+/** Typed in a paragraph alone, made so at once: «[]» a checklist's item, «---» a divider (dashes the Mac
+ *  joins as they're typed, «–-», «—-», as well; one «—» alone a dash: a divider by Enter, see dashLine). */
+function markdownWhole(t: string): { l?: string; hr?: boolean } | null {
+  if (/^\[ ?\]$/.test(t)) return { l: 'todo' };
+  if (/^\[[xх]\]$/i.test(t)) return { l: 'done' };
+  if (t.length >= 2 && /^[-–—]+$/.test(t) && [...t].reduce((n, c) => n + (c === '—' ? 3 : c === '–' ? 2 : 1), 0) >= 3) return { hr: true };
+  if (/^(\*{3,}|_{3,})$/.test(t)) return { hr: true };
+  return null;
+}
+/** A paragraph that's a divider by Enter: dashes, stars or underscores, two or more (or one long dash). */
+const dashLine = (t: string) => /^([-–—]{2,}|—|\*{3,}|_{3,})$/.test(t);
 
 export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
   const ref = useRef<HTMLDivElement>(null), done = useRef(false), plain = useRef(false), id = item.id, fs = item.fs ?? 16;
@@ -384,6 +406,10 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         // item of a checklist, one not ticked.
         if (para.dataset.k === 'hr' && (para.textContent || prev?.dataset.k === 'hr')) delete para.dataset.k;
         if (para.dataset.l === 'done' && !para.textContent && prev?.dataset.l) para.dataset.l = 'todo';
+        // «[]» or «---» typed in a paragraph alone («Markdown в документе»): a checklist's item, a divider, at once.
+        const md = labOn('docMd') && para.dataset.k !== 'hr' ? markdownWhole((para.textContent ?? '').replace(/​/g, '')) : null;
+        if (md?.hr) divider(para, true);
+        else if (md?.l) { para.innerHTML = '<br>'; para.dataset.l = md.l; caretTo(para); }
       }}
       onPointerDown={(e) => {
         // A checklist's box clicked: ticked, or not any more (the caret where it was).
@@ -427,6 +453,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
           r.selectNodeContents(para);
           r.setEnd(sel.anchorNode!, sel.anchorOffset);
           const before = r.toString().replace(/​/g, '');
+          // (A space after «[]», which made it a checklist's item at once: nothing.)
+          if (e.key === ' ' && para.dataset.l && !before) { e.preventDefault(); return; }
           const md = e.key === ' ' ? markdownStart(before) : null;
           if (md) {
             e.preventDefault();
@@ -438,7 +466,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
             if (md.k) para.dataset.k = md.k;
             return;
           }
-          if (e.key === 'Enter' && !e.shiftKey && /^(-{3,}|\*{3,}|_{3,})$/.test((para.textContent ?? '').trim())) {
+          if (e.key === 'Enter' && !e.shiftKey && dashLine((para.textContent ?? '').replace(/​/g, '').trim())) {
             e.preventDefault();
             divider(para, true);
             return;

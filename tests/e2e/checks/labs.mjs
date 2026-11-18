@@ -1221,12 +1221,22 @@ export const checks = {
     await type('>'); await space(); await type('Цитата');
     await enter(); await enter();
     await type('[]'); await space(); await type('купить хлеб');
-    await enter(); await type('---'); await enter();
+    // («---» as the Mac joins its dashes: a divider at once.)
+    await enter(); await type('–-');
     await type('####'); await space(); await type('Мелкий');
     await enter(); await type('вызов `run()'); await key('`', 'Backquote', 192, '`'); await type(' и дальше');
     await sleep(100);
     expect(await p.ev(`[...document.querySelector('.rich-edit').children].map((d) => [d.dataset.k ?? '', d.dataset.l ?? '', d.dataset.h].join(':')).join(' ')`), 'its paragraphs as typed in')
       .toBe('::0 quote::0 :todo:0 hr::0 ::4 ::0');
+    // «Код» on what's picked, lit; again, plain text again.
+    await p.ev(`(() => { const d = document.querySelector('.rich-edit'); d.focus(); const t = d.children[5].firstChild, r = document.createRange(); r.setStart(t, 0); r.setEnd(t, 5); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); })()`);
+    await sleep(150);
+    await p.click(await p.at('.tfmt button[aria-label="Код"]'));
+    await sleep(150);
+    expect(await p.ev(`document.querySelector('.tfmt button[aria-label="Код"]').classList.contains('on')`), 'lit on code picked').toBe(true);
+    await p.click(await p.at('.tfmt button[aria-label="Код"]'));
+    await sleep(150);
+    expect(await p.ev(`document.querySelector('.rich-edit').children[5].querySelectorAll('span').length`), 'pressed again: plain text again, the rest code as it was').toBe(1);
     // The panel: headings to six, a quote and a divider in «Стиль», a checklist in the lists, code lit.
     await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
     await sleep(150);
