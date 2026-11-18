@@ -3022,10 +3022,11 @@ export const checks = {
     await p.click(await p.at('.params-tabs button:nth-child(2)'));
     await sleep(100);
     expect(await p.ev(`[...document.querySelectorAll('.params-pop .menu-row')].map((b) => b.textContent + ':' + b.getAttribute('aria-checked')).join()`), 'right only at first')
-      .toBe('Вправо:true,Влево:false,Вверх:false,Вниз:false,Передвигать вручную:false,Боковая полоса:true,Бэкграунд:true,Круглые края:true');
+      .toBe('Вправо:true,Влево:false,Вверх:false,Вниз:false,Передвигать вручную:false,Боковая полоса:false,Бэкграунд:true,Круглые края:true');
     await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.params-pop .menu-row')].find((b) => b.textContent === 'Вверх').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
     expect(await p.ev(`JSON.stringify(planx.board.get('m').mw)`), 'up too').toBe('["right","up"]');
-    for (const label of ['Боковая полоса', 'Бэкграунд']) await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.params-pop .menu-row')].find((b) => b.textContent === '${label}').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
+    // (No strip with round ends, as a new one has them: its card alone switched off.)
+    for (const label of ['Бэкграунд']) await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.params-pop .menu-row')].find((b) => b.textContent === '${label}').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
     expect([await p.ev(`planx.board.get('m').mns`), await p.ev(`planx.board.get('m').mnb`)].join(), 'no strips, no cards: the text alone').toBe('true,true');
   },
 
