@@ -47,8 +47,9 @@ export function toHtml(it: Item): string {
       const e = cuts[i + 1], r = runs.filter((k) => !k.h && k.s <= s0 + c && k.e >= s0 + e).reduce((m, k) => ({ ...m, ...k }), {} as RunStyle);
       const css = [r.b && 'font-weight:700', r.i && 'font-style:italic', (r.u || r.x) && `text-decoration:${[r.u && 'underline', r.x && 'line-through'].filter(Boolean).join(' ')}`,
         r.c && `color:${cssColor(r.c)}`, r.m && k !== 'code' && CODE_CSS].filter(Boolean).join(';');
-      const t = esc(para.slice(c, e));
-      return css ? `<span style="${css}">${t}</span>` : t;
+      const t = esc(para.slice(c, e)), code = r.m && k !== 'code';
+      // (Code marked so as well as by its look: a document all in the monospaced font has it too.)
+      return css ? `<span${code ? ' data-code=""' : ''} style="${css}">${t}</span>` : t;
     }).join('');
     return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''}${k ? ` data-k="${k}"` : ''}${d ? ` data-d="${d}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
   }).join('');
@@ -70,7 +71,7 @@ export function cleanPaste(html: string, fs: number): string {
       if (!t.trim() && !line) return;
       const css = [st.b && 'font-weight:700', st.i && 'font-style:italic', (st.u || st.x) && `text-decoration:${[st.u && 'underline', st.x && 'line-through'].filter(Boolean).join(' ')}`,
         st.c && `color:${st.c}`, st.m && CODE_CSS].filter(Boolean).join(';');
-      line += css ? `<span style="${css}">${t}</span>` : t;
+      line += css ? `<span${st.m ? ' data-code=""' : ''} style="${css}">${t}</span>` : t;
       return;
     }
     if (!(node instanceof HTMLElement)) return;
@@ -89,7 +90,7 @@ export function cleanPaste(html: string, fs: number): string {
     }
     if (/^(SCRIPT|STYLE|IMG|SVG|VIDEO|IFRAME|HEAD|META)$/.test(tag)) return;
     // Code in a line (not a block of it, <pre>: its text as it is).
-    if ((tag === 'CODE' && !node.closest('pre')) || (tag === 'SPAN' && s.fontFamily.includes('JetBrains Mono'))) next.m = true;
+    if ((tag === 'CODE' && !node.closest('pre')) || node.dataset.code !== undefined || (tag === 'SPAN' && s.fontFamily.includes('JetBrains Mono'))) next.m = true;
     const quoted = tag === 'BLOCKQUOTE' || node.dataset.k === 'quote';
     if (quoted && line) flush();
     if (quoted) quote++;
@@ -142,7 +143,7 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     if (!heading && (parseInt(cs.fontWeight) || 400) >= 600) st.b = true;
     if (cs.fontStyle === 'italic') st.i = true;
     // Code: in the monospaced font, the paragraph not.
-    if (cs.fontFamily.includes('JetBrains Mono') && !getComputedStyle(para).fontFamily.includes('JetBrains Mono')) st.m = true;
+    if (el.closest('[data-code]') && para.contains(el.closest('[data-code]')) || (cs.fontFamily.includes('JetBrains Mono') && !getComputedStyle(para).fontFamily.includes('JetBrains Mono'))) st.m = true;
     // (A ticked item of a checklist is struck through as it is: its text by that alone, not.)
     for (let e: Element | null = el; e && e !== ((para as HTMLElement).dataset.l === 'done' ? para : para.parentElement); e = e.parentElement) {
       const d = getComputedStyle(e).textDecorationLine;

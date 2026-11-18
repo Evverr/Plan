@@ -57,6 +57,8 @@ export interface DocLine { s: number; e: number; size: number; h: number; page: 
 
 let measure: CanvasRenderingContext2D | null = null;
 const laidOut = new Map<string, { key: string; lines: DocLine[] }>();
+/** Every sheet laid out again (fonts come in: words measured in them now, not in what stood in for them). */
+export const clearDocLines = (): void => laidOut.clear();
 
 /** The style on each character of s…e (by the runs), as pieces. */
 function piecesOf(runs: TextRun[], s: number, e: number): Array<{ s: number; e: number; r?: TextRun }> {
@@ -74,6 +76,10 @@ export function docLines(it: Item): DocLine[] {
   const key = `${text}|${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}|${area.w}x${area.h}`, was = laidOut.get(it.id);
   if (was?.key === key) return was.lines;
   if (typeof document !== 'undefined') measure ??= document.createElement('canvas').getContext('2d');
+  // Its fonts asked for (a font not in yet measured as another: laid out again once it is, see clearDocLines).
+  if (typeof document !== 'undefined' && document.fonts) {
+    for (const f of [font(fs, st.weight, st.family, st.italic), font(fs, 700, st.family, st.italic), font(fs, 400, 'mono')]) if (!document.fonts.check(f)) void document.fonts.load(f);
+  }
   const styled = runs.filter((r) => r.b || r.i || r.m);
   /** How wide s…e is at `size`, `bold` (a heading) or as each piece's style has it (in a block of code, all
    *  of it monospaced). */

@@ -44,7 +44,7 @@ import { keepMyObject, myObjects } from '../labs/myObjects';
 import { finishNib, nibPoints } from '../labs/nib';
 import { nodeEditing, shapedBy } from '../labs/paths';
 import { hiddenByLayers, layersVersion, newItemLayer } from '../labs/layers';
-import { pagesTurned, setDocObjects } from '../labs/docPage';
+import { clearDocLines, pagesTurned, setDocObjects } from '../labs/docPage';
 import { inDocLimit, offPage, tidyDocObjects } from '../labs/docObjects';
 import { zoomsWithKey } from '../labs/wheelZoom';
 import { codeFit, scrollCode } from '../labs/codeBlock';
@@ -451,9 +451,10 @@ export class Editor {
     offs.push(subscribeLabs(() => { this.sight = null; this.refitTasks(); this.requestRender(); }));
     offs.push(onPictureLoad(() => this.requestRender()));
     if (this.presence) offs.push(this.presence.subscribe(() => this.requestRender()));
-    document.fonts?.ready.then(() => { clearTextCache(); this.requestRender(); });
+    // (A document's sheets laid out again too, «Документ», src/labs.)
+    document.fonts?.ready.then(() => { clearTextCache(); clearDocLines(); this.sight = null; this.requestRender(); });
     // Fonts picked for text load when first drawn.
-    const onFonts = () => { clearTextCache(); this.requestRender(); };
+    const onFonts = () => { clearTextCache(); clearDocLines(); this.sight = null; this.requestRender(); };
     document.fonts?.addEventListener('loadingdone', onFonts);
     offs.push(() => document.fonts?.removeEventListener('loadingdone', onFonts));
     this.resize();

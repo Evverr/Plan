@@ -1146,6 +1146,54 @@ export const checks = {
     expect(await p.ev(`(planx.board.get('${id}').rs ?? []).filter((r) => r.a === 'right').length`), 'kept on it alone').toBe(1);
   },
 
+  async '"Документ": every kind of thing in it, in several fonts and sizes: typed in and done with, unchanged; its lines broken and placed in the field as on the sheet'(p) {
+    const LONG = 'Это длинная строка текста, которая точно переносится на следующую строку при обычной ширине листа А4, и ещё немного слов.';
+    const doc = () => {
+      const paras = [
+        ['Заголовок первый', { h: 1 }], ['Подзаголовок второго уровня', { h: 2 }], [LONG, {}], ['пункт списка ' + LONG, { l: 'bullet' }],
+        ['вложенный пункт', { l: 'bullet', d: 1 }], ['номер один', { l: 'number' }], ['номер два', { l: 'number' }], ['дело сделать', { l: 'todo' }],
+        ['дело сделано', { l: 'done' }], ['цитата ' + LONG, { k: 'quote' }], ['', { k: 'hr' }], ['const a = 1;', { k: 'code' }], ['  return a;', { k: 'code' }],
+        ['Мелкий заголовок', { h: 5 }], ['По центру', { a: 'center' }], ['Свой размер', { z: 24 }], ['Последняя строка с кодом run() внутри.', {}],
+      ];
+      const text = paras.map((p) => p[0]).join('\n');
+      let rs = [], at = 0;
+      paras.forEach(([t, k]) => { const e = at + t.length; for (const [key, v] of Object.entries(k)) rs.push({ s: e, e: e + 1, [key]: v }); at = e + 1; });
+      const i = text.indexOf('run()'); rs.push({ s: i, e: i + 5, m: true });
+      const j = text.indexOf('длинная'); rs.push({ s: j, e: j + 7, b: true });
+      const k2 = text.indexOf('строка текста'); rs.push({ s: k2, e: k2 + 6, i: true });
+      return { text, rs };
+    };
+
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 500, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const d = doc();
+    for (const [ff, fs] of [[undefined, 16], ['serif', 12], ['mono', 16], ['hand', 12], ['montserrat', 22]]) {
+      await p.ev(`(async () => { const t = await import('/src/model/textLinks.ts'); const d = ${JSON.stringify(d)};
+        let rs; for (const r of d.rs) { const { s, e, ...k } = r; for (const [key, v] of Object.entries(k)) rs = t.setRun(rs, s, e, key, true, v); }
+        planx.board.update('${id}', { text: d.text, rs, ff: ${JSON.stringify(ff ?? null)} ?? undefined, fs: ${fs} }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 100 - it.x, y: 60 - it.y, z: 1 }; e.camChanged(); e.setSelection([]); })()`);
+      await sleep(250);
+      const before = await p.ev(`JSON.stringify([planx.board.get('${id}').text, planx.board.get('${id}').rs])`);
+      await p.ev(`planx.editor.startEditing('${id}', null, 'end')`);
+      await sleep(350);
+      // Lines per paragraph: on the sheet (docLines) and in the field (its rects, one per line).
+      const cmp = await p.ev(`(async () => { const dp = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'), el = document.querySelector('.rich-edit');
+        const sheet = {}; let at = 0; const paras = it.text.split('\\n'), starts = paras.map((q) => { const s = at; at += q.length + 1; return s; });
+        for (const l of dp.docLines(it)) { const pi = starts.findLastIndex((s) => s <= l.s); sheet[pi] = (sheet[pi] ?? 0) + 1; }
+        const field = {}; [...el.children].forEach((c, pi) => { if (!c.textContent) { field[pi] = 1; return; } const r = document.createRange(); r.selectNodeContents(c); const bs = [...r.getClientRects()].filter((q) => q.width > 0.5).map((q) => q.top + q.height / 2).sort((a, b) => a - b); let n = 0, last = -1e9; for (const b of bs) { if (b - last > 8) n++; last = b; } field[pi] = n; });
+        const diff = Object.keys(sheet).filter((k) => sheet[k] !== field[k]).map((k) => k + ':' + sheet[k] + '/' + field[k] + ' ' + paras[k].slice(0, 20));
+        // Heights: the field's paragraphs' tops vs the sheet's lines'.
+        const top0 = el.getBoundingClientRect().top, z = planx.editor.cam.z, lines = dp.docLines(it);
+        const off = [...el.children].map((c, pi) => { const l = lines.find((x) => x.s === starts[pi] || (x.s >= starts[pi] && x.s <= starts[pi] + paras[pi].length)); return l ? Math.round((c.getBoundingClientRect().top - top0) / z - l.y) : null; });
+        return JSON.stringify({ diff, off: off.filter((o) => o !== null && Math.abs(o) > 2).length ? off : 'ok' }); })()`);
+      await p.key('Escape', 'Escape', 27);
+      await sleep(250);
+      const after = await p.ev(`JSON.stringify([planx.board.get('${id}').text, planx.board.get('${id}').rs])`);
+      expect(after, `${ff ?? 'onest'} ${fs}: typed in and done with, unchanged`).toBe(before);
+      expect(cmp, `${ff ?? 'onest'} ${fs}: its lines in the field as on the sheet`).toBe(JSON.stringify({ diff: [], off: 'ok' }));
+    }
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

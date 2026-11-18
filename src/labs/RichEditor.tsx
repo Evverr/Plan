@@ -319,7 +319,7 @@ function rewrite(fn: (text: string, rs: TextRun[] | undefined, s: number, e: num
     q.setEnd(b[0], b[1]);
     // (The caret at the end of code: past it, what's typed next not code.)
     const code = out.s === out.e && a[0].nodeType === Node.TEXT_NODE && a[1] === (a[0].textContent ?? '').length ? (a[0].parentElement as HTMLElement | null) : null;
-    if (code && code !== el && code.style.fontFamily.includes('JetBrains Mono')) {
+    if (code && code !== el && (code.dataset.code !== undefined || code.style.fontFamily.includes('JetBrains Mono'))) {
       const gap = document.createTextNode('\u200B');
       code.after(gap);
       q.setStart(gap, 1);
@@ -341,7 +341,7 @@ export function richCode(): boolean {
 /** Whether the caret (or what's picked) is in code. */
 function inCode(root: HTMLElement): boolean {
   const n = getSelection()?.anchorNode, el = n?.nodeType === Node.TEXT_NODE ? n.parentElement : (n as Element | null);
-  return !!el && el !== root && root.contains(el) && !!el.closest('span')?.style.fontFamily.includes('JetBrains Mono');
+  return !!el && el !== root && root.contains(el) && (!!el.closest('[data-code]') || !!el.closest('span')?.style.fontFamily.includes('JetBrains Mono'));
 }
 
 /** What's on what's picked: bold, italic, underlined, struck through, code; the caret's paragraph's level,
