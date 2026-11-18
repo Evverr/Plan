@@ -1165,12 +1165,27 @@ export interface Heads { start: boolean; end: boolean }
 const END: Heads = { start: false, end: true };
 
 /** An open chevron like the undo icon's: two round-capped arms at 45° back from `tip`, along `ang`. */
-function head(ctx: CanvasRenderingContext2D, tip: Point, ang: number, arm: number) {
-  ctx.beginPath();
+function head(ctx: CanvasRenderingContext2D, tip: Point, ang: number, arm: number, alone = true) {
+  if (alone) ctx.beginPath();
   ctx.moveTo(tip.x - arm * Math.cos(ang - Math.PI / 4), tip.y - arm * Math.sin(ang - Math.PI / 4));
   ctx.lineTo(tip.x, tip.y);
   ctx.lineTo(tip.x - arm * Math.cos(ang + Math.PI / 4), tip.y - arm * Math.sin(ang + Math.PI / 4));
+  if (alone) ctx.stroke();
+}
+
+/** A line's heads: with the line itself, in the one stroke (a faint line's heads not darker where they
+ *  meet it), or, a dashed line's, on their own (not dashed). */
+function strokeWithHeads(ctx: CanvasRenderingContext2D, dashed: boolean, heads: Heads, tip: Point, ang: number, tip0: Point, ang0: number, arm: number) {
+  if (!dashed) {
+    if (heads.end) head(ctx, tip, ang, arm, false);
+    if (heads.start) head(ctx, tip0, ang0, arm, false);
+    ctx.stroke();
+    return;
+  }
   ctx.stroke();
+  ctx.setLineDash([]);
+  if (heads.end) head(ctx, tip, ang, arm);
+  if (heads.start) head(ctx, tip0, ang0, arm);
 }
 
 /** How long a line's arrowhead arms are, on the screen: by its width as usual; given a thickness of
@@ -1199,10 +1214,8 @@ function arrow(ctx: CanvasRenderingContext2D, [a, c1, c2, b]: Bezier, color: str
   ctx.beginPath();
   ctx.moveTo(tip0.x, tip0.y);
   ctx.bezierCurveTo(c1.x, c1.y, heads.end ? c2.x - sx : c2.x, heads.end ? c2.y - sy : c2.y, tip.x, tip.y);
-  ctx.stroke();
+  strokeWithHeads(ctx, dash.length > 0, heads, tip, ang, tip0, ang0, arm);
   ctx.setLineDash([]);
-  if (heads.end) head(ctx, tip, ang, arm);
-  if (heads.start) head(ctx, tip0, ang0, arm);
 }
 
 /** The side of a target at `to` a link from `from` comes into: the one facing back along its way. */
@@ -1234,10 +1247,8 @@ function linkArrow(ctx: CanvasRenderingContext2D, shape: LinkShape, color: strin
     ctx.arcTo(p.x, p.y, n.x, n.y, r);
   }
   ctx.lineTo(tip.x, tip.y);
-  ctx.stroke();
+  strokeWithHeads(ctx, dash.length > 0, heads, tip, ang, tip0, ang0, arm);
   ctx.setLineDash([]);
-  if (heads.end) head(ctx, tip, ang, arm);
-  if (heads.start) head(ctx, tip0, ang0, arm);
 }
 
 /** A link's own look: its colour (the usual grey unset), dashes, arrowheads. */
