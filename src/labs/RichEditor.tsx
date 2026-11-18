@@ -19,7 +19,7 @@ export const richActive = (): boolean => !!active;
 /** What's picked in it, back as it was (the field focused again). */
 function restore(): boolean {
   if (!active) return false;
-  active.el.focus();
+  active.el.focus({ preventScroll: true });
   const sel = getSelection();
   if (active.range && sel) { sel.removeAllRanges(); sel.addRange(active.range); }
   return true;
@@ -136,7 +136,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     el.innerHTML = toHtml(item);
     active = { el, fs, range: null };
     document.execCommand('defaultParagraphSeparator', false, 'div');
-    el.focus();
+    // (Not scrolled by the browser to what's picked: to where its page starts, see below.)
+    el.focus({ preventScroll: true });
     // The caret at its end (or all of the page shown picked, as text opened for typing has all of it: of
     // several pages, that one's alone).
     const sel = getSelection(), r = document.createRange(), page = pageShown(item);
@@ -148,16 +149,17 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     }
     sel?.removeAllRanges();
     sel?.addRange(r);
-    // Opened on a page past the first (its pager turned): scrolled to where that page starts, not the top.
-    if (page > 0) {
+    // Opened on a page past the first (its pager turned): scrolled to where that page starts, not the top,
+    // its first line at the top; again a frame on, past anything the browser did to show what's picked.
+    const toPage = () => {
       const first = docLines(item).find((l) => l.page === page), at = first && domAt(el, first.s);
-      if (at) {
-        const q = document.createRange();
-        q.setStart(at[0], at[1]);
-        const top = (q.getClientRects()[0] ?? (at[0].nodeType === Node.TEXT_NODE ? at[0].parentElement : at[0] as Element)?.getBoundingClientRect())?.top;
-        if (top !== undefined) el.scrollTop += (top - el.getBoundingClientRect().top) / editor.cam.z;
-      }
-    }
+      if (!at) return;
+      const q = document.createRange();
+      q.setStart(at[0], at[1]);
+      const top = (q.getClientRects()[0] ?? (at[0].nodeType === Node.TEXT_NODE ? at[0].parentElement : at[0] as Element)?.getBoundingClientRect())?.top;
+      if (top !== undefined) el.scrollTop += (top - el.getBoundingClientRect().top) / editor.cam.z;
+    };
+    if (page > 0) { toPage(); requestAnimationFrame(toPage); }
     // What's picked in it kept, for the panel's buttons to work on after a press there.
     const keep = () => { const s = getSelection(); if (active && s?.rangeCount && el.contains(s.anchorNode)) active.range = s.getRangeAt(0).cloneRange(); };
     document.addEventListener('selectionchange', keep);
