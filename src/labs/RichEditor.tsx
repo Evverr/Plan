@@ -3,7 +3,7 @@ import type { Editor } from '../editor/editor';
 import type { Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
 import { remapLinks, setRun, type TextRun } from '../model/textLinks';
-import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, pagesOf, pageShown, textArea } from './docPage';
+import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, pagesOf, pageShown, showPage, textArea } from './docPage';
 import { objectsIn } from './docObjects';
 import { newTable, tableLook } from '../model/table';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
@@ -417,8 +417,10 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     if (editor.editCaret === 'end') caretOffObject(el);
     // Opened on a page past the first (its pager turned): scrolled to where that page starts, not the top,
     // its first line at the top; again a frame on, past anything the browser did to show what's picked.
-    const toPage = () => {
-      const first = docLines(item).find((l) => l.page === page), at = first && domAt(el, first.s);
+    // (The page shown in it, as it was opened on, or as the caret's gone on to, see follow below.)
+    let shownNow = page;
+    const toPage = (lines = docLines(item), n = shownNow) => {
+      const first = lines.find((l) => l.page === n), at = first && domAt(el, first.s);
       if (!at) return;
       // (Its first letter's box: where a line wraps, the place before it is the end of the line above.)
       const q = document.createRange();
@@ -430,8 +432,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     // Kept on its page while it's typed in: scrolled back there whatever scrolls it (the browser bringing
     // what's picked into sight, a selection dragged past its top or bottom, a wheel).
     // (Of several pages only: one alone scrolls on as it's typed past its end.)
-    const paged = pagesOf(item).length > 1, last = page === pagesOf(item).length - 1;
-    let target = 0;
+    const paged = pagesOf(item).length > 1;
+    let target = 0, last = page === pagesOf(item).length - 1;
     const settle = () => { if (paged && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target; };
     if (page > 0) {
       toPage();
@@ -445,9 +447,14 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     counted.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-l', 'data-d', 'data-k'] });
     // And a selection dragged with the mouse past its first or last line held there (`span` follows the text
     // as it's typed in, see Range; the last page's to the end of it all).
-    const span = document.createRange(), on = docLines(item).filter((l) => l.page === page);
-    const a0 = on.length ? domAt(el, on[0].s) : null, b0 = on.length ? domAt(el, on[on.length - 1].e) : null;
-    if (a0 && b0) { span.setStart(a0[0], a0[1]); span.setEnd(b0[0], b0[1]); }
+    const span = document.createRange();
+    let spanSet = false;
+    const setSpan = (lines: ReturnType<typeof docLines>, n: number) => {
+      const on = lines.filter((l) => l.page === n), a = on.length ? domAt(el, on[0].s) : null, b = on.length ? domAt(el, on[on.length - 1].e) : null;
+      spanSet = !!(a && b);
+      if (a && b) { span.setStart(a[0], a[1]); span.setEnd(b[0], b[1]); }
+    };
+    setSpan(docLines(item), page);
     let dragging = false;
     const down = () => { dragging = true; }, up = () => { dragging = false; };
     el.addEventListener('pointerdown', down);
@@ -457,12 +464,37 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     window.addEventListener('pointerup', up);
     const clamp = () => {
       const s = getSelection();
-      if (!paged || !dragging || !a0 || !b0 || !s?.rangeCount || !el.contains(s.anchorNode) || !s.focusNode) return;
+      if (!paged || !dragging || !spanSet || !s?.rangeCount || !el.contains(s.anchorNode) || !s.focusNode) return;
       if (last) span.setEnd(el, el.childNodes.length);
       const fit = (n: Node, o: number): [Node, number] => { const c = span.comparePoint(n, o); return c < 0 ? [span.startContainer, span.startOffset] : c > 0 ? [span.endContainer, span.endOffset] : [n, o]; };
       const [an, ao] = fit(s.anchorNode!, s.anchorOffset), [fn, fo] = fit(s.focusNode, s.focusOffset);
       if (an !== s.anchorNode || ao !== s.anchorOffset || fn !== s.focusNode || fo !== s.focusOffset) s.setBaseAndExtent(an, ao, fn, fo);
     };
+    // The caret gone off the page shown (typed on past its end, taken up or down past it by the keys): the
+    // page it's on shown now, its first line at the top as ever, the pager under the sheet turned with it.
+    const follow = () => {
+      const s = getSelection();
+      if (!paged || dragging || !s?.rangeCount || !s.isCollapsed || !el.contains(s.focusNode)) return;
+      const r = s.getRangeAt(0), box = r.getClientRects()[0] ?? (s.focusNode!.nodeType === Node.TEXT_NODE ? s.focusNode!.parentElement : (s.focusNode as Element))?.getBoundingClientRect();
+      const f = el.getBoundingClientRect();
+      if (!box || (box.top >= f.top - 1 && box.bottom <= f.bottom + 1)) return;
+      // (Not with text straight in the field, as when all of it was taken away: fromDom would remake it.)
+      if ([...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent)) return;
+      const now = fromDom(el, getComputedStyle(el).color), at = indexAt(el, s.focusNode!, s.focusOffset);
+      const lines = docLines({ ...item, text: now.text, rs: now.rs } as Item), line = lines.find((l) => at >= l.s && at <= l.e) ?? lines[lines.length - 1];
+      if (!line || line.page === shownNow) return;
+      shownNow = line.page;
+      showPage(id, shownNow);
+      last = shownNow === Math.max(...lines.map((l) => l.page));
+      setSpan(lines, shownNow);
+      target = 0;
+      el.scrollTop = 0;
+      toPage(lines, shownNow);
+      target = el.scrollTop;
+      editor.requestRender();
+    };
+    document.addEventListener('selectionchange', follow);
+    el.addEventListener('input', follow);
     document.addEventListener('selectionchange', clamp);
     // A selection dragged with the mouse: picked here, not by the browser, from where it's pressed to the
     // place in the text nearest the pointer, along the line it's level with when it's past the text's left
@@ -533,6 +565,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
       window.removeEventListener('mousemove', drag);
       window.removeEventListener('mouseup', letGo);
       document.removeEventListener('selectionchange', clamp);
+      document.removeEventListener('selectionchange', follow);
+      el.removeEventListener('input', follow);
       document.removeEventListener('selectionchange', keep);
       window.removeEventListener('planx:commit-edit', onCommit);
       commit();

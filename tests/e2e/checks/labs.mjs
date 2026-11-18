@@ -1222,6 +1222,30 @@ export const checks = {
     }
   },
 
+  async '"Документ": of two pages, typed on past the first one\'s end: the next page shown, the caret in sight'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.dropItem('page', { x: 400, y: 400 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'); planx.board.update('${id}', { text: Array.from({ length: 60 }, (_, i) => 'Строка ' + (i + 1)).join('\\n') }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 100 - it.x * 0.6, y: 40 - it.y * 0.6, z: 0.6 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    // the caret at the end of the last line of page 1
+    const info = await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'); const l = d.docLines(it).filter((x) => x.page === 0).pop(); return [l.e, d.pagesOf(it).length, d.pageShown(it)]; })()`);
+    expect(info[1], 'two pages').toBe(2);
+    // reopen on page 0 with caret on page 1's last line
+    await p.key('Escape', 'Escape', 27); await sleep(200);
+    await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'); d.showPage('${id}', 0); planx.editor.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+
+    const caret = await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'); const l = d.docLines(it).filter((x) => x.page === 0).pop(); const el = document.querySelector('.rich-edit'); let left = l.e; let node = null, off = 0; for (const c of el.children) { const n = c.textContent.length; if (left <= n) { node = c.firstChild ?? c; off = left; break; } left -= n + 1; } const r = document.createRange(); r.setStart(node, off); r.collapse(true); const s = getSelection(); s.removeAllRanges(); s.addRange(r); return el.scrollTop; })()`);
+    expect(caret, 'on its first page').toBe(0);
+    for (let k = 0; k < 4; k++) { await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' }); await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter' }); await sleep(60); }
+    await p.cdp('Input.insertText', { text: 'НОВОЕ' });
+    await sleep(200);
+    expect(await p.ev(`(() => { const el = document.querySelector('.rich-edit'), r = getSelection().getRangeAt(0).getBoundingClientRect(), f = el.getBoundingClientRect(); return r.top >= f.top && r.bottom <= f.bottom; })()`), 'the caret in sight: typed on past the page\'s end, on the next page').toBe(true);
+    expect(await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pageShown(planx.board.get('${id}')))()`), 'its pager turned with it').toBe(1);
+    await p.key('Escape', 'Escape', 27);
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);
