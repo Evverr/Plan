@@ -2,6 +2,7 @@ import type { Editor } from '../editor/editor';
 import { PAGE, pageMargins, type Item } from '../model/types';
 import type { Point } from '../canvas/geometry';
 import { font } from '../canvas/text';
+import { isLocked } from './labs';
 
 /**
  * «Поля документа» (src/labs): a document's sheet's margins changed by hand, its own (`pm`), not ГОСТ's.
@@ -38,7 +39,8 @@ function sheetOf(ed: Editor): Item | null {
   if (shownFor && one !== shownFor) { shownFor = null; fns.forEach((f) => f()); }
   if (!shownFor || ed.editingId) return null;
   const it = ed.board.get(shownFor);
-  return it?.type === 'page' ? it : null;
+  // (Not one locked in place: its margins as they are.)
+  return it?.type === 'page' && !isLocked(it) ? it : null;
 }
 
 /** The triangles' size, on the screen, and how near the pointer takes one (or its line). */
