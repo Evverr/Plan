@@ -669,8 +669,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         const out = (e.key === 'Enter' && !e.shiftKey && !para?.textContent) || (e.key === 'Backspace' && atStart);
         if (para?.dataset.l && out) {
           e.preventDefault();
-          // (An item of a list in a list: one shallower first.)
-          if (e.key === 'Enter' && Number(para.dataset.d) > 0) { deepen([para], -1); return; }
+          // (An item of a list in a list: one shallower first, by Enter or Backspace, as in Word.)
+          if (Number(para.dataset.d) > 0) { deepen([para], -1); return; }
           delete para.dataset.l;
           delete para.dataset.d;
           return;

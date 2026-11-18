@@ -1653,6 +1653,20 @@ export const checks = {
     expect(JSON.stringify(it.rs), 'what they marked').toBe(JSON.stringify([{ s: 12, e: 13, h: 2 }, { s: 13, e: 20, b: true }, { s: 29, e: 30, l: 'bullet' }, { s: 40, e: 43, m: true }, { s: 43, e: 44, l: 'todo' }, { s: 49, e: 50, k: 'quote' }]));
   },
 
+  async '"Markdown в документе": Backspace at the start of an item of a list in a list: one shallower, then out of the list'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'один\\nдва', rs: [{ s: 4, e: 5, l: 'bullet' }, { s: 8, e: 9, l: 'bullet', d: 2 }] }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(350);
+    await p.ev(`(() => { const d = document.querySelector('.rich-edit'), r = document.createRange(); r.setStart(d.children[1].firstChild, 0); r.collapse(true); getSelection().removeAllRanges(); getSelection().addRange(r); })()`);
+    const st = () => p.ev(`(() => { const c = document.querySelector('.rich-edit').children[1]; return (c.dataset.l ?? '-') + ':' + (c.dataset.d ?? 0); })()`);
+    const seen = [];
+    for (let k = 0; k < 3; k++) { await p.key('Backspace', 'Backspace', 8); seen.push(await st()); }
+    expect(seen.join(' '), 'two deep, one deep, then out').toBe('bullet:1 bullet:0 -:0');
+    await p.key('Escape', 'Escape', 27);
+  },
+
   async '"Markdown в документе": a list in a list by Tab (numbered at its depth), out by Shift+Tab and Enter; a block of code by «```», Tab two spaces in it, out by Enter'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);
