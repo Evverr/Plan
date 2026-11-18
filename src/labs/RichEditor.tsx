@@ -449,7 +449,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     const a0 = on.length ? domAt(el, on[0].s) : null, b0 = on.length ? domAt(el, on[on.length - 1].e) : null;
     if (a0 && b0) { span.setStart(a0[0], a0[1]); span.setEnd(b0[0], b0[1]); }
     let dragging = false;
-    const down = () => { dragging = true; }, up = () => { dragging = false; };
+    const down = () => { dragging = true; from = null; }, up = () => { dragging = false; };
     el.addEventListener('pointerdown', down);
     // (Clicked on a table's picture, or by it: the caret in a paragraph next to it, see caretOffObject.)
     const offObject = () => requestAnimationFrame(() => caretOffObject(el));
@@ -464,6 +464,32 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
       if (an !== s.anchorNode || ao !== s.anchorOffset || fn !== s.focusNode || fo !== s.focusOffset) s.setBaseAndExtent(an, ao, fn, fo);
     };
     document.addEventListener('selectionchange', clamp);
+    // A selection dragged past the text's left or right edge (into the sheet's margin): picked to where the
+    // pointer is along that line, as if it were at the edge (the browser's own, past it, would take the
+    // lines over it).
+    // (Where it was pressed, kept as the browser had it then: what's picked from there.)
+    let past: { x: number; y: number } | null = null, from: [Node, number] | null = null;
+    const toEdge = () => {
+      const s = getSelection();
+      if (!past || !from || !s?.rangeCount || !el.contains(from[0])) return;
+      const r = el.getBoundingClientRect(), x = Math.max(r.left + 1, Math.min(r.right - 1, past.x)), y = Math.max(r.top + 1, Math.min(r.bottom - 1, past.y));
+      const at = document.caretRangeFromPoint?.(x, y);
+      if (!at || !el.contains(at.startContainer)) return;
+      if (s.anchorNode !== from[0] || s.anchorOffset !== from[1] || s.focusNode !== at.startContainer || s.focusOffset !== at.startOffset) s.setBaseAndExtent(from[0], from[1], at.startContainer, at.startOffset);
+    };
+    const moved = (e: PointerEvent) => {
+      if (!dragging || !(e.buttons & 1)) return;
+      const s = getSelection();
+      if (!from && s?.anchorNode && el.contains(s.anchorNode)) from = [s.anchorNode, s.anchorOffset];
+      const r = el.getBoundingClientRect();
+      past = e.clientX < r.left || e.clientX > r.right ? { x: e.clientX, y: e.clientY } : null;
+      toEdge();
+    };
+    // (Let go there: as it was, past what the browser does as it's let go.)
+    const letGo = () => { if (past) { toEdge(); requestAnimationFrame(() => { toEdge(); past = null; from = null; }); } else from = null; };
+    window.addEventListener('pointerup', letGo);
+    window.addEventListener('pointermove', moved);
+    document.addEventListener('selectionchange', toEdge);
     // What's picked in it kept, for the panel's buttons to work on after a press there.
     const keep = () => { const s = getSelection(); if (active && s?.rangeCount && el.contains(s.anchorNode)) active.range = s.getRangeAt(0).cloneRange(); };
     document.addEventListener('selectionchange', keep);
@@ -493,6 +519,9 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
       el.removeEventListener('pointerdown', down);
       el.removeEventListener('click', offObject);
       window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointermove', moved);
+      window.removeEventListener('pointerup', letGo);
+      document.removeEventListener('selectionchange', toEdge);
       document.removeEventListener('selectionchange', clamp);
       document.removeEventListener('selectionchange', keep);
       window.removeEventListener('planx:commit-edit', onCommit);

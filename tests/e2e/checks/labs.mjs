@@ -1146,6 +1146,25 @@ export const checks = {
     expect(await p.ev(`(planx.board.get('${id}').rs ?? []).filter((r) => r.a === 'right').length`), 'kept on it alone').toBe(1);
   },
 
+  async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const long = 'Длинный абзац текста, который переносится на несколько строк, чтобы проверить выделение по видимой строке, а не по абзацу целиком, и ещё немного слов сверху.';
+    await p.ev(`(() => { const it = planx.board.get('${id}'); planx.board.update('${id}', { text: ${JSON.stringify(`Первая строка\n${long}`)} }); const e = planx.editor; e.cam = { x: 150 - (it.x + 100) * 0.6, y: 110 - (it.y + 60) * 0.6, z: 0.6 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    // From its last line's end, leftward, past the field's left edge on the same line.
+    for (const dx of [30, 80]) {
+      await p.ev(`getSelection().collapseToEnd()`);
+      const pts = await p.ev(`(() => { const el = document.querySelector('.rich-edit'), r = document.createRange(); r.selectNodeContents(el.lastElementChild); const rects = [...r.getClientRects()].filter((b) => b.width > 4), b = rects[rects.length - 1], f = el.getBoundingClientRect();
+        return [[b.right - 1, b.top + b.height / 2], [f.left - ${dx}, b.top + b.height / 2]]; })()`);
+      await p.drag(pts[0], pts[1], { steps: 25 });
+      await sleep(100);
+      expect(await p.ev(`getSelection().toString().replace(/[.]$/, '')`), `that line alone picked (${dx} past the edge)`).toBe('немного слов сверху');
+    }
+    await p.key('Escape', 'Escape', 27);
+  },
+
   async '"Документ": typed in on a page, a selection dragged past its top: not scrolled past that page, picked from its first line'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 40, y: 20, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 420, y: 420 }); })()`);
     await sleep(200);
