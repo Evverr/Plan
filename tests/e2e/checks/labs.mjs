@@ -1262,6 +1262,27 @@ export const checks = {
       .toBe(JSON.stringify(['Ну, Смотри сайт тут и дальше\nВторая', [{ s: 16, e: 19, url: 'https://example.com' }], null]));
   },
 
+  async '"Документ": a document\'s text pasted into another (its field\'s HTML): its headings, lists, checklists, quotes, code, dividers and colours, all as they were'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const src = { text: 'Заголовок\nпункт\nвложенный\nсделано\nцитата\nconst a = 1;\n\nвызов run() красным', rs: [
+      { s: 9, e: 10, h: 2 }, { s: 15, e: 16, l: 'bullet' }, { s: 25, e: 26, l: 'bullet', d: 1 }, { s: 33, e: 34, l: 'done' }, { s: 40, e: 41, k: 'quote' }, { s: 53, e: 54, k: 'code' }, { s: 54, e: 55, k: 'hr' },
+      { s: 61, e: 66, m: true }, { s: 67, e: 74, c: 'red' }] };
+    const html = await p.ev(`(async () => (await import('/src/labs/richDoc.ts')).toHtml({ ...${JSON.stringify(src)}, fs: 16 }))()`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'X', rs: undefined }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(350);
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' });
+    await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter' });
+    await p.ev(`(() => { const dt = new DataTransfer(); dt.setData('text/html', ${JSON.stringify(html)}); dt.setData('text/plain', 'x'); document.querySelector('.rich-edit').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); })()`);
+    await sleep(150);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(250);
+    const got = await p.ev(`(() => { const i = planx.board.get('${id}'); return { text: i.text, rs: i.rs }; })()`);
+    const shift = (r) => ({ ...r, s: r.s + 2, e: r.e + 2 });
+    expect(JSON.stringify([got.text, got.rs]), 'all it was, as it was').toBe(JSON.stringify(['X\n' + src.text, src.rs.map(shift)]));
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);
