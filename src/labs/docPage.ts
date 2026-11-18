@@ -20,6 +20,8 @@ const shown = new Map<string, number>();
 
 /** A heading's size against the text's own (1, 2, 3), and the room over one that isn't a page's first. */
 export const HEADING_SIZE = [1, 1.75, 1.375, 1.125], HEADING_GAP = 0.6;
+/** Its lines a third further apart than text elsewhere on the board. */
+export const DOC_LINE = LINE_HEIGHT * 4 / 3;
 
 /** A list's paragraphs: how far in their lines stand (their marker in that room, at its left). */
 export const LIST_IN = 28;
@@ -59,7 +61,7 @@ export function docLines(it: Item): DocLine[] {
   const lines: DocLine[] = [];
   let page = 0, y = 0, at = 0, n = 0, indent = 0, mark: string | undefined;
   const put = (s: number, e: number, size: number, h: number, first: boolean) => {
-    const tall = size * LINE_HEIGHT, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
+    const tall = size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
     if (y + gap + tall > PAGE_TEXT.h && y > 0) { page++; y = 0; }
     else y += gap;
     lines.push({ s, e, size, h, page, y, indent, ...(first && mark && { mark }) });
@@ -122,7 +124,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   ctx.textAlign = 'left';
   for (const l of docLines(it)) {
     if (l.page !== n) continue;
-    const top = it.y + PAGE.TOP + l.y, tall = l.size * LINE_HEIGHT, rule = Math.max(1, l.size / 14);
+    const top = it.y + PAGE.TOP + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14);
     const cuts = [...new Set([l.s, l.e, ...[...runs, ...links].flatMap((r) => [r.s, r.e]).filter((c) => c > l.s && c < l.e)])].sort((a, b) => a - b);
     const pieces = cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => k.s <= c && k.e >= e).reduce((m, k) => ({ ...m, ...k }), {} as Partial<TextRun>);

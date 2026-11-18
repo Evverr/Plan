@@ -242,7 +242,9 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
         return;
       }
       // (A component no smaller than what it holds: see below.)
-      const min = it.comp || (it.type === 'task' && labOn('tlDurations')) ? 1 : it.type === 'frame' ? 80 : it.type === 'ink' ? 4 : it.type === 'audio' ? 32 : it.type === 'icon' || it.type === 'emoji' || it.type === 'image' ? 16 : 40;
+      // (A shape, a rectangle or a circle, as small as 8 across: a dot, a thin bar.)
+      const min = it.comp || (it.type === 'task' && labOn('tlDurations')) ? 1 : it.type === 'frame' ? 80 : it.type === 'ink' ? 4 : it.type === 'audio' ? 32
+        : it.type === 'icon' || it.type === 'emoji' || it.type === 'image' ? 16 : (it.type === 'rect' || it.type === 'ellipse' || it.type === 'polygon') && !it.code && !it.form && !it.poll && !it.hd ? 8 : 40;
       // A turned item is stretched along its own sides.
       const { w: w0, h: h0 } = g.orig, d = turn({ x: w.x - g.start.x, y: w.y - g.start.y }, { x: 0, y: 0 }, -angleOf(g.orig));
       // Which way each side goes: by a side one way only, by the top left corner both back (the bottom left

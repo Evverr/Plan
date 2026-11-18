@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef } from 'react';
 import type { Editor } from '../editor/editor';
 import { PAGE, type Item } from '../model/types';
-import { fontOf, FONTS, LINE_HEIGHT } from '../canvas/text';
-import { PAGE_TEXT } from './docPage';
+import { fontOf, FONTS } from '../canvas/text';
+import { DOC_LINE, PAGE_TEXT } from './docPage';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
 
 /**
@@ -137,7 +137,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     <div ref={ref} className="rich-edit" contentEditable suppressContentEditableWarning spellCheck={false} role="textbox" aria-multiline aria-label="Текст документа"
       style={{
         left: p.x, top: p.y, width: PAGE_TEXT.w, height: PAGE_TEXT.h, transform: `scale(${z})`,
-        fontSize: fs, lineHeight: LINE_HEIGHT, fontWeight: st.weight, fontStyle: st.italic ? 'italic' : undefined,
+        fontSize: fs, lineHeight: DOC_LINE, fontWeight: st.weight, fontStyle: st.italic ? 'italic' : undefined,
         fontFamily: FONTS[st.family ?? 'onest']?.css, color: item.tc ? cssColor(item.tc) : undefined, textAlign: item.ta ?? 'left',
       }}
       onBlur={commit}
