@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { remapLinks, runsHave, setRun, type TextRun } from '../src/model/textLinks';
+import { headingAt, remapLinks, runsHave, setHeading, setRun, type TextRun } from '../src/model/textLinks';
 
 describe('styles on parts of the text («Документ»)', () => {
   it('sets one on a part, takes it off again, joins neighbours alike', () => {
@@ -32,8 +32,7 @@ describe('styles on parts of the text («Документ»)', () => {
 });
 
 describe('headings in a document', () => {
-  it('marks the caret\'s paragraph (on the character after it), keeps it as it\'s typed in, takes it off', async () => {
-    const { headingAt, setHeading } = await import('../src/model/textLinks');
+  it('marks the caret\'s paragraph (on the character after it), keeps it as it\'s typed in, takes it off', () => {
     const text = 'Заголовок\nТекст';
     let r = setHeading(text, undefined, 3, 3, 1);
     expect(r).toEqual([{ s: 9, e: 10, h: 1 }]);
@@ -48,5 +47,11 @@ describe('headings in a document', () => {
     expect(headingAt(typed, r, 0)).toBe(2);
     expect(headingAt(typed, r, typed.length - 1)).toBe(2);
     expect(setHeading(typed, r, 0, typed.length, 0)).toBeUndefined();
+  });
+
+  it('a first paragraph left empty keeps what it is: its key not put on the next one', () => {
+    const text = '\nПосле';
+    expect(setHeading(text, undefined, 0, 0, 2)).toEqual([{ s: 0, e: 1, h: 2 }]);
+    expect(headingAt(text, setHeading(text, undefined, 0, 0, 2), 1)).toBe(0);
   });
 });

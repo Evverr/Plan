@@ -655,8 +655,26 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
           if (para.dataset.k === 'code') { e.preventDefault(); if (!e.shiftKey) document.execCommand('insertText', false, '  '); return; }
           if (ps.some((p) => p.dataset.l)) { e.preventDefault(); deepen(ps, e.shiftKey ? -1 : 1); return; }
         }
-        // Backspace just after a divider: the divider gone.
         const prev = para?.previousElementSibling as HTMLElement | null;
+        // An empty line by a table («Таблица в документе»): Backspace or Delete on one over it, the line gone
+        // (the table up to the top of the text, if it was the first); Backspace on one under it, the line
+        // gone too (the last one kept, the table not taken with it).
+        const isObj = (n: Element | null | undefined) => !!n?.classList.contains('rich-obj');
+        if ((e.key === 'Backspace' || e.key === 'Delete') && para && !isObj(para) && !para.textContent && sel?.isCollapsed) {
+          if (isObj(next)) {
+            e.preventDefault();
+            para.remove();
+            if (prev && !isObj(prev)) { const r = document.createRange(); r.selectNodeContents(prev); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+            else { const r = document.createRange(); r.setStartAfter(next!); r.collapse(true); sel.removeAllRanges(); sel.addRange(r); caretOffObject(ref.current!); }
+            return;
+          }
+          if (e.key === 'Backspace' && isObj(prev)) {
+            e.preventDefault();
+            if (next) { para.remove(); caretTo(next); }
+            return;
+          }
+        }
+        // Backspace just after a divider: the divider gone.
         if (e.key === 'Backspace' && atStart && prev?.dataset.k === 'hr') {
           e.preventDefault();
           prev.remove();

@@ -107,9 +107,11 @@ function heldNear(ed: Editor, t: Item | null | undefined, w: Point, from?: strin
   return best ?? t;
 }
 
-/** A kanban («Канбан», src/labs) the item `id` is a card of, or a timeline it's on: no line from it goes
- *  to its edge (one from anything else does, as to what's on it). */
-const ownKanban = (t: Item, id: string | undefined): boolean => !!(t.kb || t.tl) && !!id && !!t.members?.includes(id);
+/** What holds the item `id`: a kanban («Канбан», src/labs) it's a card of, a timeline it's on, a frame it's
+ *  in, the document it's put in the text of («Таблица в документе»). No line from it goes to its edge (one
+ *  from anything else does, as to what's on it). */
+const ownKanban = (t: Item, id: string | undefined, get?: (id: string) => Item | undefined): boolean =>
+  !!id && ((!!(t.kb || t.tl || t.type === 'frame') && !!t.members?.includes(id)) || (!!get && get(id)?.inDoc === t.id));
 
 function timelineOf(ed: Editor, it: Item): Item | undefined {
   const all = ed.shown(), c = { x: it.x + it.w / 2, y: it.y + it.h / 2 };
@@ -392,7 +394,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       g.to = w;
       // (Not the kanban it's led out of a card of, nor the timeline it's led out of something on: its own.)
       // (Nor a header tied to a kanban or timeline, src/labs/header.ts.)
-      g.target = t && t.id !== g.from && !t.tie && !ownKanban(t, g.from) ? t.id : null;
+      g.target = t && t.id !== g.from && !t.tie && !ownKanban(t, g.from, (k) => board.get(k)) ? t.id : null;
       // (The panel over what it's led out of fading out meanwhile, as when it's dragged.)
       ed.setLinking(true);
       ed.requestRender();
@@ -430,7 +432,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       if (t?.id !== held && far) g.away = true;
       g.to = w;
       // (On its other end's item too: it turns round, the arrow going into that.)
-      g.target = t && !t.tie && (g.away || far) && (t.id !== other || t.id !== held) && !ownKanban(t, other) ? t.id : null;
+      g.target = t && !t.tie && (g.away || far) && (t.id !== other || t.id !== held) && !ownKanban(t, other, (k) => board.get(k)) ? t.id : null;
       ed.requestRender();
       return;
     }

@@ -112,7 +112,9 @@ export function paraAt<K extends ParaKey>(text: string, runs: TextRun[] | undefi
 /** The paragraphs s…e is in made so (undefined: not so). */
 export function setPara(text: string, runs: TextRun[] | undefined, s: number, e: number, key: ParaKey, value: string | number | undefined): TextRun[] | undefined {
   let out = runs;
-  for (let at = text.lastIndexOf('\n', s - 1) + 1; ; ) {
+  // (From the start of the paragraph s is in: the first's at 0, even when its empty and a line break's
+  // there, which lastIndexOf from −1 would find.)
+  for (let at = s > 0 ? text.lastIndexOf('\n', s - 1) + 1 : 0; ; ) {
     const a = anchorOf(text, at);
     out = setRun(out, a, a + 1, key, false);
     if (value) out = setRun(out, a, a + 1, key, true, value);

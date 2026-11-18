@@ -1306,6 +1306,34 @@ export const checks = {
     await p.key('Escape', 'Escape', 27);
   },
 
+  async '"Таблица в документе": the text over it taken out, its empty line gone by Backspace: the table at the top'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.dropItem('page', { x: 400, y: 400 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const tid = await p.ev(`(async () => { const o = await import('/src/labs/docObjects.ts'), b = planx.board, e = planx.editor;
+      const t = e.newItem('table', 0, 0, { cols: [200, 200, 200], rows: [40, 40, 40], cells: Array(9).fill(''), w: 600, h: 120, inDoc: '${id}' });
+      e.addItem(t);
+      const r = o.withObject({ text: 'Текст\\nПосле', rs: undefined, links: undefined }, t.id, 0);
+      b.update('${id}', { text: r.text, rs: r.rs });
+      e.startEditing('${id}', null, 'end');
+      return t.id; })()`);
+    await sleep(400);
+    // «Текст» picked and taken out, then Backspace in its line, empty.
+    await p.ev(`(() => { const d = document.querySelector('.rich-edit'); d.focus(); const t = d.children[0].firstChild, r = document.createRange(); r.setStart(t, 0); r.setEnd(t, t.length); const s = getSelection(); s.removeAllRanges(); s.addRange(r); })()`);
+    await p.key('Backspace', 'Backspace', 8);
+    await sleep(100);
+    expect(await p.ev(`[...document.querySelector('.rich-edit').children].map((c) => c.dataset.o ? 'T' : c.textContent || '_').join()`), 'an empty line over it').toBe('_,T,После');
+    await p.key('Backspace', 'Backspace', 8);
+    await sleep(100);
+    expect(await p.ev(`[...document.querySelector('.rich-edit').children].map((c) => c.dataset.o ? 'T' : c.textContent || '_').join()`), 'that line gone: the table first').toBe('T,После');
+    await p.cdp('Input.insertText', { text: '!' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    const doc = await p.ev(`planx.board.get('${id}')`);
+    expect(JSON.stringify([doc.text, doc.rs.filter((r) => r.o).map((r) => r.s)]), 'kept so: its place first, typed on after it').toBe(JSON.stringify(['\n!После', [0]]));
+    expect(await p.ev(`(async () => (await import('/src/labs/docObjects.ts')).slotOf(planx.board.get('${id}'), '${tid}').y - planx.board.get('${id}').y)()`), 'at the top of the text').toBe(76 + 8);
+  },
+
   async '"Таблица в документе": dragged onto a sheet, in its text (the text after it lower by its height), moved with it, dragged off out of it; one put in by «Стиль», gone with its place; as Markdown'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); })()`);
     await p.ev(`(() => { const e = planx.editor; e.dropItem('page', { x: 400, y: 400 }); })()`);
