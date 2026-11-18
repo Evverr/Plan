@@ -1240,7 +1240,7 @@ export const checks = {
     // The panel: headings to six, a quote and a divider in «Стиль», a checklist in the lists, code lit.
     await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
     await sleep(150);
-    expect(await p.ev(`[...document.querySelectorAll('.tf-menu .tf-item')].map((b) => b.textContent).join()`), 'its style menu').toBe('Обычный,Заголовок 1,Заголовок 2,Заголовок 3,Заголовок 4,Заголовок 5,Заголовок 6,Цитата,Разделитель');
+    expect(await p.ev(`[...document.querySelectorAll('.tf-menu .tf-item')].map((b) => b.textContent).join()`), 'its style menu').toBe('Обычный,Заголовок 1,Заголовок 2,Заголовок 3,Заголовок 4,Заголовок 5,Заголовок 6,Цитата,Блок кода,Разделитель');
     await p.click(await p.at('.tfmt button[aria-label^="Стиль"]'));
     await key('Escape', 'Escape', 27);
     await sleep(300);
@@ -1259,6 +1259,34 @@ export const checks = {
     expect(await p.ev(`(async () => (await import('/src/model/textLinks.ts')).paraAt(planx.board.get('${id}').text, planx.board.get('${id}').rs, ${at('купить')}, 'l'))()`), 'ticked by a click on its box').toBe('done');
     const md = await p.ev(`(async () => (await import('/src/labs/docExport.ts')).docMarkdown(planx.board.get('${id}')))()`);
     expect(md, 'as Markdown').toBe('Заметки\n\n> Цитата\n\n- [x] купить хлеб\n\n---\n\n#### Мелкий\n\nвызов `run()` и дальше\n');
+  },
+
+  async '"Markdown в документе": a list in a list by Tab (numbered at its depth), out by Shift+Tab and Enter; a block of code by «```», Tab two spaces in it, out by Enter'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { const it = planx.board.get('${id}'); planx.board.update('${id}', { text: 'План' }); const e = planx.editor; e.cam = { x: 150 - (it.x + 100), y: 110 - (it.y + 60), z: 1 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    const key = async (k, code, vk, text, modifiers = 0) => { await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: k, code, windowsVirtualKeyCode: vk, text, modifiers }); await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: k, code, modifiers }); await sleep(60); };
+    const enter = () => key('Enter', 'Enter', 13, '\r'), space = () => key(' ', 'Space', 32, ' '), type = (text) => p.cdp('Input.insertText', { text });
+    const tab = (shift) => key('Tab', 'Tab', 9, undefined, shift ? 8 : 0);
+    await enter(); await type('1.'); await space(); await type('Первый');
+    await enter(); await tab(); await type('под ним');
+    await enter(); await type('ещё');
+    await enter(); await tab(true); await type('Второй');
+    await enter(); await tab(); await type('снова');
+    // (Enter in an empty item of a list in a list: one shallower; again, out of the list.)
+    await enter(); await enter(); await enter();
+    await type('```'); await type('if (a) {'); await enter(); await tab(); await type('go();'); await enter(); await enter();
+    await type('После.');
+    await sleep(100);
+    expect(await p.ev(`[...document.querySelector('.rich-edit').children].map((d) => [d.dataset.k ?? '', d.dataset.l ?? '', d.dataset.d ?? '', d.dataset.m ?? ''].join(':')).join(' ')`), 'its paragraphs as typed in')
+      .toBe('::: :number::1. :number:1:1. :number:1:2. :number::2. :number:1:1. code::: code::: :::');
+    await key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(await p.ev(`planx.board.get('${id}').text`), 'its text').toBe('План\nПервый\nпод ним\nещё\nВторой\nснова\nif (a) {\n  go();\nПосле.');
+    const md = await p.ev(`(async () => (await import('/src/labs/docExport.ts')).docMarkdown(planx.board.get('${id}')))()`);
+    expect(md, 'as Markdown').toBe('План\n\n1. Первый\n    1. под ним\n    2. ещё\n2. Второй\n    1. снова\n\n```\nif (a) {\n  go();\n```\n\nПосле.\n');
   },
 
   async '"Голосование в объектах": set up in its fields, started, an answer clicked voted for (the shares shown), clicked again unvoted'(p) {

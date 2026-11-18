@@ -295,9 +295,19 @@
 .rich-edit > div[data-l] { position: relative; padding-left: 28px; }
 .rich-edit > div[data-l]::before { position: absolute; left: 4px; }
 .rich-edit > div[data-l="bullet"]::before { content: "•"; }
-.rich-edit > div[data-l="number"] { counter-increment: rich-n; }
-.rich-edit > div:not([data-l="number"]) + div[data-l="number"], .rich-edit > div[data-l="number"]:first-child { counter-reset: rich-n; }
-.rich-edit > div[data-l="number"]::before { content: counter(rich-n) "."; }
+/* (Its number as counted at its depth, numberLists in RichEditor.tsx.) */
+.rich-edit > div[data-l="number"]::before { content: attr(data-m); }
+/* A list in a list: 28 further in at each depth (to LIST_DEPTH), its bullets as BULLETS has them. */
+.rich-edit > div[data-l][data-d="1"] { padding-left: 56px; }
+.rich-edit > div[data-l][data-d="2"] { padding-left: 84px; }
+.rich-edit > div[data-l][data-d="3"] { padding-left: 112px; }
+.rich-edit > div[data-l][data-d="4"] { padding-left: 140px; }
+.rich-edit > div[data-l][data-d="1"]::before { left: 32px; }
+.rich-edit > div[data-l][data-d="2"]::before { left: 60px; }
+.rich-edit > div[data-l][data-d="3"]::before { left: 88px; }
+.rich-edit > div[data-l][data-d="4"]::before { left: 116px; }
+.rich-edit > div[data-l="bullet"]:is([data-d="1"], [data-d="4"])::before { content: "◦"; }
+.rich-edit > div[data-l="bullet"][data-d="2"]::before { content: "▪"; }
 /* A checklist's box (as drawBox in docPage.ts): clicked, ticked; a ticked item faint and struck through. */
 .rich-edit > div:is([data-l="todo"], [data-l="done"])::before { content: ""; box-sizing: border-box; width: .8em; height: .8em;
   top: calc((1lh - .8em) / 2); border: 1.5px solid color-mix(in srgb, currentColor 50%, transparent); border-radius: 4px; cursor: pointer; }
@@ -308,6 +318,19 @@
 .rich-edit > div[data-k="quote"][data-l] { padding-left: 48px; }
 .rich-edit > div[data-k="quote"][data-l]::before { left: 24px; }
 .rich-edit > div[data-k="quote"][data-l="done"] { opacity: .375; }
+.rich-edit > div[data-k="quote"][data-l][data-d="1"] { padding-left: 76px; }
+.rich-edit > div[data-k="quote"][data-l][data-d="2"] { padding-left: 104px; }
+.rich-edit > div[data-k="quote"][data-l][data-d="3"] { padding-left: 132px; }
+.rich-edit > div[data-k="quote"][data-l][data-d="4"] { padding-left: 160px; }
+.rich-edit > div[data-k="quote"][data-l][data-d="1"]::before { left: 52px; }
+.rich-edit > div[data-k="quote"][data-l][data-d="2"]::before { left: 80px; }
+.rich-edit > div[data-k="quote"][data-l][data-d="3"]::before { left: 108px; }
+.rich-edit > div[data-k="quote"][data-l][data-d="4"]::before { left: 136px; }
+/* A block of code (CODE_IN 12 inside its grey, a tenth smaller, monospaced), rounded where it starts and ends. */
+.rich-edit > div[data-k="code"] { padding: 0 12px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: .9em;
+  background: color-mix(in srgb, currentColor 7%, transparent); }
+.rich-edit > div[data-k="code"]:not([data-k="code"] + *) { border-top-left-radius: 6px; border-top-right-radius: 6px; }
+.rich-edit > div[data-k="code"]:not(:has(+ [data-k="code"])) { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
 /* A divider: a faint line across its middle. */
 .rich-edit > div[data-k="hr"] { position: relative; }
 .rich-edit > div[data-k="hr"]::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); pointer-events: none; }

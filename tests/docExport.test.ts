@@ -37,4 +37,13 @@ describe('«Документ» as Markdown', () => {
       { s: at('run()'), e: end('run()'), m: true }, { s: text.length, e: text.length + 1, h: 5 }] } as Item;
     expect(docMarkdown(it)).toBe('> Мысль\n>\n> вторая\n\n---\n\n- [ ] купить\n- [x] готово\n\nвызов `run()`\n\n##### Мелкий\n');
   });
+
+  it('has its lists in lists four spaces in, numbered at each depth, and its blocks of code between «```»s', () => {
+    const text = 'Первый\nпод ним\nещё\nВторой\nconst a = 1;\n  return a;';
+    const end = (w: string) => text.indexOf(w) + w.length;
+    const it = { id: 'd', type: 'page', x: 0, y: 0, w: 794, h: 1123, z: 0, text, rs: [
+      { s: end('Первый'), e: end('Первый') + 1, l: 'number' }, { s: end('под ним'), e: end('под ним') + 1, l: 'number', d: 1 }, { s: end('ещё'), e: end('ещё') + 1, l: 'number', d: 1 },
+      { s: end('Второй'), e: end('Второй') + 1, l: 'number' }, { s: end('= 1;'), e: end('= 1;') + 1, k: 'code' }, { s: text.length, e: text.length + 1, k: 'code' }] } as Item;
+    expect(docMarkdown(it)).toBe('1. Первый\n    1. под ним\n    2. ещё\n2. Второй\n\n```\nconst a = 1;\n  return a;\n```\n');
+  });
 });

@@ -3,7 +3,7 @@ import type { Editor } from '../editor/editor';
 import { PAGE, type Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
 import { remapLinks, setRun, type TextRun } from '../model/textLinks';
-import { DOC_LINE, docLines, LIST_IN, PAGE_TEXT, pagesOf, pageShown } from './docPage';
+import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, PAGE_TEXT, pagesOf, pageShown } from './docPage';
 import { cleanPaste, cssColor, fromDom, headingStyle, toHtml } from './richDoc';
 import { labOn } from './labs';
 
@@ -117,16 +117,52 @@ export function richList(kind: string): boolean {
   if (!restore() || !active) return false;
   const ps = pickedParagraphs(), has = (p: HTMLElement) => p.dataset.l === kind || (kind === 'todo' && p.dataset.l === 'done');
   const off = ps.length > 0 && ps.every(has);
-  for (const p of ps) { if (off) delete p.dataset.l; else if (!has(p)) p.dataset.l = kind; }
+  for (const p of ps) { if (off) { delete p.dataset.l; delete p.dataset.d; } else if (!has(p)) p.dataset.l = kind; }
   return true;
 }
 
 /** The paragraphs what's picked is in made a quote, or not one any more (all of them quotes already). */
-export function richQuote(): boolean {
+export const richQuote = (): boolean => richKind('quote');
+/** The paragraphs what's picked is in made a quote or a block of code (`kind`), or not any more (all of
+ *  them that already). A line of code is just that: no heading, list or size of its own. */
+export function richKind(kind: 'quote' | 'code'): boolean {
   if (!restore() || !active) return false;
-  const ps = pickedParagraphs(), off = ps.length > 0 && ps.every((p) => p.dataset.k === 'quote');
-  for (const p of ps) { if (off) delete p.dataset.k; else if (p.dataset.k !== 'hr') p.dataset.k = 'quote'; }
+  const ps = pickedParagraphs(), off = ps.length > 0 && ps.every((p) => p.dataset.k === kind);
+  for (const p of ps) {
+    if (off) { delete p.dataset.k; continue; }
+    if (p.dataset.k === 'hr') continue;
+    p.dataset.k = kind;
+    if (kind === 'code') codeLine(p);
+  }
   return true;
+}
+/** A paragraph made a line of code: no heading, list or size of its own. */
+function codeLine(p: HTMLElement): void {
+  p.dataset.h = '0';
+  for (const k of ['z', 'l', 'd', 'a'] as const) delete p.dataset[k];
+  p.removeAttribute('style');
+}
+
+/** The numbers of numbered lists, each at its depth, on their paragraphs (`data-m`, as their markers), as
+ *  the page counts them (docLines). */
+function numberLists(root: HTMLElement): void {
+  let nums: number[] = [];
+  for (const p of root.children as HTMLCollectionOf<HTMLElement>) {
+    const l = p.dataset.k === 'code' || p.dataset.k === 'hr' ? undefined : p.dataset.l, d = Math.min(LIST_DEPTH, Number(p.dataset.d) || 0);
+    if (l) { nums.length = d + 1; nums[d] = l === 'number' ? (nums[d] ?? 0) + 1 : 0; } else nums = [];
+    const m = l === 'number' ? `${nums[d]}.` : undefined;
+    if (m && p.dataset.m !== m) p.dataset.m = m;
+    else if (!m && p.dataset.m) delete p.dataset.m;
+  }
+}
+
+/** The list items what's picked is in one deeper (`by` 1) or one shallower (−1), as Tab and Shift+Tab. */
+function deepen(ps: HTMLElement[], by: 1 | -1): void {
+  for (const p of ps) {
+    if (!p.dataset.l) continue;
+    const d = Math.max(0, Math.min(LIST_DEPTH, (Number(p.dataset.d) || 0) + by));
+    if (d) p.dataset.d = String(d); else delete p.dataset.d;
+  }
 }
 
 /** A plain paragraph, empty. */
@@ -231,11 +267,11 @@ function inCode(root: HTMLElement): boolean {
 
 /** What's on what's picked: bold, italic, underlined, struck through, code; the caret's paragraph's level,
  *  list, size, alignment and kind. */
-export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; m: boolean; h: number; l: string | undefined; z: number | undefined; a: string | undefined; k: string | undefined } | null {
+export function richState(): { b: boolean; i: boolean; u: boolean; x: boolean; m: boolean; h: number; l: string | undefined; z: number | undefined; a: string | undefined; k: string | undefined; d: number } | null {
   if (!active) return null;
   const q = (c: string) => { try { return document.queryCommandState(c); } catch { return false; } };
   const p = pickedParagraphs()[0], h = Number(p?.dataset.h) || 0;
-  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), m: inCode(active.el), h, l: p?.dataset.l, z: Number(p?.dataset.z) || undefined, a: p?.dataset.a, k: p?.dataset.k };
+  return { b: h ? false : q('bold'), i: q('italic'), u: q('underline'), x: q('strikeThrough'), m: inCode(active.el), h, l: p?.dataset.l, z: Number(p?.dataset.z) || undefined, a: p?.dataset.a, k: p?.dataset.k, d: Number(p?.dataset.d) || 0 };
 }
 
 /** Markdown typed at a paragraph's start, before a space («Markdown в документе»): what it makes it. */
@@ -252,7 +288,8 @@ function markdownStart(before: string): { h?: number; l?: string; k?: string } |
 
 /** Typed in a paragraph alone, made so at once: «[]» a checklist's item, «---» a divider (dashes the Mac
  *  joins as they're typed, «–-», «—-», as well; one «—» alone a dash: a divider by Enter, see dashLine). */
-function markdownWhole(t: string): { l?: string; hr?: boolean } | null {
+function markdownWhole(t: string): { l?: string; hr?: boolean; code?: boolean } | null {
+  if (t === '```') return { code: true };
   if (/^\[ ?\]$/.test(t)) return { l: 'todo' };
   if (/^\[[xх]\]$/i.test(t)) return { l: 'done' };
   if (t.length >= 2 && /^[-–—]+$/.test(t) && [...t].reduce((n, c) => n + (c === '—' ? 3 : c === '–' ? 2 : 1), 0) >= 3) return { hr: true };
@@ -317,6 +354,10 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
       requestAnimationFrame(() => { toPage(); target = el.scrollTop; });
     }
     el.addEventListener('scroll', settle);
+    // Numbered lists counted at each depth as they're changed (numberLists).
+    numberLists(el);
+    const counted = new MutationObserver(() => numberLists(el));
+    counted.observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-l', 'data-d', 'data-k'] });
     // And a selection dragged with the mouse past its first or last line held there (`span` follows the text
     // as it's typed in, see Range; the last page's to the end of it all).
     const span = document.createRange(), on = docLines(item).filter((l) => l.page === page);
@@ -342,6 +383,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     window.addEventListener('planx:commit-edit', onCommit);
     return () => {
       el.removeEventListener('scroll', settle);
+      counted.disconnect();
       el.removeEventListener('pointerdown', down);
       window.removeEventListener('pointerup', up);
       document.removeEventListener('selectionchange', clamp);
@@ -407,9 +449,11 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         if (para.dataset.k === 'hr' && (para.textContent || prev?.dataset.k === 'hr')) delete para.dataset.k;
         if (para.dataset.l === 'done' && !para.textContent && prev?.dataset.l) para.dataset.l = 'todo';
         // «[]» or «---» typed in a paragraph alone («Markdown в документе»): a checklist's item, a divider, at once.
-        const md = labOn('docMd') && para.dataset.k !== 'hr' ? markdownWhole((para.textContent ?? '').replace(/​/g, '')) : null;
+        const md = labOn('docMd') && para.dataset.k !== 'hr' ? markdownWhole((para.textContent ?? '').replace(/\u200B/g, '')) : null;
         if (md?.hr) divider(para, true);
         else if (md?.l) { para.innerHTML = '<br>'; para.dataset.l = md.l; caretTo(para); }
+        // («```»: a block of code started there.)
+        else if (md?.code) { para.innerHTML = '<br>'; para.dataset.k = 'code'; codeLine(para); caretTo(para); }
       }}
       onPointerDown={(e) => {
         // A checklist's box clicked: ticked, or not any more (the caret where it was).
@@ -430,13 +474,29 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         const out = (e.key === 'Enter' && !e.shiftKey && !para?.textContent) || (e.key === 'Backspace' && atStart);
         if (para?.dataset.l && out) {
           e.preventDefault();
+          // (An item of a list in a list: one shallower first.)
+          if (e.key === 'Enter' && Number(para.dataset.d) > 0) { deepen([para], -1); return; }
           delete para.dataset.l;
+          delete para.dataset.d;
           return;
         }
         if (para?.dataset.k === 'quote' && out) {
           e.preventDefault();
           delete para.dataset.k;
           return;
+        }
+        // A block of code: Enter in an empty line at its end, or Backspace at its first line's start, out of it.
+        const next = para?.nextElementSibling as HTMLElement | null, before0 = para?.previousElementSibling as HTMLElement | null;
+        if (para?.dataset.k === 'code' && ((e.key === 'Enter' && out && next?.dataset.k !== 'code') || (e.key === 'Backspace' && atStart && before0?.dataset.k !== 'code'))) {
+          e.preventDefault();
+          delete para.dataset.k;
+          return;
+        }
+        // Tab in a block of code: two spaces; in a list, its items one deeper (Shift+Tab, one shallower).
+        if (e.key === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey && labOn('docMd') && para) {
+          const ps = pickedParagraphs();
+          if (para.dataset.k === 'code') { e.preventDefault(); if (!e.shiftKey) document.execCommand('insertText', false, '  '); return; }
+          if (ps.some((p) => p.dataset.l)) { e.preventDefault(); deepen(ps, e.shiftKey ? -1 : 1); return; }
         }
         // Backspace just after a divider: the divider gone.
         const prev = para?.previousElementSibling as HTMLElement | null;
@@ -452,7 +512,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
           const r = document.createRange();
           r.selectNodeContents(para);
           r.setEnd(sel.anchorNode!, sel.anchorOffset);
-          const before = r.toString().replace(/​/g, '');
+          const before = r.toString().replace(/\u200B/g, '');
           // (A space after «[]», which made it a checklist's item at once: nothing.)
           if (e.key === ' ' && para.dataset.l && !before) { e.preventDefault(); return; }
           const md = e.key === ' ' ? markdownStart(before) : null;
@@ -466,7 +526,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
             if (md.k) para.dataset.k = md.k;
             return;
           }
-          if (e.key === 'Enter' && !e.shiftKey && dashLine((para.textContent ?? '').replace(/​/g, '').trim())) {
+          if (e.key === 'Enter' && !e.shiftKey && dashLine((para.textContent ?? '').replace(/\u200B/g, '').trim())) {
             e.preventDefault();
             divider(para, true);
             return;

@@ -1,7 +1,7 @@
 import { TEXT_COLORS, type Item } from '../model/types';
 import { headingAt, paraAt, setHeading, setPara, setRun, type RunStyle, type TextRun } from '../model/textLinks';
 import { FONTS } from '../canvas/text';
-import { CODE_SIZE, HEADING_GAP, HEADING_SIZE } from './docPage';
+import { CODE_SIZE, HEADING_GAP, HEADING_SIZE, LIST_DEPTH } from './docPage';
 
 /**
  * «Документ» typed in as it looks (RichEditor.tsx): its text and the styles on its parts (model/textLinks.ts)
@@ -29,17 +29,17 @@ export function toHtml(it: Item): string {
   const text = it.text ?? '', runs = (it.rs ?? []) as TextRun[], fs = it.fs ?? 16;
   let at = 0;
   return text.split('\n').map((para, n) => {
-    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a'), k = paraAt(text, runs, s0, 'k');
+    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a'), k = paraAt(text, runs, s0, 'k'), d = paraAt(text, runs, s0, 'd');
     at += para.length + 1;
     const cuts = [...new Set([0, para.length, ...runs.flatMap((r) => [r.s - s0, r.e - s0]).filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
     const inner = k === 'hr' ? '' : cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => !k.h && k.s <= s0 + c && k.e >= s0 + e).reduce((m, k) => ({ ...m, ...k }), {} as RunStyle);
       const css = [r.b && 'font-weight:700', r.i && 'font-style:italic', (r.u || r.x) && `text-decoration:${[r.u && 'underline', r.x && 'line-through'].filter(Boolean).join(' ')}`,
-        r.c && `color:${cssColor(r.c)}`, r.m && CODE_CSS].filter(Boolean).join(';');
+        r.c && `color:${cssColor(r.c)}`, r.m && k !== 'code' && CODE_CSS].filter(Boolean).join(';');
       const t = esc(para.slice(c, e));
       return css ? `<span style="${css}">${t}</span>` : t;
     }).join('');
-    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''}${k ? ` data-k="${k}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
+    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''}${k ? ` data-k="${k}"` : ''}${d ? ` data-d="${d}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
   }).join('');
 }
 
@@ -50,8 +50,8 @@ export function toHtml(it: Item): string {
 export function cleanPaste(html: string, fs: number): string {
   const doc = new DOMParser().parseFromString(html, 'text/html'), out: string[] = [];
   // (In a quote while `quote` is over 0: a <blockquote>, or a paragraph of ours one.)
-  let line = '', level = 0, list = '', quote = 0;
-  const flush = () => { out.push(`<div data-h="${level}"${list ? ` data-l="${list}"` : ''}${quote ? ' data-k="quote"' : ''} style="${headingStyle(level, fs, !out.length)}">${line || '<br>'}</div>`); line = ''; level = 0; list = ''; };
+  let line = '', level = 0, list = '', quote = 0, depth = 0;
+  const flush = () => { out.push(`<div data-h="${level}"${list ? ` data-l="${list}"` : ''}${list && depth ? ` data-d="${depth}"` : ''}${quote ? ' data-k="quote"' : ''} style="${headingStyle(level, fs, !out.length)}">${line || '<br>'}</div>`); line = ''; level = 0; list = ''; depth = 0; };
   const BLOCK = /^(DIV|P|LI|H[1-6]|TR|BLOCKQUOTE|PRE|UL|OL|TABLE|SECTION|ARTICLE)$/;
   const walk = (node: Node, st: { b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; m?: boolean }) => {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -69,6 +69,13 @@ export function cleanPaste(html: string, fs: number): string {
     if (tag === 'HR' || node.dataset.k === 'hr') { if (line) flush(); out.push(`<div data-h="0" data-k="hr"><br></div>`); return; }
     // A checklist's box (as GitHub's Markdown puts one in its item): that item one of a checklist.
     if (tag === 'INPUT') { if ((node as HTMLInputElement).type === 'checkbox') list = (node as HTMLInputElement).checked ? 'done' : 'todo'; return; }
+    // A block of code (<pre>, or a line of one of ours): each of its lines a paragraph of code, as it is.
+    if (tag === 'PRE' || node.dataset.k === 'code') {
+      if (line) flush();
+      const lines = (node.textContent ?? '').replace(/\n$/, '').split('\n');
+      for (const t of lines) out.push(`<div data-h="0" data-k="code">${esc(t) || '<br>'}</div>`);
+      return;
+    }
     if (/^(SCRIPT|STYLE|IMG|SVG|VIDEO|IFRAME|HEAD|META)$/.test(tag)) return;
     // Code in a line (not a block of it, <pre>: its text as it is).
     if ((tag === 'CODE' && !node.closest('pre')) || (tag === 'SPAN' && s.fontFamily.includes('JetBrains Mono'))) next.m = true;
@@ -85,8 +92,14 @@ export function cleanPaste(html: string, fs: number): string {
     if (block && line) flush();
     if (h) level = Number(h);
     // A list's item (of ours, or of a list pasted: numbered in an <ol>).
-    const l = tag === 'LI' ? (node.closest('ol') ? 'number' : 'bullet') : node.dataset.l;
-    if (l === 'bullet' || l === 'number' || l === 'todo' || l === 'done') list = l;
+    // (In a list in a list, as deep as the items it's in: of ours, as its paragraph has it.)
+    const l = tag === 'LI' ? (node.parentElement?.tagName === 'OL' ? 'number' : 'bullet') : node.dataset.l;
+    if (l === 'bullet' || l === 'number' || l === 'todo' || l === 'done') {
+      list = l;
+      let d = 0;
+      for (let e = node.parentElement?.closest('li'); e; e = e.parentElement?.closest('li')) d++;
+      depth = Math.min(LIST_DEPTH, tag === 'LI' ? d : Number(node.dataset.d) || 0);
+    }
     // (A heading's text bold as it is.)
     if (h) next.b = false;
     node.childNodes.forEach((c) => walk(c, next));
@@ -109,7 +122,7 @@ function colorKey(css: string): string {
 /** The text and its styles as the field has them now: `ink` the text's own colour (no colour of its own). */
 export function fromDom(root: HTMLElement, ink: string): { text: string; rs: TextRun[] | undefined } {
   let text = '';
-  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [], kinds: Array<[number, string]> = [];
+  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [], kinds: Array<[number, string]> = [], depths: Array<[number, number]> = [];
   const own = colorKey(ink);
   /** The look of a piece of text by the element it's in, up to its paragraph. */
   const look = (el: Element, para: Element, heading: boolean): RunStyle => {
@@ -162,7 +175,9 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     const l = (para as HTMLElement).dataset.l;
     if (l === 'bullet' || l === 'number' || l === 'todo' || l === 'done') lists.push([start, l]);
     const k = (para as HTMLElement).dataset.k;
-    if (k === 'quote' || k === 'hr') kinds.push([start, k]);
+    if (k === 'quote' || k === 'hr' || k === 'code') kinds.push([start, k]);
+    const d = Number((para as HTMLElement).dataset.d) || 0;
+    if (d) depths.push([start, d]);
     const z = Number((para as HTMLElement).dataset.z) || 0;
     if (z) sizes.push([start, z]);
     const al = (para as HTMLElement).dataset.a;
@@ -175,5 +190,6 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
   for (const [at, z] of sizes) rs = setPara(text, rs, at, at, 'z', z);
   for (const [at, a] of aligns) rs = setPara(text, rs, at, at, 'a', a);
   for (const [at, k] of kinds) rs = setPara(text, rs, at, at, 'k', k);
+  for (const [at, d] of depths) rs = setPara(text, rs, at, at, 'd', d);
   return { text, rs };
 }

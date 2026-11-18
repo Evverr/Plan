@@ -27,8 +27,11 @@ export const DOC_LINE = LINE_HEIGHT * 1.2;
 export const LIST_IN = 28;
 /** A quote's paragraphs: how far in (a bar down their left), and how faint against the rest. */
 export const QUOTE_IN = 20, QUOTE_ALPHA = 0.75;
-/** Code in a line («Markdown в документе»): its size against the text round it. */
-export const CODE_SIZE = 0.9;
+/** Code in a line («Markdown в документе»): its size against the text round it; a block of code's, the
+ *  room inside its grey each side. */
+export const CODE_SIZE = 0.9, CODE_IN = 12;
+/** A list in a list: how deep at most (0 the first), and its bullets at each depth. */
+export const LIST_DEPTH = 4, BULLETS = ['•', '◦', '▪'];
 
 /** A line as laid out: where it starts and ends in the text, its paragraph's size (a heading's level, 0
  *  for none), on its page how far down its top is; in a list, how far in it stands, and on its
@@ -53,18 +56,22 @@ export function docLines(it: Item): DocLine[] {
   if (was?.key === key) return was.lines;
   if (typeof document !== 'undefined') measure ??= document.createElement('canvas').getContext('2d');
   const styled = runs.filter((r) => r.b || r.i || r.m);
-  /** How wide s…e is at `size`, `bold` (a heading) or as each piece's style has it. */
+  /** How wide s…e is at `size`, `bold` (a heading) or as each piece's style has it (in a block of code, all
+   *  of it monospaced). */
+  let block = false;
   const width = (s: number, e: number, size: number, bold: boolean) => {
     if (!measure) return (e - s) * size * 0.55;
     let w = 0;
     for (const p of piecesOf(styled, s, e)) {
-      measure.font = font(p.r?.m ? size * CODE_SIZE : size, bold || p.r?.b ? 700 : st.weight, p.r?.m ? 'mono' : st.family, !!p.r?.i || st.italic);
+      measure.font = font(p.r?.m && !block ? size * CODE_SIZE : size, bold || p.r?.b ? 700 : st.weight, p.r?.m || block ? 'mono' : st.family, !!p.r?.i || st.italic);
       w += measure.measureText(text.slice(p.s, p.e)).width;
     }
     return w;
   };
   const lines: DocLine[] = [];
-  let page = 0, y = 0, at = 0, n = 0, indent = 0, mark: string | undefined, a: TextAlign | undefined, box: DocLine['box'], k: string | undefined;
+  let page = 0, y = 0, at = 0, indent = 0, mark: string | undefined, a: TextAlign | undefined, box: DocLine['box'], k: string | undefined;
+  // A numbered list's count at each depth, while its paragraphs follow one another.
+  let nums: number[] = [];
   const put = (s: number, e: number, size: number, h: number, first: boolean) => {
     const tall = size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
     if (y + gap + tall > PAGE_TEXT.h && y > 0) { page++; y = 0; }
@@ -77,20 +84,24 @@ export function docLines(it: Item): DocLine[] {
     at = e0 + 1;
     // (Its level and list kept on the character after it: see setPara in model/textLinks.ts.)
     // (Its own size of text, as set for it alone, over its level's.)
-    const h = runs.find((r) => r.h && r.s <= e0 && r.e > e0)?.h ?? 0, z = runs.find((r) => r.z && r.s <= e0 && r.e > e0)?.z;
-    const size = z ?? Math.round(fs * HEADING_SIZE[h]);
-    // (Its own alignment, as set for it alone, over the whole of it's.)
-    a = runs.find((r) => r.a && r.s <= e0 && r.e > e0)?.a as TextAlign | undefined;
-    const list = runs.find((r) => r.l && r.s <= e0 && r.e > e0)?.l;
-    // (A quote's, or a divider: a line across, its text if any left out.)
+    // (A quote's, a block of code's, or a divider: a line across, its text if any left out.)
     k = runs.find((r) => r.k && r.s <= e0 && r.e > e0)?.k;
-    if (k === 'hr') { n = 0; indent = 0; mark = undefined; box = undefined; put(s0, e0, size, 0, true); continue; }
-    // A numbered list counts on while its paragraphs follow one another.
-    n = list === 'number' ? n + 1 : 0;
-    indent = (list ? LIST_IN : 0) + (k === 'quote' ? QUOTE_IN : 0);
+    block = k === 'code';
+    // (A line of code: no heading, a list's or a size of its own; the text's size, a tenth smaller.)
+    const own = (key: 'h' | 'z' | 'l' | 'd') => (block ? undefined : runs.find((r) => r[key] && r.s <= e0 && r.e > e0)?.[key]);
+    const h = (own('h') as number | undefined) ?? 0, z = own('z') as number | undefined;
+    const size = block ? fs * CODE_SIZE : z ?? Math.round(fs * HEADING_SIZE[h]);
+    // (Its own alignment, as set for it alone, over the whole of it's.)
+    a = block ? undefined : runs.find((r) => r.a && r.s <= e0 && r.e > e0)?.a as TextAlign | undefined;
+    const list = own('l') as string | undefined, depth = Math.min(LIST_DEPTH, (own('d') as number | undefined) ?? 0);
+    if (k === 'hr') { nums = []; indent = 0; mark = undefined; box = undefined; put(s0, e0, size, 0, true); continue; }
+    // A numbered list counts on at its depth while its paragraphs follow one another (deeper ones, started
+    // again under each of its items; a bullet's at that depth, too).
+    if (list) { nums.length = depth + 1; nums[depth] = list === 'number' ? (nums[depth] ?? 0) + 1 : 0; } else nums = [];
+    indent = (list ? LIST_IN * (depth + 1) : 0) + (k === 'quote' ? QUOTE_IN : 0) + (block ? CODE_IN : 0);
     box = list === 'todo' || list === 'done' ? list : undefined;
-    mark = list === 'number' ? `${n}.` : list === 'bullet' ? '•' : undefined;
-    const room = PAGE_TEXT.w - indent;
+    mark = list === 'number' ? `${nums[depth]}.` : list === 'bullet' ? BULLETS[depth % BULLETS.length] : undefined;
+    const room = PAGE_TEXT.w - indent - (block ? CODE_IN : 0);
     if (s0 === e0) { put(s0, e0, size, h, true); continue; }
     let ls = s0, first = true;
     while (ls < e0) {
@@ -133,16 +144,33 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   ctx.globalAlpha = alpha;
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = 'left';
-  for (const l of docLines(it)) {
-    if (l.page !== n) continue;
-    const top = it.y + PAGE.TOP + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14), left = it.x + PAGE.LEFT;
+  const all = docLines(it);
+  all.forEach((l, li) => {
+    if (l.page !== n) return;
+    // A block of code: its lines on a grey across, rounded where it starts and ends (on this page).
+    if (l.k === 'code') {
+      const prev = all[li - 1], next = all[li + 1], q = l.indent - CODE_IN;
+      const opens = prev?.k !== 'code' || prev.page !== n, ends = next?.k !== 'code' || next.page !== n, r = 6;
+      ctx.fillStyle = ink;
+      ctx.globalAlpha = alpha * 0.07;
+      ctx.beginPath();
+      ctx.roundRect(it.x + PAGE.LEFT + q, it.y + PAGE.TOP + l.y, PAGE_TEXT.w - q, l.size * DOC_LINE, [opens ? r : 0, opens ? r : 0, ends ? r : 0, ends ? r : 0]);
+      ctx.fill();
+      ctx.globalAlpha = alpha;
+    }
+    drawLine(l);
+  });
+  ctx.restore();
+
+  function drawLine(l: DocLine): void {
+    const top = it.y + PAGE.TOP + l.y, tall = l.size * DOC_LINE, rule = Math.max(1, l.size / 14), left = it.x + PAGE.LEFT, block = l.k === 'code';
     // A divider: a faint line across, in the middle of its line.
     if (l.k === 'hr') {
       ctx.fillStyle = ink;
       ctx.globalAlpha = alpha * 0.2;
       ctx.fillRect(left, Math.round(top + tall / 2), PAGE_TEXT.w, 1);
       ctx.globalAlpha = alpha;
-      continue;
+      return;
     }
     // A quote: a bar down its left, its text fainter; a ticked item of a checklist fainter still.
     const pe = paraEnd(text, l.s), done = runs.find((r) => r.l && r.s <= pe && r.e > pe)?.l === 'done';
@@ -157,16 +185,18 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
     const cuts = [...new Set([l.s, l.e, ...[...runs, ...links].flatMap((r) => [r.s, r.e]).filter((c) => c > l.s && c < l.e)])].sort((a, b) => a - b);
     const pieces = cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => k.s <= c && k.e >= e).reduce((m, k) => ({ ...m, ...k }), {} as Partial<TextRun>);
-      const f = font(r.m ? l.size * CODE_SIZE : l.size, l.h || r.b ? 700 : st.weight, r.m ? 'mono' : st.family, !!r.i || st.italic);
+      // (In a block of code, all of it monospaced, at its own size: no grey of its own round code there.)
+      if (block) r.m = false;
+      const f = font(r.m ? l.size * CODE_SIZE : l.size, l.h || r.b ? 700 : st.weight, r.m || block ? 'mono' : st.family, !!r.i || st.italic);
       ctx.font = f;
       const t = text.slice(c, e);
       return { t, r, f, w: ctx.measureText(t).width, link: links.find((k) => k.s <= c && k.e >= e) };
     });
     const lw = pieces.reduce((s, p) => s + p.w, 0);
     const room = PAGE_TEXT.w - l.indent;
-    const la = l.a ?? align;
+    const la = block ? 'left' : l.a ?? align;
     let x = left + l.indent + (la === 'center' ? (room - lw) / 2 : la === 'right' ? room - lw : 0);
-    ctx.font = font(l.size, l.h ? 700 : st.weight, st.family, st.italic);
+    ctx.font = font(l.size, l.h ? 700 : st.weight, block ? 'mono' : st.family, st.italic);
     const fm = ctx.measureText('Hg'), base = top + (tall - fm.fontBoundingBoxAscent - fm.fontBoundingBoxDescent) / 2 + fm.fontBoundingBoxAscent, mid = top + tall / 2;
     // A list's marker in the room on its left (past a quote's bar); a checklist's box there.
     const markX = left + l.indent - LIST_IN + 4;

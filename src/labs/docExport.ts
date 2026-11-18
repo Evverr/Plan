@@ -36,17 +36,27 @@ export function docMarkdown(it: Item): string {
   }
   // Each paragraph on its own, a heading's after its #s.
   let at = 0;
-  const paras = text.split('\n').map((p) => { const k = { h: headingAt(text, runs, at), l: paraAt(text, runs, at, 'l'), k: paraAt(text, runs, at, 'k') }; at += p.length + 1; return k; });
-  // A list's items one under another (numbered from 1 as they follow one another; a checklist's with its
-  // box, ticked or not), the rest a blank line apart; a quote's after «> » (its paragraphs a «>» apart), a
-  // divider «---».
-  let n = 0;
-  const marker = (l: string | undefined) => (l === 'number' ? `${n}.` : l === 'todo' ? '- [ ]' : l === 'done' ? '- [x]' : '-');
+  const raw = text.split('\n');
+  const paras = raw.map((p) => {
+    const k = paraAt(text, runs, at, 'k'), code = k === 'code';
+    const o = { h: code ? 0 : headingAt(text, runs, at), l: code ? undefined : paraAt(text, runs, at, 'l'), k, d: code ? 0 : paraAt(text, runs, at, 'd') ?? 0 };
+    at += p.length + 1;
+    return o;
+  });
+  // A list's items one under another (numbered from 1 at each depth as they follow one another, four
+  // spaces in at each; a checklist's with its box, ticked or not), the rest a blank line apart; a quote's
+  // after «> » (its paragraphs a «>» apart), a divider «---»; a block of code's lines as they are, between
+  // «```»s.
+  let nums: number[] = [];
+  const marker = (l: string | undefined, d: number) => (l === 'number' ? `${nums[d]}.` : l === 'todo' ? '- [ ]' : l === 'done' ? '- [x]' : '-');
   return out.split('\n').map((p, i) => {
-    const { h, l, k } = paras[i], q = k === 'quote' ? '> ' : '';
-    n = l === 'number' ? n + 1 : 0;
-    const line = k === 'hr' ? '---' : q + (h && p.trim() ? `${'#'.repeat(h)} ${p.replace(/^\*\*(.*)\*\*$/, '$1')}` : l ? `${marker(l)} ${p}` : p);
-    const prev = paras[i - 1];
+    const { h, l, k, d } = paras[i], q = k === 'quote' ? '> ' : '', prev = paras[i - 1], next = paras[i + 1];
+    if (l) { nums.length = d + 1; nums[d] = l === 'number' ? (nums[d] ?? 0) + 1 : 0; } else nums = [];
+    if (k === 'code') {
+      const line = `${prev?.k === 'code' ? '' : '```\n'}${raw[i]}${next?.k === 'code' ? '' : '\n```'}`;
+      return i === 0 ? line : `${prev.k === 'code' ? '\n' : '\n\n'}${line}`;
+    }
+    const line = k === 'hr' ? '---' : q + (h && p.trim() ? `${'#'.repeat(h)} ${p.replace(/^\*\*(.*)\*\*$/, '$1')}` : l ? `${'    '.repeat(d)}${marker(l, d)} ${p}` : p);
     return i === 0 ? line : `${l && prev.l && prev.k === k ? '\n' : q && prev.k === 'quote' ? '\n>\n' : '\n\n'}${line}`;
   }).join('') + '\n';
 }
