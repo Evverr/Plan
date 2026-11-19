@@ -734,7 +734,8 @@ export const checks = {
       expect(await p.ev(`planx.editor.selection.size`), 'picked as it\'s pressed').toBe(1);
       expect(await bars(), 'no panel yet').toBe(0);
       await p.mouse('mouseReleased', at[0], at[1]);
-      await sleep(250);
+      // (A sticker: a moment after, as a second click, a double one, may come, see DBL_WAIT in App.tsx.)
+      await sleep(450);
       expect(await bars(), 'one on letting go').toBe(1);
       // A box, over the two.
       await p.ev(`planx.editor.setSelection([])`);

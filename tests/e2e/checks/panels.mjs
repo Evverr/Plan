@@ -4,7 +4,26 @@ import { expect, sleep } from '../lib.mjs';
 
 const cursor = (p, q) => p.ev(`getComputedStyle(document.querySelector('${q}')).cursor`);
 
+const panelsRec = `(() => { window.__f = []; const t0 = performance.now(); const tick = () => { const v = [...document.querySelectorAll('.bar.panel, .tfmt')].filter((el) => !el.classList.contains('gone') && getComputedStyle(el).opacity !== '0' && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[data-dock]')).map((el) => el.classList.contains('tfmt') ? 'T' : 'P').join(''); window.__f.push((v || '-') + (planx.editor.editingId ? 'e' : '') + (planx.editor.moving ? 'm' : '') + '@' + Math.round(performance.now() - t0)); if (performance.now() - t0 < 1500) requestAnimationFrame(tick); }; requestAnimationFrame(tick); })()`;
+const panelsSeen = `window.__f.filter((v, i, a) => v.split('@')[0] !== (a[i - 1] ?? '').split('@')[0]).join(' ')`;
+
 export const checks = {
+  async 'something to type in clicked: its panel after a moment (a second click may come); double-clicked: the text panel straight away, never its panel before'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('sticky', 500, 300, { w: 160, h: 160, color: 'yellow', fs: 32, text: 'Привет' })); b.add(e.newItem('rect', 800, 300, { w: 160, h: 100, text: 'Рамка' })); e.setSelection([]); })()`);
+    await sleep(300);
+    for (const [x, y] of [[580, 380], [880, 350]]) {
+      await p.ev(panelsRec);
+      await p.click([x, y]); await sleep(1300);
+      expect((await p.ev(panelsSeen)).replace(/@\d+/g, ''), 'clicked: its panel').toBe('- P');
+      await p.ev(`planx.editor.setSelection([])`); await sleep(500);
+      await p.ev(panelsRec);
+      await p.mouse('mouseMoved', x, y); await p.mouse('mousePressed', x, y); await p.mouse('mouseReleased', x, y); await sleep(150); await p.mouse('mousePressed', x, y, 0, 2); await p.mouse('mouseReleased', x, y, 0, 2);
+      await sleep(1300);
+      expect((await p.ev(panelsSeen)).replace(/@\d+/g, ''), 'double-clicked: typed in, the text panel alone').toBe('- -e Te');
+      await p.key('Escape', 'Escape', 27); await sleep(200); await p.ev(`planx.editor.setSelection([])`); await sleep(500);
+    }
+  },
+
   async 'menus come in out of nothing, sliding 5.33px from where they open'(p) {
     // (Not with «Панели без сдвига» on, for now: only the fade then.)
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('stillPops', false))()`);

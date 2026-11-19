@@ -62,6 +62,10 @@ const CELL_HOLD = 500;
 /** How long the text panel takes to fade out (format.css: half its fading in). */
 const PANEL_OUT = 80;
 
+/** What's typed in by a double click: its panel held back after a click for as long as a second one takes. */
+const TYPABLE = ['text', 'sticky', 'table', 'rect', 'ellipse', 'polygon', 'page'];
+const DBL_WAIT = 300;
+
 export function App({ boardId }: { boardId: string }) {
   const conn = useMemo(() => new Connection(boardId), [boardId]);
   const board = useMemo(() => new Board(conn.doc), [conn]);
@@ -246,7 +250,21 @@ export function App({ boardId }: { boardId: string }) {
   const lastPicked = useRef<string[]>([]), before = lastPicked.current.map((id) => board.get(id)).filter((i) => !!i);
   const rebuilds = labOn('panelOver') && labOn('panelGlide');
   // (None while a line's led out of what's picked, or it's moved by the arrow keys: see UIState.away.)
-  const selItems = ui.away ? [] : !ui.picking ? picked : rebuilds && before.length && picked.length ? before : [];
+  // Something to type in (a sticker, a sheet, a shape…) just picked by a click: no panel for it yet, for as long
+  // as a second click takes to come (DBL_WAIT): a double click types in it, its text panel then, straight away.
+  const freeAt = useRef({ key: '', at: 0 }), pickKey = ui.selection.join(), [, waited] = useState(0);
+  // (Only picked by a press, nothing picked before: picked any other way, or a panel over something else
+  // already, going over to it at once, «Перестроение панели», its panel at once.)
+  if (freeAt.current.key !== pickKey) freeAt.current = { key: pickKey, at: ui.picking && !freeAt.current.key ? 0 : -1 };
+  else if (!ui.picking && !freeAt.current.at) freeAt.current.at = performance.now();
+  const typable = picked.length === 1 && TYPABLE.includes(picked[0].type) && !picked[0].code && !picked[0].hd ? picked[0].id : null;
+  const holding = !!typable && !ui.editingId && !ui.picking && freeAt.current.at > 0 && performance.now() - freeAt.current.at < DBL_WAIT;
+  useEffect(() => {
+    if (!holding) return;
+    const t = setTimeout(() => waited((n) => n + 1), DBL_WAIT - (performance.now() - freeAt.current.at) + 5);
+    return () => clearTimeout(t);
+  }, [holding, pickKey]);
+  const selItems = ui.away || holding ? [] : !ui.picking ? picked : rebuilds && before.length && picked.length ? before : [];
   useEffect(() => { if (!ui.picking) lastPicked.current = ui.selection; });
   const linkCount = ui.picking ? 0 : ui.selection.filter((id) => board.getLink(id)).length;
   const editing = ui.editingId ? board.get(ui.editingId) : undefined;
@@ -293,7 +311,8 @@ export function App({ boardId }: { boardId: string }) {
   // panel never shown before it, nor the wait.
   const pickedAt = useRef({ key: '', at: 0 }), freshEdit = useRef<string | null>(null), selNow = ui.selection.join();
   if (pickedAt.current.key !== selNow) { pickedAt.current = { key: selNow, at: performance.now() }; freshEdit.current = null; }
-  if (ui.editingId && ui.selection.length === 1 && ui.selection[0] === ui.editingId && performance.now() - pickedAt.current.at < 150) freshEdit.current = ui.editingId;
+  // (Or by a double click: no wait for it either.)
+  if (ui.editingId && ui.selection.length === 1 && ui.selection[0] === ui.editingId && performance.now() - pickedAt.current.at < 700) freshEdit.current = ui.editingId;
   if (!ui.editingId) freshEdit.current = null;
   useEffect(() => {
     setTextShown(null);
