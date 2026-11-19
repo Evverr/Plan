@@ -100,11 +100,12 @@ export function tableLineAt(ed: Editor, w: Point, hit: Item | null): TableLine |
   // On a plus of «Перестановка в таблице» (src/labs): that, not a line under it.
   if (labOn('tableMove') && tablePlusAt(ed, ed.toScreen(w))) return null;
   // A finger gets a wider band, but not so wide a small cell is all lines.
+  // (A line of it picked, «Линии»: a pixel more each side.)
   const tol = (ed.byFinger ? 10 : 5) / ed.cam.z, items = ed.shown();
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
     if (it.type !== 'table') continue;
-    const l = lineAt(it, w, tol);
+    const l = lineAt(it, w, ed.pickedLines.some((p) => p.id === it.id) ? tol + 1 / ed.cam.z : tol);
     if (l) return { id: it.id, ...l };
   }
   return null;
