@@ -14,6 +14,7 @@ import { onFormButton } from '../labs/formObject';
 import { pollHot } from '../labs/poll';
 import { kanbanHot } from '../labs/kanban';
 import { docBoxAt, pagerHot } from '../labs/docPage';
+import { marginAt, marginCursor } from '../labs/docMargins';
 import { branchBase, buttonKey, foldBadge, foldedWays, mindButtons, mindWay, ringRadius, type MindButtonAt, type Way } from '../model/mind';
 import { frameButtonAt } from './frames';
 import { rotateCursor } from './cursors';
@@ -380,5 +381,8 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
     // a double click, or a second single one on its text.)
     else if (hit && !isLocked(hit) && alt) cursor = 'copy';
   }
+  // A document's margin, out to be dragged («Поля документа», src/labs): its line or triangle, over all.
+  const margin = labOn('docMargins') ? marginAt(ed, ed.toScreen(w)) : null;
+  if (margin) cursor = marginCursor(margin);
   ed.setCursor(cursor);
 }

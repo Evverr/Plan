@@ -43,8 +43,9 @@ function sheetOf(ed: Editor): Item | null {
   return it?.type === 'page' && !isLocked(it) ? it : null;
 }
 
-/** The triangles' size, on the screen, and how near the pointer takes one (or its line). */
-const TRI = 9, NEAR = 7;
+/** The triangles' size, on the screen (as wide; a little lower, their top blunt), and how near the
+ *  pointer takes one (TRI_NEAR) or its line (LINE_NEAR, each side). */
+const TRI = 9, TRI_H = 0.75, TRI_NEAR = 13, LINE_NEAR = 7;
 
 /** Where each margin's line and triangle are on the screen. */
 function handles(ed: Editor, it: Item): Array<{ side: MarginSide; tip: Point; a: Point; b: Point }> {
@@ -66,8 +67,8 @@ export function marginAt(ed: Editor, sp: Point): MarginSide | null {
     const across = h.side === 'left' || h.side === 'right';
     // (The triangle: over the top edge, or left of the left edge.)
     const c = across ? { x: h.tip.x, y: h.tip.y - TRI / 2 } : { x: h.tip.x - TRI / 2, y: h.tip.y };
-    if (Math.hypot(sp.x - c.x, sp.y - c.y) <= TRI) return h.side;
-    if (across ? Math.abs(sp.x - h.a.x) <= NEAR / 2 && sp.y >= h.a.y && sp.y <= h.b.y : Math.abs(sp.y - h.a.y) <= NEAR / 2 && sp.x >= h.a.x && sp.x <= h.b.x) return h.side;
+    if (Math.hypot(sp.x - c.x, sp.y - c.y) <= TRI_NEAR) return h.side;
+    if (across ? Math.abs(sp.x - h.a.x) <= LINE_NEAR && sp.y >= h.a.y && sp.y <= h.b.y : Math.abs(sp.y - h.a.y) <= LINE_NEAR && sp.x >= h.a.x && sp.x <= h.b.x) return h.side;
   }
   return null;
 }
@@ -121,15 +122,20 @@ export function drawMargins(ctx: CanvasRenderingContext2D, ed: Editor): void {
     ctx.lineTo(Math.round(h.b.x) + 0.5, Math.round(h.b.y) + 0.5);
     ctx.stroke();
     ctx.setLineDash([]);
-    // The triangle, its tip on the sheet's edge, pointing in.
-    const k = on ? 1.2 : 1, t = TRI * k, { x, y } = h.tip;
+    // The triangle, its tip on the sheet's edge, pointing in: lower than it's wide (its tip blunt), its
+    // corners rounded (a round-joined edge of its own colour round it).
+    const k = on ? 1.2 : 1, t = TRI * k, d = t * TRI_H, r = 1.5, { x, y } = h.tip;
     ctx.globalAlpha = 1;
     ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = r * 2;
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    if (across) { ctx.moveTo(x, y); ctx.lineTo(x - t * 0.6, y - t); ctx.lineTo(x + t * 0.6, y - t); }
-    else { ctx.moveTo(x, y); ctx.lineTo(x - t, y - t * 0.6); ctx.lineTo(x - t, y + t * 0.6); }
+    if (across) { ctx.moveTo(x, y - r); ctx.lineTo(x - t * 0.6 + r, y - d); ctx.lineTo(x + t * 0.6 - r, y - d); }
+    else { ctx.moveTo(x - r, y); ctx.lineTo(x - d, y - t * 0.6 + r); ctx.lineTo(x - d, y + t * 0.6 - r); }
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
     if (drag?.side === h.side) {
       const label = `${Math.round(m[h.side] / MM)} мм`;
       ctx.font = font(12, 500);

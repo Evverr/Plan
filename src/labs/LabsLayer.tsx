@@ -1,4 +1,4 @@
-import { drawMargins, endMargin, marginAt, marginCursor, marginDragging, moveMargin, setHotMargin, startMargin } from './docMargins';
+import { drawMargins, endMargin, marginAt, marginDragging, moveMargin, setHotMargin, startMargin } from './docMargins';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '../editor/editor';
 import type { Connection } from '../collab/connection';
@@ -226,9 +226,10 @@ export function Labs({ editor, conn, docked, tool }: { editor: Editor; conn: Con
       }
       if (marginDragging()) { moveMargin(editor, local(e)); return; }
       if (e.target === canvas() && !e.buttons && labOn('docMargins')) {
+        // (Its cursor the editor's, with the rest: see updateCursor.)
         const mg = marginAt(editor, local(e));
         setHotMargin(editor, mg);
-        if (mg) { canvas()!.style.cursor = marginCursor(mg); return; }
+        if (mg) return;
       }
       if (gripDragging()) { const p = local(e); moveGrip(editor, editor.toWorld(p.x, p.y)); return; }
       if (e.target === canvas() && !e.buttons && labOn('tableMove')) {
