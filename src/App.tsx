@@ -22,6 +22,7 @@ import { Minimap } from './ui/Minimap';
 import { AudioRecorder } from './ui/AudioRecorder';
 import { catFor } from './emoji/emoji';
 import { MAX_DOC_MB, readFiles } from './labs/docx';
+import { isTextDoc, placeTextDocs } from './labs/docImport';
 import { cellItem } from './model/table';
 import { useSortable } from './ui/sortable';
 import { Tooltips } from './ui/Tooltips';
@@ -450,8 +451,12 @@ export function App({ boardId }: { boardId: string }) {
         onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); }}
         onDrop={(e) => {
           e.preventDefault();
-          const at = { x: e.clientX, y: e.clientY };
-          void readFiles(e.dataTransfer.files, (name) => setToast(`«${name}» больше ${MAX_DOC_MB} МБ, такой не добавить`)).then((pics) => editor.addPictures(pics, at));
+          const at = { x: e.clientX, y: e.clientY }, files = [...e.dataTransfer.files];
+          // Text files («Файлы в документ», src/labs): each a «Документ», to be typed in; the rest as ever.
+          const texts = labOn('docPage') && labOn('docDrop') ? files.filter(isTextDoc) : [];
+          if (texts.length) void placeTextDocs(editor, texts, at).then((long) => { if (long.length) setToast(`«${long[0]}» длиннее десяти страниц: показаны первые десять`); });
+          const rest = files.filter((f) => !texts.includes(f));
+          if (rest.length) void readFiles(rest, (name) => setToast(`«${name}» больше ${MAX_DOC_MB} МБ, такой не добавить`)).then((pics) => editor.addPictures(pics, at));
         }} />
 
       <header ref={topSort.ref} className={`bar topbar sortable ${docked ? 'docked' : ''} ${topSort.sorting ? 'sorting' : ''}`} {...topSort.container}

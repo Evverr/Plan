@@ -1420,6 +1420,28 @@ export const checks = {
     expect(md, 'as Markdown').toBe('Заметки\n\n> Цитата\n\n- [x] купить хлеб\n\n---\n\n#### Мелкий\n\nвызов `run()` и дальше\n');
   },
 
+  async '"Файлы в документ": .md, .txt, .html and .rtf dropped on the board, each a document side by side, to be typed in'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.25 }; e.camChanged(); })()`);
+    await p.ev(`(() => {
+      const files = [
+        new File(['# Заметка\\n\\n- [ ] купить\\n- **важно**\\n'], 'note.md', { type: 'text/markdown' }),
+        new File(['Первая строка\\r\\nВторая строка\\r\\n'], 'plain.txt', { type: 'text/plain' }),
+        new File(['<h2>Страница</h2><p>Текст <b>жирный</b></p>'], 'page.html', { type: 'text/html' }),
+        new File([new Uint8Array([...String.raw\`{\\rtf1\\ansi\\ansicpg1251 {\\fonttbl\\f0 Helvetica;}\\pard \\'cf\\'f0\\'e8\\b \\'e2\\'e5\\'f2\\b0\\par}\`].map((c) => c.charCodeAt(0)))], 'doc.rtf', { type: 'application/rtf' }),
+      ];
+      const dt = new DataTransfer(); files.forEach((f) => dt.items.add(f));
+      document.querySelector('.board-canvas').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: 600, clientY: 400, bubbles: true, cancelable: true }));
+    })()`);
+    await sleep(600);
+    const docs = await p.ev(`JSON.stringify(planx.board.list().filter((i) => i.type === 'page').sort((a, b) => a.x - b.x).map((i) => [i.text, i.rs ?? null]))`);
+    expect(docs, 'each a document of what it says').toBe(JSON.stringify([
+      ['Заметка\nкупить\nважно', [{ s: 7, e: 8, h: 1 }, { s: 14, e: 15, l: 'todo' }, { s: 15, e: 20, b: true }, { s: 20, e: 21, l: 'bullet' }]],
+      ['Первая строка\nВторая строка', null],
+      ['Страница\nТекст жирный', [{ s: 8, e: 9, h: 2 }, { s: 15, e: 21, b: true }]],
+      ['Привет', [{ s: 3, e: 6, b: true }]]]));
+    expect(await p.ev(`planx.editor.selection.size`), 'all four picked').toBe(4);
+  },
+
   async '"Поля документа": the margins out by the panel\'s button, the left one dragged by its triangle a whole millimetre at a time, the text and its field narrower'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.dropItem('page', { x: 500, y: 420 }); })()`);
     await sleep(200);
