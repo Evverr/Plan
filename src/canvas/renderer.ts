@@ -22,7 +22,7 @@ import { DOC_NAME_ICON, drawHeader, MORE_ICON } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
 import { drawDocPage, drawDocSkeleton, drawPager, pagerCount, pageShown } from '../labs/docPage';
-import { drawPadUnder } from '../labs/stickyPad';
+import { drawPadHolder, padSticker } from '../labs/stickyPad';
 import { drawTaskCard, TASK_RAD, taskShown } from './task';
 import { dotsAlways, dotsUnder } from '../labs/linkTool';
 import { drawnLinks } from '../model/textLinks';
@@ -515,8 +515,13 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
   switch (it.type) {
     case 'sticky':
       ctx.globalAlpha = it.fo ?? 1;
-      // A pad of them («Стопка стикеров», src/labs): more under it.
-      if (it.pad) drawPadUnder(ctx, it, shade(stickyGradient(it.color ?? 'yellow')[1], theme.dim), 0);
+      // A pad of them («Стопка стикеров», src/labs): in its holder, as a folded frame, more under its top one.
+      if (it.pad) {
+        drawPadHolder(ctx, it, { frame: theme.frame, line: theme.line, ink: theme.ink, z: cam.z }, shade(stickyGradient(it.color ?? 'yellow')[1], theme.dim));
+        drawSticky(ctx, { ...it, ...padSticker(it) }, cam.z * s.dpr, theme.dim);
+        ctx.globalAlpha = 1;
+        break;
+      }
       drawSticky(ctx, it, cam.z * s.dpr, theme.dim);
       ctx.globalAlpha = 1;
       if (!editing) drawText(ctx, it, 14, theme.stickyInk, true, s);

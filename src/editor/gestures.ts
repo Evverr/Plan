@@ -22,7 +22,7 @@ import { clickTypes, onMindText, updateCursor } from './hover';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { dropTables, roomFor } from '../labs/docObjects';
-import { addPad, tearOff } from '../labs/stickyPad';
+import { addPad, padStart, tearOff } from '../labs/stickyPad';
 import { aboveText, belowText } from '../labs/docPage';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
@@ -408,10 +408,10 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       const pad = board.get(g.id);
       if (!pad) return;
       board.beginGesture();
-      const it = tearOff(ed, pad, { x: w.x - g.start.x, y: w.y - g.start.y });
+      const it = tearOff(ed, pad, { x: w.x - g.start.x, y: w.y - g.start.y }), from = padStart(pad);
       // (Being moved, as anything dragged: no panel over it, nor over the pad picked before. The drag first,
       // then it picked: never a moment with a panel for it, kept then.)
-      ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, { x: pad.x, y: pad.y }]]), moved: true, id: it.id, dbl: false, torn: true };
+      ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, from]]), moved: true, id: it.id, dbl: false, torn: true };
       ed.setMoving(true);
       ed.setSelection([it.id]);
       ed.requestRender();
