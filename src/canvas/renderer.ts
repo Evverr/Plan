@@ -21,7 +21,7 @@ import { drawForm } from '../labs/formObject';
 import { DOC_NAME_ICON, drawHeader, MORE_ICON } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
-import { drawDocPage, drawDocSkeleton, drawPager, pageCount, pageShown } from '../labs/docPage';
+import { drawDocPage, drawDocSkeleton, drawPager, pagerCount, pageShown } from '../labs/docPage';
 import { drawPadUnder } from '../labs/stickyPad';
 import { drawTaskCard, TASK_RAD, taskShown } from './task';
 import { dotsAlways, dotsUnder } from '../labs/linkTool';
@@ -695,7 +695,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       ctx.fillStyle = theme.surface;
       ctx.fillRect(it.x, it.y, it.w, it.h);
       ctx.restore();
-      const of = pageCount(it), n = pageShown(it, of);
+      // (Being typed in: its pages as they come, «Документ».)
+      const of = pagerCount(it), n = pageShown(it, of);
       if (!editing && (it.fs ?? 16) * s.cam.z >= 2.5) {
         drawDocPage(ctx, it, n, {
           ink: theme.ink, paper: theme.surface, link: shade(LINK_INK, theme.dim), onLink: it.rot ? undefined : (r) => textLinkRects.push(r),

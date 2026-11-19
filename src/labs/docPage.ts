@@ -339,6 +339,12 @@ export function docBoxAt(items: Item[], w: Point): { it: Item; at: number } | nu
 
 /** How many pages it has (one at least). */
 export const pageCount = (it: Item): number => Math.max(1, ...docLines(it).map((l) => l.page + 1));
+/** How many pages a sheet being typed in has as it's typed (its pager counting them as they come, before
+ *  it's done with), by id. */
+const livePages = new Map<string, number>();
+export const setLivePages = (id: string, n: number | null): void => { if (n === null) livePages.delete(id); else livePages.set(id, n); };
+/** How many pages its pager shows: as it's being typed, those it has then. */
+export const pagerCount = (it: Item): number => livePages.get(it.id) ?? pageCount(it);
 /** Its pages, for what still counts them so: one entry each. */
 export const pagesOf = (it: Item): number[] => Array.from({ length: pageCount(it) }, (_, i) => i);
 

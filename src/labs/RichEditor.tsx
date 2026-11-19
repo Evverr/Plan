@@ -3,7 +3,7 @@ import type { Editor } from '../editor/editor';
 import type { Item } from '../model/types';
 import { fontOf, FONTS } from '../canvas/text';
 import { remapLinks, setRun, type TextRun } from '../model/textLinks';
-import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, pagesOf, pageShown, showPage, textArea } from './docPage';
+import { DOC_LINE, docLines, LIST_DEPTH, LIST_IN, pagesOf, pageShown, setLivePages, showPage, textArea } from './docPage';
 import { objectsIn } from './docObjects';
 import { newTable, tableLook } from '../model/table';
 import { cleanPaste, cssColor, fromDom, fromMarkdown, headingStyle, looksLikeMarkdown, toHtml } from './richDoc';
@@ -509,6 +509,19 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     };
     document.addEventListener('selectionchange', follow);
     el.addEventListener('input', follow);
+    // Its pages counted as it's typed (a moment after), its pager under the sheet showing them, the page the
+    // caret's on its number.
+    let counting = 0;
+    const count = () => {
+      clearTimeout(counting);
+      counting = window.setTimeout(() => {
+        if ([...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent)) return;
+        const now = fromDom(el, getComputedStyle(el).color), lines = docLines({ ...item, text: now.text, rs: now.rs } as Item);
+        setLivePages(id, Math.max(1, ...lines.map((l) => l.page + 1)));
+        editor.requestRender();
+      }, 120);
+    };
+    el.addEventListener('input', count);
     document.addEventListener('selectionchange', clamp);
     // A selection dragged with the mouse: picked here, not by the browser, from where it's pressed to the
     // place in the text nearest the pointer, along the line it's level with when it's past the text's left
@@ -581,6 +594,9 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
       document.removeEventListener('selectionchange', clamp);
       document.removeEventListener('selectionchange', follow);
       el.removeEventListener('input', follow);
+      el.removeEventListener('input', count);
+      clearTimeout(counting);
+      setLivePages(id, null);
       document.removeEventListener('selectionchange', keep);
       window.removeEventListener('planx:commit-edit', onCommit);
       commit();

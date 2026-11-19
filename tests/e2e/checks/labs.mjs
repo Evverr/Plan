@@ -1313,6 +1313,8 @@ export const checks = {
     for (let k = 0; k < 14; k++) { await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' }); await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter' }); await p.cdp('Input.insertText', { text: 'новая ' + k }); await sleep(60); }
     await sleep(200);
     expect(await p.ev(`(() => { const el = document.querySelector('.rich-edit'), r = getSelection().getRangeAt(0).getBoundingClientRect(), f = el.getBoundingClientRect(); return r.top >= f.top && r.bottom <= f.bottom && el.scrollTop > 0; })()`), 'typed past its one page\'s end: on the next, the caret in sight').toBe(true);
+    await sleep(200);
+    expect(await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'), of = d.pagerCount(it); return [of, d.pageShown(it, of)].join(); })()`), 'its pager as it\'s typed: 2 / 2').toBe('2,1');
     await p.key('Escape', 'Escape', 27);
     await sleep(300);
     expect(await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'); return [d.pagesOf(it).length, d.pageShown(it)].join(); })()`), 'two pages, the second shown').toBe('2,1');
