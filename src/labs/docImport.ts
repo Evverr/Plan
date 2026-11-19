@@ -129,7 +129,7 @@ export function fromRtf(bytes: Uint8Array): DocText {
 }
 
 /** The text files dropped at `at` (on the screen), each a «Документ» there, side by side, picked: the
- *  names of those longer than its ten pages (what's past them kept, not shown). */
+ *  names of those longer than its hundred pages (what's past them kept, not shown). */
 export async function placeTextDocs(ed: Editor, files: File[], at: { x: number; y: number }): Promise<string[]> {
   const read = await Promise.allSettled(files.map(readTextDoc));
   const w = ed.toWorld(at.x, at.y), ids: string[] = [], long: string[] = [], GAP = 40;

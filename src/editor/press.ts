@@ -10,7 +10,7 @@ import { onFormButton } from '../labs/formObject';
 import { pollPartAt, pressPoll } from '../labs/poll';
 import { addStage, headerAt, newCardAt } from '../labs/kanban';
 import { headerPartAt } from '../labs/header';
-import { docBoxAt, pagerAt, turnPage } from '../labs/docPage';
+import { askPage, docBoxAt, pagerAt, turnPage } from '../labs/docPage';
 import { paraAt, setPara } from '../model/textLinks';
 import { toggleAudio } from '../canvas/audio';
 import { anyDotAt, dotAt, inFirstHalf, linkHandleAt, foldBadgeAt, frameButtonUnder, offComponent, sideAt, linkEndAt, onHandle, onInstanceGlyph, onRotate, onTopLeft, onBottomLeft, plusAt, ringAt, tickAt, pickedUnder } from './hover';
@@ -321,7 +321,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   // A kanban's «+» (one more stage) or a stage (its menu, KanbanStage.tsx) («Канбан», src/labs).
   // A document's pager arrow («Документ», src/labs): its next or last page shown here.
   const pager = e.button === 0 && labOn('docPage') ? pagerAt(ed.board.list(), w) : null;
-  if (pager) { turnPage(pager.it, pager.dir); ed.requestRender(); return; }
+  if (pager) { if (pager.dir) turnPage(pager.it, pager.dir); else askPage(pager.it, () => ed.requestRender()); ed.requestRender(); return; }
   // A checklist's box on a document's page («Markdown в документе»): ticked, or not any more.
   const box = e.button === 0 && !e.shiftKey && labOn('docPage') && ed.editingId !== hit?.id ? docBoxAt(ed.board.list(), w) : null;
   if (box && !isLocked(box.it)) {

@@ -83,7 +83,10 @@ export function saveMarkdown(ed: Editor, it: Item): void {
 /** Saves it as a PDF, a page of A4 for each of its pages, at twice the board's size for sharpness. */
 export async function savePdf(ed: Editor, it: Item): Promise<void> {
   const scale = 2, pages = pagesOf(it), out: Array<{ jpeg: Uint8Array; w: number; h: number }> = [];
+  // (A long one takes a while: how far it's got said at the top, every few pages.)
+  const say = (text: string) => window.dispatchEvent(new CustomEvent('planx:say', { detail: { text } }));
   for (let n = 0; n < pages.length; n++) {
+    if (pages.length > 10 && n % 5 === 0) { say(`Готовлю PDF: страница ${n + 1} из ${pages.length}`); await new Promise((r) => setTimeout(r, 0)); }
     const canvas = document.createElement('canvas');
     canvas.width = PAGE.W * scale;
     canvas.height = PAGE.H * scale;
@@ -108,6 +111,7 @@ export async function savePdf(ed: Editor, it: Item): Promise<void> {
   }
   // A4 in points.
   saveFile(new Blob([pdfOfPages(out, 595.28, 841.89)], { type: 'application/pdf' }), fileName(ed, 'pdf', titleOf(it)));
+  if (pages.length > 10) say(`PDF готов: ${pages.length} страниц`);
 }
 
 /** A name for its file: its first line, or «Документ». */

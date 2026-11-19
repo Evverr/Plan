@@ -20,8 +20,9 @@ describe('«Документ» laid out', () => {
     expect(docLines(page(long, [{ s: 0, e: long.length, b: true }])).length).toBeGreaterThanOrEqual(docLines(page(long)).length);
   });
 
-  it('goes on to the next page when a page is full, ten pages at most', () => {
+  it('goes on to the next page when a page is full, a hundred pages at most', () => {
     expect(pageCount(page('строка\n'.repeat(50)))).toBe(2);
-    expect(pageCount(page('строка\n'.repeat(2000)))).toBe(10);
+    expect(pageCount(page('строка\n'.repeat(2000)))).toBe(52);
+    expect(pageCount(page('строка\n'.repeat(6000)))).toBe(100);
   });
 });

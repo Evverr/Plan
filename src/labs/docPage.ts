@@ -9,7 +9,7 @@ import type { TextRun } from '../model/textLinks';
  * may be bold, italic… or code (styles on parts of it, model/textLinks.ts), a paragraph a heading (1…6,
  * bigger and bold, see setHeading there), a list's item, a checklist's, a quote or a divider; its lines wrap as wide as their words come out in
  * their own styles, each as tall as its paragraph's size. The sheet shows one page at a time, the pager
- * under it («‹ 1 / 3 ›», ten pages at most) turning them, for whoever's looking (not for everyone).
+ * under it («‹ 1 / 3 ›», a hundred pages at most; a click on its number, a page to go to) turning them, for whoever's looking (not for everyone).
  */
 
 /** Where the text goes on the sheet. */
@@ -56,7 +56,7 @@ export interface DocLine { s: number; e: number; size: number; h: number; page: 
   o?: string; tall?: number }
 
 let measure: CanvasRenderingContext2D | null = null;
-const laidOut = new Map<string, { key: string; lines: DocLine[] }>();
+const laidOut = new Map<string, { key: string; text: string; lines: DocLine[] }>();
 /** Every sheet laid out again (fonts come in: words measured in them now, not in what stood in for them). */
 export const clearDocLines = (): void => laidOut.clear();
 
@@ -73,8 +73,10 @@ export function docLines(it: Item): DocLine[] {
   // (And the sizes of what's put in it.)
   const objs = runs.filter((r) => r.o).map((r) => { const o = objectOf(r.o!); return o ? `${o.w}x${o.h}` : '-'; }).join();
   const area = textArea(it);
-  const key = `${text}|${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}|${area.w}x${area.h}`, was = laidOut.get(it.id);
-  if (was?.key === key) return was.lines;
+  // (Its text told apart on its own: the same string as last time (the board's, unchanged) at once, not
+  // gone through letter by letter as part of a key, a hundred pages of it, each time it's drawn.)
+  const key = `${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}|${area.w}x${area.h}`, was = laidOut.get(it.id);
+  if (was?.key === key && was.text === text) return was.lines;
   if (typeof document !== 'undefined') measure ??= document.createElement('canvas').getContext('2d');
   // Its fonts asked for (a font not in yet measured as another: laid out again once it is, see clearDocLines).
   if (typeof document !== 'undefined' && document.fonts) {
@@ -161,7 +163,7 @@ export function docLines(it: Item): DocLine[] {
     }
   }
   const out = lines.filter((l) => l.page < PAGE.MAX);
-  laidOut.set(it.id, { key, lines: out });
+  laidOut.set(it.id, { key, text, lines: out });
   return out;
 }
 
@@ -347,15 +349,26 @@ const PAGER_Y = 22, ARROW_DX = 44;
 const pagerMid = (it: Item): Point => ({ x: it.x + it.w / 2, y: it.y + it.h + PAGER_Y });
 
 /** A sheet's pager arrow a point's on: the sheet, and which way. */
-export function pagerAt(items: Item[], w: Point): { it: Item; dir: -1 | 1 } | null {
+export function pagerAt(items: Item[], w: Point): { it: Item; dir: -1 | 0 | 1 } | null {
   for (const it of items) {
     if (it.type !== 'page') continue;
     const m = pagerMid(it);
     if (Math.abs(w.y - m.y) > 12) continue;
     if (Math.abs(w.x - (m.x - ARROW_DX)) <= 12) return { it, dir: -1 };
     if (Math.abs(w.x - (m.x + ARROW_DX)) <= 12) return { it, dir: 1 };
+    // (Its number between them, of several pages: a page to go to, `dir` 0.)
+    if (Math.abs(w.x - m.x) <= ARROW_DX - 14 && pagesOf(it).length > 1) return { it, dir: 0 };
   }
   return null;
+}
+
+/** «‹ n / of ›»'s number clicked: a page to go to asked for, it shown then (within those it has). */
+export function askPage(it: Item, done: () => void): void {
+  const of = pagesOf(it).length;
+  window.dispatchEvent(new CustomEvent('planx:confirm', { detail: {
+    text: `Перейти к странице (1–${of})`, action: 'Перейти', input: String(pageShown(it, of) + 1), placeholder: `1–${of}`,
+    ok: (v?: string) => { const n = Math.round(Number(v)); if (n >= 1) { showPage(it.id, Math.min(of, n) - 1); done(); } },
+  } }));
 }
 
 /** The pager arrow under the pointer, as the renderer lights it (`pager:<id>:<−1|1>`). */
@@ -371,7 +384,8 @@ export function drawPager(ctx: CanvasRenderingContext2D, it: Item, n: number, of
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
   ctx.font = font(13, 500);
-  ctx.fillStyle = look.muted;
+  // (Its number lit under the pointer, a page to go to by a click on it.)
+  ctx.fillStyle = hot === `pager:${it.id}:0` ? look.ink : look.muted;
   ctx.fillText(`${n + 1} / ${of}`, m.x, m.y);
   ctx.font = font(18, 500);
   for (const [dir, x, can] of [[-1, m.x - ARROW_DX, n > 0], [1, m.x + ARROW_DX, n < of - 1]] as const) {

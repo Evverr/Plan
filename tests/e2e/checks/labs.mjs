@@ -1283,6 +1283,26 @@ export const checks = {
     expect(JSON.stringify([got.text, got.rs]), 'all it was, as it was').toBe(JSON.stringify(['X\n' + src.text, src.rs.map(shift)]));
   },
 
+  async '"Документ": a hundred pages at most (not ten); its pager\'s number clicked, a page to go to'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 400, y: 300 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    const para = 'Это обычный абзац текста документа, достаточно длинный, чтобы переноситься на две или три строки при обычной ширине листа.';
+    await p.ev(`(() => { planx.board.update('${id}', { text: Array.from({ length: 1600 }, (_, i) => (i % 20 === 0 ? 'Глава ' + i : ${JSON.stringify(para)})).join('\\n') }); planx.editor.setSelection([]); })()`);
+    await sleep(500);
+    expect(await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pagesOf(planx.board.get('${id}')).length)()`) > 50, 'past ten pages, all of it').toBe(true);
+    // its number clicked: a page asked for, 57, shown
+    const num = await p.ev(`(() => { const it = planx.board.get('${id}'), s = planx.editor.toScreen({ x: it.x + it.w / 2, y: it.y + it.h + 22 }); return [s.x, s.y]; })()`);
+    await p.click(num);
+    await sleep(300);
+    expect(await p.ev(`document.querySelector('.confirm-input')?.value ?? null`), 'its number clicked: a page asked for').toBe('1');
+    await p.ev(`(() => { const i = document.querySelector('.confirm-input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, '57'); i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await sleep(100);
+    await p.key('Enter', 'Enter', 13);
+    await sleep(300);
+    expect(await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pageShown(planx.board.get('${id}')))()`), 'that page shown').toBe(56);
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

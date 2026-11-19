@@ -263,7 +263,7 @@ export interface Person { n: string; c: string }
 
 /** A document's sheet («Документ», src/labs/docPage.ts): A4 at 96 dpi, its margins as ГОСТ has them (3 cm
  *  on the left, 1.5 on the right, 2 above and below), how many pages it shows at most. */
-export const PAGE = { W: 794, H: 1123, LEFT: 113, RIGHT: 57, TOP: 76, BOTTOM: 76, MAX: 10 };
+export const PAGE = { W: 794, H: 1123, LEFT: 113, RIGHT: 57, TOP: 76, BOTTOM: 76, MAX: 100 };
 /** A document's sheet's margins: its own («Поля документа», src/labs), or ГОСТ's. */
 export const pageMargins = (it: Pick<Item, 'pm'>): { top: number; right: number; bottom: number; left: number } =>
   ({ top: it.pm?.[0] ?? PAGE.TOP, right: it.pm?.[1] ?? PAGE.RIGHT, bottom: it.pm?.[2] ?? PAGE.BOTTOM, left: it.pm?.[3] ?? PAGE.LEFT });

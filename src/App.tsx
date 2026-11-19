@@ -454,7 +454,7 @@ export function App({ boardId }: { boardId: string }) {
           const at = { x: e.clientX, y: e.clientY }, files = [...e.dataTransfer.files];
           // Text files («Файлы в документ», src/labs): each a «Документ», to be typed in; the rest as ever.
           const texts = labOn('docPage') && labOn('docDrop') ? files.filter(isTextDoc) : [];
-          if (texts.length) void placeTextDocs(editor, texts, at).then((long) => { if (long.length) setToast(`«${long[0]}» длиннее десяти страниц: показаны первые десять`); });
+          if (texts.length) void placeTextDocs(editor, texts, at).then((long) => { if (long.length) setToast(`«${long[0]}» длиннее ста страниц: показаны первые сто`); });
           const rest = files.filter((f) => !texts.includes(f));
           if (rest.length) void readFiles(rest, (name) => setToast(`«${name}» больше ${MAX_DOC_MB} МБ, такой не добавить`)).then((pics) => editor.addPictures(pics, at));
         }} />
