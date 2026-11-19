@@ -13,13 +13,13 @@ import { DEFAULTS, type Item } from '../model/types';
 /** How far in from its edge (on the screen) a press takes a sticker off it, not the pad itself. */
 const EDGE = 12;
 
-/** A new pad where the board was clicked (`at` on the board), picked. */
+/** A new pad where the board was clicked (`at` on the board), not picked (no panel over it: a click, it). */
 export function addPad(ed: Editor, at: Point): void {
   const d = DEFAULTS.sticky;
   const it = ed.newItem('sticky', at.x - d.w / 2, at.y - d.h / 2, { pad: true, nt: true, text: '' });
   ed.addItem(it);
   ed.setTool('select');
-  ed.setSelection([it.id]);
+  ed.setSelection([]);
 }
 
 /** Whether a press at `w` on a pad takes a sticker off it: inside it, past its edge. */

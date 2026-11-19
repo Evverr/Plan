@@ -410,6 +410,8 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       board.beginGesture();
       const it = tearOff(ed, pad, { x: w.x - g.start.x, y: w.y - g.start.y });
       ed.setSelection([it.id]);
+      // (Being moved: no panel, as anything dragged.)
+      ed.setMoving(true);
       ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, { x: pad.x, y: pad.y }]]), moved: true, id: it.id, dbl: false, torn: true };
       ed.requestRender();
       return;

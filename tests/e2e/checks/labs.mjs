@@ -1295,8 +1295,8 @@ export const checks = {
     const num = await p.ev(`(() => { const it = planx.board.get('${id}'), s = planx.editor.toScreen({ x: it.x + it.w / 2, y: it.y + it.h + 22 }); return [s.x, s.y]; })()`);
     await p.click(num);
     await sleep(300);
-    const field = await p.ev(`(() => { const i = document.querySelector('.page-jump'); if (!i) return null; const r = i.getBoundingClientRect(); return { value: i.value, focused: document.activeElement === i, picked: i.selectionStart === 0 && i.selectionEnd === i.value.length, w: Math.round(r.width), dx: Math.round(r.left + r.width / 2 - ${num[0]}), dy: Math.round(r.top + r.height / 2 - ${num[1]}) }; })()`);
-    expect(JSON.stringify(field), 'a field over its number, the page in it picked').toBe(JSON.stringify({ value: '1', focused: true, picked: true, w: 46, dx: 0, dy: 0 }));
+    const field = await p.ev(`(() => { const i = document.querySelector('.page-jump'); if (!i) return null; const r = i.getBoundingClientRect(); return { value: i.value, hint: i.placeholder, focused: document.activeElement === i, w: Math.round(r.width), dx: Math.round(r.left + r.width / 2 - ${num[0]}), dy: Math.round(r.top + r.height / 2 - ${num[1]}) }; })()`);
+    expect(JSON.stringify(field), 'a field over its number, empty, the page shown now its hint, the caret in it').toBe(JSON.stringify({ value: '', hint: '1', focused: true, w: 46, dx: 0, dy: 0 }));
     await p.cdp('Input.insertText', { text: '57' });
     await p.key('Enter', 'Enter', 13);
     await sleep(300);
@@ -1451,11 +1451,16 @@ export const checks = {
     await p.click([600, 400]);
     await sleep(200);
     const pad = await p.ev(`(() => { const i = planx.board.list().find((x) => x.pad); return i && { id: i.id, x: i.x, y: i.y, w: i.w, h: i.h, nt: i.nt, sel: planx.editor.selection.has(i.id) }; })()`);
-    expect(!!pad && pad.nt && pad.sel, 'a pad there, picked').toBe(true);
+    expect(!!pad && pad.nt && !pad.sel, 'a pad there, not picked (no panel over it)').toBe(true);
     await p.ev(`planx.editor.setSelection([])`);
     // From its middle, dragged off: a sticker, its colour and size, typed in.
     const mid = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + pad.w / 2}, y: ${pad.y + pad.h / 2} }); return [s.x, s.y]; })()`);
-    await p.drag(mid, [mid[0] + 260, mid[1] + 40], { steps: 10 });
+    // (No panel as it's dragged: being moved.)
+    await p.mouse('mouseMoved', ...mid);
+    await p.mouse('mousePressed', ...mid);
+    for (let k = 1; k <= 10; k++) { await p.mouse('mouseMoved', mid[0] + k * 26, mid[1] + k * 4); await sleep(25); }
+    expect(await p.ev(`planx.editor.moving`), 'being moved, no panel').toBe(true);
+    await p.mouse('mouseReleased', mid[0] + 260, mid[1] + 40);
     await sleep(300);
     const st = await p.ev(`(() => { const s = planx.board.list().filter((x) => x.type === 'sticky' && !x.pad); return { n: s.length, dx: s[0] && s[0].x - ${pad.x}, pad: planx.board.list().filter((x) => x.pad).map((x) => [x.x, x.y]), editing: planx.editor.editingId === s[0]?.id }; })()`);
     expect(JSON.stringify(st), 'one sticker off it where let go, not typed in; the pad where it was').toBe(JSON.stringify({ n: 1, dx: 260, pad: [[pad.x, pad.y]], editing: false }));
