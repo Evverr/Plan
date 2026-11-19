@@ -330,7 +330,8 @@ export function docBoxAt(items: Item[], w: Point): { it: Item; at: number } | nu
     for (const l of docLines(it)) {
       if (l.page !== n || !l.box) continue;
       const x = it.x + area.x + l.indent - LIST_IN + 4, mid = it.y + area.y + l.y + l.size * DOC_LINE / 2, s = Math.round(l.size * 0.8);
-      if (w.x >= x - 3 && w.x <= x + s + 3 && Math.abs(w.y - mid) <= s / 2 + 3) return { it, at: l.s };
+      // (Taken well round it, not aimed at: from the text's edge to its text's start, the line's height.)
+      if (w.x >= x - 10 && w.x <= x + s + 8 && Math.abs(w.y - mid) <= (l.size * DOC_LINE) / 2) return { it, at: l.s };
     }
   }
   return null;
