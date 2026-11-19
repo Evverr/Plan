@@ -710,7 +710,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         });
       }
       // Zoomed out past its letters (any in it): its lines as faint bars, where they are.
-      else if (!editing && it.text?.trim()) drawDocSkeleton(ctx, it, n, theme.ink, s.cam.z);
+      else if (!editing && it.text?.trim()) drawDocSkeleton(ctx, it, n, theme.ink);
       drawPager(ctx, it, n, of, theme, s.hotPlus);
       break;
     }
