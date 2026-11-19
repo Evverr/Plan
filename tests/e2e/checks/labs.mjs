@@ -1528,7 +1528,8 @@ export const checks = {
     const mid = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + pad.w / 2}, y: ${pad.y + pad.h / 2} }); return [s.x, s.y]; })()`);
     // (Not picked; picked, its panel over it; one torn off it last picked, its frame alone.)
     for (const picked of [false, true, false]) {
-      if (picked) { await p.click(mid); await sleep(400); }
+      // (Its sticker clicked: nothing picked; its holder clicked: the pad.)
+      if (picked) { await p.click(mid); await sleep(200); expect(await p.ev(`planx.editor.selection.size`), 'its sticker clicked: nothing picked').toBe(0); const h = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + 8}, y: ${pad.y + 8} }); return [s.x, s.y]; })()`); await p.click(h); await sleep(400); expect(await p.ev(`planx.editor.selection.has('${pad.id}')`), 'its holder clicked: the pad picked').toBe(true); }
       const vis = () => p.ev(`[...document.querySelectorAll('.bar.panel, .tfmt')].filter((el) => !el.classList.contains('gone') && getComputedStyle(el).opacity !== '0' && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[data-dock]')).map((el) => { const r = el.getBoundingClientRect(); return el.className.split(' ').slice(0, 3).join('.') + '@' + Math.round(r.left) + ',' + Math.round(r.top) + ' op' + getComputedStyle(el).opacity; }).join(' ; ')`);
       await p.mouse('mouseMoved', ...mid);
       await p.mouse('mousePressed', ...mid);

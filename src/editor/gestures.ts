@@ -692,9 +692,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
     case 'rotate':
       board.endGesture();
       return;
-    // A pad of stickers clicked, not dragged («Стопка стикеров», src/labs): picked (its colour to set).
+    // A pad's sticker clicked, not dragged («Стопка стикеров», src/labs): nothing (its holder clicked picks it).
     case 'padTear':
-      ed.setSelection([g.id]);
       return;
     case 'place': {
       if (g.tool === 'timeline') { ed.addTimeline(g.at); return; }
