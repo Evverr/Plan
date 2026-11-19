@@ -21,7 +21,49 @@ const glyph = (p, at) => p.ev(`(() => { const e = planx.editor; e.render(); cons
   const red = (gx, gy) => { const s = e.toScreen({ x: ${at.x} + 38 + gx * 0.75, y: ${at.y} + 20 + gy * 0.75 }), d = ctx.getImageData(Math.round(s.x * k), Math.round(s.y * k), 1, 1).data; return d[0] > 180 && d[1] < 150; };
   return red(12, 7.4) ? 'solid' : red(12, 12) ? 'outline' : 'none'; })()`);
 
+// (Two stickers side by side, their ids.)
+const twoStickers = `(() => { const e = planx.editor, b = planx.board; const a = e.newItem('sticky', 100, 100, { w: 160, h: 160, color: 'yellow', text: 'A' }), c = e.newItem('sticky', 300, 100, { w: 160, h: 160, color: 'yellow', text: 'B' }); b.add(a); b.add(c); return [a.id, c.id]; })()`;
+
 export const checks = {
+  async 'a group made a component: no group then, a component round it; F with a group picked: nothing'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('groups', true))()`);
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('frameAround', true))()`);
+    const [a, c] = await p.ev(twoStickers);
+    await p.ev(`(() => { const e = planx.editor; e.setSelection(['${a}', '${c}']); e.group(); e.setSelection(['${a}']); })()`);
+    expect(await p.ev(`planx.editor.selection.size`), 'group picked whole').toBe(2);
+    await p.key('f', 'KeyF', 70); await sleep(200);
+    expect(await p.ev(`JSON.stringify([planx.board.list().filter((i) => i.type === 'frame').length, planx.editor.tool])`), 'F on a group: nothing').toBe(JSON.stringify([0, 'select']));
+    await p.ev(`planx.editor.makeComponent()`); await sleep(200);
+    const g = await p.ev(`(() => { const b = planx.board, f = b.list().find((i) => i.comp); return { n: b.list().filter((i) => i.type === 'frame').length, members: f && [...f.members].sort(), gp: [b.get('${a}').gp ?? null, b.get('${c}').gp ?? null], hosts: [b.get('${a}').host ?? null] }; })()`);
+    expect(JSON.stringify(g), 'group -> component').toBe(JSON.stringify({ n: 1, members: [a, c].sort(), gp: [null, null], hosts: [null] }));
+  },
+  async 'a frame made a component: no frame then, a component round what it held (one undo step)'(p) {
+    const [a, c] = await p.ev(twoStickers);
+    await p.ev(`(() => { const e = planx.editor; e.setSelection(['${a}', '${c}']); e.frameSelection(); planx.editor.stopEditing?.(); })()`);
+    await sleep(200);
+    const f = await p.ev(`planx.board.list().find((i) => i.type === 'frame').id`);
+    await p.ev(`(() => { planx.editor.setSelection(['${f}']); planx.editor.makeComponent(); })()`); await sleep(200);
+    const r = await p.ev(`(() => { const b = planx.board, fr = b.list().filter((i) => i.type === 'frame'); return { n: fr.length, old: !!b.get('${f}'), comp: fr.map((x) => [!!x.comp, x.members.length]) }; })()`);
+    expect(JSON.stringify(r), 'frame -> component').toBe(JSON.stringify({ n: 1, old: false, comp: [[true, 2]] }));
+    await p.ev(`planx.board.undo()`); await sleep(200);
+    expect(await p.ev(`JSON.stringify(planx.board.list().filter((i) => i.type === 'frame').map((x) => [!!x.comp, x.id === '${f}']))`), 'one undo: the frame back').toBe(JSON.stringify([[false, true]]));
+  },
+  async 'an instance of a component made of a group moved: what\'s in it moved along as it is'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('groups', true))()`);
+    const [a, c] = await p.ev(twoStickers);
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setSelection(['${a}', '${c}']); e.group(); e.setSelection(['${a}']); e.makeComponent(); e.stopEditing(); })()`);
+    await sleep(200);
+    const comp = await p.ev(`planx.board.list().find((i) => i.comp).id`);
+    await p.ev(`(() => { planx.editor.addObject('${comp}', { x: 500, y: 500 }); })()`);
+    await sleep(300);
+    const rel = () => p.ev(`(() => { const b = planx.board, i = b.list().find((x) => x.inst), kids = b.list().filter((x) => x.host === i.id).sort((m, n) => m.x - n.x); return JSON.stringify(kids.map((k) => [Math.round(k.x - i.x), Math.round(k.y - i.y), k.gp ?? null])); })()`);
+    const before = await rel();
+    const inst = await p.ev(`(() => { const i = planx.board.list().find((x) => x.inst); const s = planx.editor.toScreen({ x: i.x + 10, y: i.y + 10 }); return [s.x, s.y]; })()`);
+    await p.drag(inst, [inst[0] + 150, inst[1] + 90], { steps: 10 });
+    await sleep(300);
+    expect(before + ' -> ' + await rel(), 'same').toBe(before + ' -> ' + before);
+  },
+
   async 'with an instance picked, the panel\'s component button brings its component out to be changed'(p) {
     await fixture(p);
     await p.ev(`planx.editor.setSelection(['instance'])`);

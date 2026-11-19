@@ -1026,7 +1026,11 @@ export class Editor {
     if (tool !== 'nib' && nibPoints()) finishNib(this);
     // «Фрейм вокруг выделенного» (src/labs): the frame tool (its button, F) with something picked, a frame
     // round that at once, it in it.
-    if (tool === 'frame' && labOn('frameAround') && !this.editingId && this.selectedItems().length && this.frameSelection()) return;
+    if (tool === 'frame' && labOn('frameAround') && !this.editingId && this.selectedItems().length) {
+      // (What's in a group isn't taken into a frame: nothing at all then, not the frame tool either.)
+      if (this.selectedItems().some((i) => i.gp?.length)) return;
+      if (this.frameSelection()) return;
+    }
     this.tool = tool;
     if (this.canvas) this.canvas.dataset.tool = tool;
     this.emit();
@@ -1404,15 +1408,30 @@ export class Editor {
     this.requestRender();
   }
 
-  /** Makes a component of what's selected: a frame picked on its own becomes one; anything else gets a
-   *  component round it, as a frame would be put round it but half as far off (20). */
+  /** Makes a component of what's selected: a component round it, as a frame would be put round it but half as
+   *  far off (20); a frame or a group picked, no more then (what was in it in the component); an empty frame
+   *  picked on its own, one itself. */
   makeComponent(): boolean {
-    const sel = this.selectedItems();
-    if (sel.length === 1 && sel[0].type === 'frame' && !sel[0].inst && !sel[0].host) {
-      this.board.update(sel[0].id, { comp: true, fold: undefined, ...(sel[0].fold && { w: sel[0].fold.w, h: sel[0].fold.h }) });
+    const sel = this.selectedItems(), one = sel.length === 1 ? sel[0] : null;
+    const frame = one?.type === 'frame' && !one.inst && !one.host ? one : null;
+    const held = frame && !frame.comp && !frame.kb && !frame.tl ? membersOf(this.board, frame, this.board.list()).filter((id) => id !== frame.id) : [];
+    // (A frame holding nothing, or a component already: one itself.)
+    if (frame && !held.length) {
+      this.board.update(frame.id, { comp: true, fold: undefined, ...(frame.fold && { w: frame.fold.w, h: frame.fold.h }) });
       return true;
     }
-    return this.frameSelection({ comp: true, text: 'Компонент' }, 20);
+    // A frame, or a group: no more, a component round what was in it (one undo step).
+    const paths = !frame && sel.some((i) => i.gp?.length) ? ungrouped(this.board.list(), this.selection) : null;
+    this.board.beginGesture();
+    if (frame) {
+      this.board.remove([frame.id]);
+      this.settle(held);
+      this.setSelection(held);
+    }
+    if (paths) this.board.transact(() => paths.forEach((gp, id) => this.board.update(id, { gp })));
+    const made = this.frameSelection({ comp: true, text: 'Компонент' }, 20);
+    this.board.endGesture();
+    return made;
   }
 
   /** Cmd (or Control) held: a timeline picked alone framed orange, its step to be changed by its side («Масштаб таймлайна», src/labs). */
