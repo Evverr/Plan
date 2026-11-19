@@ -20,8 +20,8 @@ const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP 
 /** Tied to a kanban, timeline or table: smaller, its icon and title, the title semibold. */
 const TIED = { icon: 30, iconX: 2, iconY: -4, textX: 36, fs: 18, weight: 600 };
 /** A document's name over it («Название документа»): a tied one with no icon (`icon` 'none'), its title alone,
- *  4 in from its corner, no «…». */
-const NAMED = { ...TIED, icon: 0, iconX: 0, textX: 4 };
+ *  regular, 6 in from its corner and 2 higher than a kanban's (see tiedAt), no «…». */
+const NAMED = { ...TIED, icon: 0, iconX: 0, textX: 6, weight: 400 };
 export const DOC_NAME_ICON = 'none';
 const sizes = (it: Item) => (it.tie ? (it.icon === DOC_NAME_ICON ? NAMED : TIED) : { icon: ICON, iconX: 0, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
 export const HEADER_W = TEXT_X + 620;
@@ -51,8 +51,8 @@ export const headerFit = (it: Item, patch: Partial<Item> = {}): number => Math.m
 
 /** Where a header tied to `t` stands: over its top left corner (a timeline's, 1 further right and up). */
 export function tiedAt(h: Item, t: Item): { x: number; y: number } {
-  const k = t.tl ? 1 : 0;
-  return { x: t.x + k, y: t.y - HEADER_GAP - h.h - k };
+  const k = t.tl ? 1 : 0, up = h.icon === DOC_NAME_ICON ? 2 : 0;
+  return { x: t.x + k, y: t.y - HEADER_GAP - h.h - k - up };
 }
 
 /** Each header tied to a kanban or timeline put back over its corner, however that's moved, stretched or

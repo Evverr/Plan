@@ -1,6 +1,7 @@
 import { PAGE, pageMargins, type Item, type TextAlign } from '../model/types';
 import type { Point } from '../canvas/geometry';
 import { font, fontOf, LINE_HEIGHT } from '../canvas/text';
+import { drawIcon } from '../icons/icons';
 import type { TextRun } from '../model/textLinks';
 
 /**
@@ -380,13 +381,15 @@ export function aboveText(it: Item, p: Point): boolean {
 }
 
 /** The pager under it: its middle, and its arrows' each side of it. */
-const PAGER_Y = 22, ARROW_DX = 44;
-const pagerMid = (it: Item): Point => ({ x: it.x + it.w / 2, y: it.y + it.h + PAGER_Y });
+/** (Under its right edge: its right arrow 24 in from it.) */
+const PAGER_Y = 22, ARROW_DX = 44, PAGER_RIGHT = 24 + ARROW_DX + 8;
+const pagerMid = (it: Item): Point => ({ x: it.x + it.w - PAGER_RIGHT, y: it.y + it.h + PAGER_Y });
 
 /** A sheet's pager arrow a point's on: the sheet, and which way. */
 export function pagerAt(items: Item[], w: Point): { it: Item; dir: -1 | 0 | 1 } | null {
   for (const it of items) {
-    if (it.type !== 'page') continue;
+    // (One of a single page has none.)
+    if (it.type !== 'page' || pagerCount(it) < 2) continue;
     const m = pagerMid(it);
     if (Math.abs(w.y - m.y) > 12) continue;
     if (Math.abs(w.x - (m.x - ARROW_DX)) <= 12) return { it, dir: -1 };
@@ -415,6 +418,8 @@ export function pagerHot(items: Item[], w: Point): string | null {
 
 /** Draws its pager: «‹ n / of ›», small, the arrows faint where there's no page that way, lit under the pointer. */
 export function drawPager(ctx: CanvasRenderingContext2D, it: Item, n: number, of: number, look: { ink: string; muted: string }, hot: string | null): void {
+  // (A sheet of one page: none.)
+  if (of < 2) return;
   const m = pagerMid(it);
   ctx.save();
   ctx.textBaseline = 'middle';
@@ -424,12 +429,10 @@ export function drawPager(ctx: CanvasRenderingContext2D, it: Item, n: number, of
   ctx.fillStyle = hot === `pager:${it.id}:0` ? look.ink : look.muted;
   ctx.fillText(`${n + 1} / ${of}`, m.x, m.y);
   for (const [dir, x, can] of [[-1, m.x - ARROW_DX, n > 0], [1, m.x + ARROW_DX, n < of - 1]] as const) {
-    // (Under the pointer, 1.4 times as big.)
-    const on = can && hot === `pager:${it.id}:${dir}`;
-    ctx.font = font(on ? 25 : 18, 500);
+    // (The set's chevrons; under the pointer, 1.4 times as big.)
+    const on = can && hot === `pager:${it.id}:${dir}`, size = on ? 22 : 16;
     ctx.globalAlpha = can ? 1 : 0.3;
-    ctx.fillStyle = on ? look.ink : look.muted;
-    ctx.fillText(dir < 0 ? '‹' : '›', x, m.y - 1);
+    drawIcon(ctx, dir < 0 ? 'chevron-to-the-left-l' : 'chevron-to-the-right-l', x - size / 2, m.y - size / 2, size, on ? look.ink : look.muted);
   }
   ctx.restore();
 }

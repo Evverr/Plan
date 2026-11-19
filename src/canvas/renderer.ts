@@ -533,8 +533,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         const c = it.color ?? 'blue', ink = c.startsWith('#') ? shade(c, theme.dim) : ICON_COLORS[c] || FILLS[c] ? shade(ICON_COLORS[c] || FILLS[c], theme.dim) : theme.ink;
         // (Its icon as opaque as set on its panel.)
         // (Its «…», «Троеточие у титула»: muted, as a button.)
-        // (A document's name over it, «Название документа»: no icon, a lighter grey, #555 on the light board.)
-        const titleInk = it.icon === DOC_NAME_ICON ? (theme.surface.toLowerCase() === '#ffffff' ? '#555555' : theme.muted) : theme.ink;
+        // (A document's name over it, «Название документа»: no icon, a light grey, #777 on the light board.)
+        const titleInk = it.icon === DOC_NAME_ICON ? (theme.surface.toLowerCase() === '#ffffff' ? '#777777' : theme.muted) : theme.ink;
         drawHeader(ctx, it, titleInk, (name, x, y, size) => { ctx.globalAlpha = name === MORE_ICON ? (s.hotPlus === `more:${it.id}` ? 1 : 0.3) : fillOpacity(it); drawIcon(ctx, name, x, y, size, name === MORE_ICON ? theme.ink : ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
         break;
       }

@@ -1043,9 +1043,11 @@ export const checks = {
     const [first, of] = await shown();
     expect(first, 'its first page').toBe(0);
     expect(of > 1, 'more than one page').toBe(true);
-    await p.click([40 + (it.x + it.w / 2 + 44) * 0.6, 20 + (it.y + it.h + 22) * 0.6]);
+    // (Its pager under its right edge: its arrows each side of its number.)
+    const mid = await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pagerAtMid(planx.board.get('${it.id}')))()`);
+    await p.click([40 + (mid.x + 44) * 0.6, 20 + mid.y * 0.6]);
     expect((await shown())[0], 'the next page').toBe(1);
-    await p.click([40 + (it.x + it.w / 2 - 44) * 0.6, 20 + (it.y + it.h + 22) * 0.6]);
+    await p.click([40 + (mid.x - 44) * 0.6, 20 + mid.y * 0.6]);
     expect((await shown())[0], 'back').toBe(0);
   },
 
@@ -1292,7 +1294,7 @@ export const checks = {
     await sleep(500);
     expect(await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pagesOf(planx.board.get('${id}')).length)()`) > 50, 'past ten pages, all of it').toBe(true);
     // Its number clicked: a small field over it, the page shown now in it, picked; 57 typed, Enter: that page.
-    const num = await p.ev(`(() => { const it = planx.board.get('${id}'), s = planx.editor.toScreen({ x: it.x + it.w / 2, y: it.y + it.h + 22 }); return [s.x, s.y]; })()`);
+    const num = await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), s = planx.editor.toScreen(d.pagerAtMid(planx.board.get('${id}'))); return [s.x, s.y]; })()`);
     await p.click(num);
     await sleep(300);
     const field = await p.ev(`(() => { const i = document.querySelector('.page-jump'); if (!i) return null; const r = i.getBoundingClientRect(); return { value: i.value, hint: i.placeholder, focused: document.activeElement === i, w: Math.round(r.width), dx: Math.round(r.left + r.width / 2 - ${num[0]}), dy: Math.round(r.top + r.height / 2 - ${num[1]}) }; })()`);
@@ -1337,8 +1339,8 @@ export const checks = {
     await p.key('Escape', 'Escape', 27);
     await sleep(300);
     const name = await p.ev(`(() => { const h = planx.board.list().find((x) => x.hd && x.tie === '${id}'), d = planx.board.get('${id}'); return h && { text: h.text, icon: h.icon, dx: h.x - d.x, below: d.y - (h.y + h.h) }; })()`);
-    expect(JSON.stringify(name), 'its name over its top left, no icon').toBe(JSON.stringify({ text: 'План работ', icon: 'none', dx: 0, below: 4 }));
-    expect(await p.ev(`(async () => { const h = await import('/src/labs/header.ts'), n = planx.board.list().find((x) => x.hd && x.tie === '${id}'); return [h.headerLayout(n).title.x, h.moreBox(n)]; })()`).then(JSON.stringify), 'its title 4 in, no «…»').toBe(JSON.stringify([4, null]));
+    expect(JSON.stringify(name), 'its name over its top left, no icon').toBe(JSON.stringify({ text: 'План работ', icon: 'none', dx: 0, below: 6 }));
+    expect(await p.ev(`(async () => { const h = await import('/src/labs/header.ts'), n = planx.board.list().find((x) => x.hd && x.tie === '${id}'); return [h.headerLayout(n).title.x, h.moreBox(n)]; })()`).then(JSON.stringify), 'its title 6 in, no «…»').toBe(JSON.stringify([6, null]));
     await p.ev(`planx.editor.setSelection([])`);
     await sleep(200);
     await p.ev(`planx.board.update('${id}', { x: planx.board.get('${id}').x + 100 })`);
