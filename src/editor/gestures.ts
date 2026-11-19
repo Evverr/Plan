@@ -596,8 +596,9 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         // Picked by the press that dragged it: let go, not picked (no frame, no panel; a click picks it), nor
         // what was picked before (that was let go of as it was taken).
         if (g.fresh) ed.setSelection([]);
-        // (One torn off a pad of stickers, «Стопка стикеров»: picked, typed in.)
-        if (g.torn) { ed.setSelection([g.id]); ed.startEditing(g.id); }
+        // (One torn off a pad of stickers, «Стопка стикеров»: its frame, no panel, as one moved; a click,
+        // its panel, a double click, typed in.)
+        if (g.torn) { ed.setSelection([g.id]); ed.setNudged(true); }
       } else if (g.url) {
         // A link on a part of its text, clicked ("Ссылка в тексте", src/labs): opened in a new tab (to something
         // on the board, «Ссылка на объект»: there).

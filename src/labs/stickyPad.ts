@@ -5,7 +5,7 @@ import { DEFAULTS, type Item } from '../model/types';
 /**
  * «Стопка стикеров» (src/labs): a pad of stickers on the board, a sticker with more under it (`pad`), no
  * text of its own. Taken from inside, a new sticker comes off it, its colour and size, dragged along and
- * typed in once let go; the pad stays where it is, for the next. Taken by its edge, it's moved; clicked,
+ * its frame alone once let go (no panel: a click, it; a double click, typed in); the pad stays where it is, for the next. Taken by its edge, it's moved; clicked,
  * picked (its colour then set as a sticker's is, those coming off it that colour). Put on the board by the
  * sticker's button held, «Стопка стикеров».
  */
@@ -35,21 +35,6 @@ export function tearOff(ed: Editor, pad: Item, d: Point): Item {
   const it = ed.newItem('sticky', Math.round(pad.x + d.x), Math.round(pad.y + d.y), { ...look, w: pad.w, h: pad.h, text: '' });
   ed.addItem(it);
   return it;
-}
-
-/** A faint «+» in the middle of a pad's top sticker: one more comes off it. */
-export function drawPadPlus(ctx: CanvasRenderingContext2D, it: Item, ink: string): void {
-  const cx = it.x + it.w / 2, cy = it.y + it.h / 2, r = Math.min(it.w, it.h) * 0.09;
-  ctx.save();
-  ctx.strokeStyle = ink;
-  ctx.globalAlpha *= 0.25;
-  ctx.lineWidth = r * 0.28;
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy);
-  ctx.moveTo(cx, cy - r); ctx.lineTo(cx, cy + r);
-  ctx.stroke();
-  ctx.restore();
 }
 
 /** The stickers under a pad's top one: two, a little lower and further right each, a shade darker. */

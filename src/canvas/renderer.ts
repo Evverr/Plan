@@ -22,7 +22,7 @@ import { drawHeader, MORE_ICON } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
 import { drawDocPage, drawDocSkeleton, drawPager, pageCount, pageShown } from '../labs/docPage';
-import { drawPadPlus, drawPadUnder } from '../labs/stickyPad';
+import { drawPadUnder } from '../labs/stickyPad';
 import { drawTaskCard, TASK_RAD, taskShown } from './task';
 import { dotsAlways, dotsUnder } from '../labs/linkTool';
 import { drawnLinks } from '../model/textLinks';
@@ -515,10 +515,9 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
   switch (it.type) {
     case 'sticky':
       ctx.globalAlpha = it.fo ?? 1;
-      // A pad of them («Стопка стикеров», src/labs): more under it, a «+» on it (taken from inside, one more).
+      // A pad of them («Стопка стикеров», src/labs): more under it.
       if (it.pad) drawPadUnder(ctx, it, shade(stickyGradient(it.color ?? 'yellow')[1], theme.dim), 0);
       drawSticky(ctx, it, cam.z * s.dpr, theme.dim);
-      if (it.pad) drawPadPlus(ctx, it, theme.stickyInk);
       ctx.globalAlpha = 1;
       if (!editing) drawText(ctx, it, 14, theme.stickyInk, true, s);
       break;
