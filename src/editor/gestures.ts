@@ -411,7 +411,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       const it = tearOff(ed, pad, { x: w.x - g.start.x, y: w.y - g.start.y }), from = padStart(pad);
       // (Being moved, as anything dragged: no panel over it, nor over the pad picked before. The drag first,
       // then it picked: never a moment with a panel for it, kept then.)
-      ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, from]]), moved: true, id: it.id, dbl: false, torn: pad.id };
+      ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, from]]), moved: true, id: it.id, dbl: false, fresh: true, torn: pad.id };
       ed.setMoving(true);
       ed.setSelection([it.id]);
       ed.requestRender();
@@ -610,9 +610,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         // Picked by the press that dragged it: let go, not picked (no frame, no panel; a click picks it), nor
         // what was picked before (that was let go of as it was taken).
         if (g.fresh) ed.setSelection([]);
-        // (One torn off a pad of stickers, «Стопка стикеров»: its frame, no panel, as one moved; a click,
-        // its panel, a double click, typed in.)
-        if (g.torn) { ed.setSelection([g.id]); ed.setNudged(true); }
+        // (One torn off a pad of stickers, «Стопка стикеров», as a sticker dragged without being picked first
+        // (\`fresh\`): not picked once let go, no frame, no panel; a click, its panel, a double click, typed in.)
       } else if (g.url) {
         // A link on a part of its text, clicked ("Ссылка в тексте", src/labs): opened in a new tab (to something
         // on the board, «Ссылка на объект»: there).
