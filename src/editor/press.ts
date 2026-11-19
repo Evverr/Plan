@@ -11,6 +11,7 @@ import { pollPartAt, pressPoll } from '../labs/poll';
 import { addStage, headerAt, newCardAt } from '../labs/kanban';
 import { headerPartAt } from '../labs/header';
 import { askPage, docBoxAt, pagerAt, turnPage } from '../labs/docPage';
+import { offPad } from '../labs/stickyPad';
 import { paraAt, setPara } from '../model/textLinks';
 import { toggleAudio } from '../canvas/audio';
 import { anyDotAt, dotAt, inFirstHalf, linkHandleAt, foldBadgeAt, frameButtonUnder, offComponent, sideAt, linkEndAt, onHandle, onInstanceGlyph, onRotate, onTopLeft, onBottomLeft, plusAt, ringAt, tickAt, pickedUnder } from './hover';
@@ -140,6 +141,7 @@ export function press(ed: Editor, e: PointerEvent): void {
 
   switch (ed.tool) {
     case 'sticky':
+    case 'pad':
     case 'text':
     case 'task':
     case 'table':
@@ -363,6 +365,11 @@ export function press(ed: Editor, e: PointerEvent): void {
   }
   // Cmd+click (Ctrl+click) on what leads somewhere opens it ("Ссылка в тексте", src/labs).
   if ((e.metaKey || e.ctrlKey) && openLink(ed, hit, w)) return;
+  // A pad of stickers taken from inside («Стопка стикеров», src/labs): dragged, a sticker off it.
+  if (hit?.pad && labOn('stickyPad') && e.button === 0 && !e.shiftKey && !e.altKey && !isLocked(hit) && offPad(ed, hit, w)) {
+    ed.gesture = { type: 'padTear', id: hit.id, start: w, moved: false };
+    return;
+  }
   if (hit) {
     const now = performance.now();
     // Pressed twice: on the same item, or (an emoji, an icon, a shape) as the second press enters

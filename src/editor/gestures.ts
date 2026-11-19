@@ -22,6 +22,7 @@ import { clickTypes, onMindText, updateCursor } from './hover';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
 import { dropTables, roomFor } from '../labs/docObjects';
+import { addPad, tearOff } from '../labs/stickyPad';
 import { aboveText, belowText } from '../labs/docPage';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
@@ -42,13 +43,14 @@ import { under } from '../labs/clickThrough';
 export type Gesture =
   | { type: 'pan'; sx: number; sy: number; cx: number; cy: number; tap?: boolean; moved?: boolean }
   | { type: 'pinch'; d0: number; z0: number; anchor: Point }
-  | { type: 'drag'; start: Point; orig: Map<string, Point>; moved: boolean; id: string; dbl: boolean; fresh?: boolean; was?: string[]; sub?: number; subTo?: number; pulled?: boolean; guides?: Guide[]; cell?: boolean; enter?: boolean; again?: boolean; vias?: Map<string, Point[]>; url?: string; tap?: Point; mindTo?: string | null; mindWay?: Way }
+  | { type: 'drag'; start: Point; orig: Map<string, Point>; moved: boolean; id: string; dbl: boolean; fresh?: boolean; was?: string[]; sub?: number; subTo?: number; pulled?: boolean; guides?: Guide[]; cell?: boolean; enter?: boolean; again?: boolean; vias?: Map<string, Point[]>; url?: string; tap?: Point; mindTo?: string | null; mindWay?: Way; torn?: boolean }
   /** (`scale`: a timeline stretched by its right side or corner with Cmd, its step as it goes: what was on it as it was.) */
   | { type: 'resize'; id: string; start: Point; orig: Item; box?: Rect; only?: 'w' | 'h' | 'l' | 't' | 'tl' | 'bl'; scale?: Item[] }
   | { type: 'rotate'; id: string; c: Point; a0: number; rot0: number; held: Array<{ id: string; c: Point; rot0: number }> }
   | { type: 'create'; id: string; origin: Point; last?: Point }
   | { type: 'tab'; id: string; side: Side; start: Point }
-  | { type: 'place'; at: Point; tool: 'sticky' | 'text' | 'task' | 'table' | 'mind' | 'timeline' | 'form' | 'poll' | 'kanban' | 'header' | 'page' | 'code'; to?: Point }
+  | { type: 'padTear'; id: string; start: Point; moved: boolean }
+  | { type: 'place'; at: Point; tool: 'sticky' | 'pad' | 'text' | 'task' | 'table' | 'mind' | 'timeline' | 'form' | 'poll' | 'kanban' | 'header' | 'page' | 'code'; to?: Point }
   /** «Канбан»: a stage's pill pressed (`i` where its column is now), dragged along the header. */
   | { type: 'stageDrag'; id: string; i: number; start: Point; moved: boolean }
   | { type: 'newCard'; id: string }
@@ -400,6 +402,18 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       ed.requestRender();
       return;
     }
+    case 'padTear': {
+      // «Стопка стикеров» (src/labs): moved off it a little, a sticker comes off it and goes on as dragged.
+      if (Math.hypot(w.x - g.start.x, w.y - g.start.y) * ed.cam.z < 4) return;
+      const pad = board.get(g.id);
+      if (!pad) return;
+      board.beginGesture();
+      const it = tearOff(ed, pad, { x: w.x - g.start.x, y: w.y - g.start.y });
+      ed.setSelection([it.id]);
+      ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, { x: pad.x, y: pad.y }]]), moved: true, id: it.id, dbl: false, torn: true };
+      ed.requestRender();
+      return;
+    }
     case 'linkStretch': {
       // A right-angled link's stretch follows the pointer across (once it's moved a little).
       const a = g.pts[g.k], b = g.pts[g.k + 1], flat = Math.abs(a.y - b.y) <= 0.5;
@@ -582,6 +596,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         // Picked by the press that dragged it: let go, not picked (no frame, no panel; a click picks it), nor
         // what was picked before (that was let go of as it was taken).
         if (g.fresh) ed.setSelection([]);
+        // (One torn off a pad of stickers, «Стопка стикеров»: picked, typed in.)
+        if (g.torn) { ed.setSelection([g.id]); ed.startEditing(g.id); }
       } else if (g.url) {
         // A link on a part of its text, clicked ("Ссылка в тексте", src/labs): opened in a new tab (to something
         // on the board, «Ссылка на объект»: there).
@@ -672,8 +688,14 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
     case 'rotate':
       board.endGesture();
       return;
+    // A pad of stickers clicked, not dragged («Стопка стикеров», src/labs): picked (its colour to set).
+    case 'padTear':
+      ed.setSelection([g.id]);
+      return;
     case 'place': {
       if (g.tool === 'timeline') { ed.addTimeline(g.at); return; }
+      // «Стопка стикеров» (src/labs): a pad of them there.
+      if (g.tool === 'pad') { addPad(ed, g.at); return; }
       if (g.tool === 'form') { ed.addForm(g.at); return; }
       if (g.tool === 'poll') { ed.addPoll(g.at); return; }
       if (g.tool === 'kanban') { ed.addKanban(g.at); return; }

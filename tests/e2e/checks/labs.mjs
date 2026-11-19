@@ -1441,6 +1441,35 @@ export const checks = {
     expect(md, 'as Markdown').toBe('Заметки\n\n> Цитата\n\n- [x] купить хлеб\n\n---\n\n#### Мелкий\n\nвызов `run()` и дальше\n');
   },
 
+  async '"Стопка стикеров": the sticker\'s button held, «Стопка стикеров» picked, a pad put on the board; dragged from inside, a sticker off it, typed in; by its edge, the pad moved'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); })()`);
+    const a = await p.at('.tools [data-key="sticky"]');
+    await p.mouse('mouseMoved', ...a); await p.mouse('mousePressed', ...a); await sleep(400); await p.mouse('mouseReleased', ...a); await sleep(200);
+    expect(await p.ev(`[...document.querySelectorAll('.shape-panel[aria-label="Стикеры"] button')].map((b) => b.getAttribute('aria-label')).join()`), 'held: a sticker or a pad').toBe('Стикер,Стопка стикеров');
+    await p.click(await p.at('.shape-panel[aria-label="Стикеры"] button[aria-label="Стопка стикеров"]'));
+    expect(await p.ev('planx.editor.tool'), "the pad's tool").toBe('pad');
+    await p.click([600, 400]);
+    await sleep(200);
+    const pad = await p.ev(`(() => { const i = planx.board.list().find((x) => x.pad); return i && { id: i.id, x: i.x, y: i.y, w: i.w, h: i.h, nt: i.nt, sel: planx.editor.selection.has(i.id) }; })()`);
+    expect(!!pad && pad.nt && pad.sel, 'a pad there, picked').toBe(true);
+    await p.ev(`planx.editor.setSelection([])`);
+    // From its middle, dragged off: a sticker, its colour and size, typed in.
+    const mid = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + pad.w / 2}, y: ${pad.y + pad.h / 2} }); return [s.x, s.y]; })()`);
+    await p.drag(mid, [mid[0] + 260, mid[1] + 40], { steps: 10 });
+    await sleep(300);
+    const st = await p.ev(`(() => { const s = planx.board.list().filter((x) => x.type === 'sticky' && !x.pad); return { n: s.length, dx: s[0] && s[0].x - ${pad.x}, pad: planx.board.list().filter((x) => x.pad).map((x) => [x.x, x.y]), editing: planx.editor.editingId === s[0]?.id }; })()`);
+    expect(JSON.stringify(st), 'one sticker off it where let go, typed in; the pad where it was').toBe(JSON.stringify({ n: 1, dx: 260, pad: [[pad.x, pad.y]], editing: true }));
+    await p.cdp('Input.insertText', { text: 'Идея' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(200);
+    // By its edge: the pad itself moved.
+    await p.ev(`planx.editor.setSelection([])`);
+    const edge = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + 4}, y: ${pad.y + pad.h / 2} }); return [s.x, s.y]; })()`);
+    await p.drag(edge, [edge[0], edge[1] + 120], { steps: 8 });
+    await sleep(200);
+    expect(await p.ev(`JSON.stringify([planx.board.list().filter((x) => x.type === 'sticky' && !x.pad).length, planx.board.list().find((x) => x.pad).y - ${pad.y}])`), 'by its edge, moved: no sticker off it').toBe(JSON.stringify([1, 120]));
+  },
+
   async '"Файлы в документ": .md, .txt, .html and .rtf dropped on the board, each a document side by side, to be typed in'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.25 }; e.camChanged(); })()`);
     await p.ev(`(() => {

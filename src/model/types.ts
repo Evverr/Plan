@@ -102,6 +102,8 @@ export interface Item {
   cw?: number;
   /** A shape with no typing in it (the panel's «Без текста»): what's written in it stays, nothing's typed. */
   nt?: boolean;
+  /** A pad of stickers («Стопка стикеров», src/labs/stickyPad.ts): a sticker with more under it, one taken off it. */
+  pad?: boolean;
   /** A task's description's size, set by the text panel (its `fs` the card's own, as it's always been). */
   dfs?: number;
   /** A task's people and date all shown (who set it, who does it, by when), not only who does it. */

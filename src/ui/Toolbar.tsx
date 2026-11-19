@@ -132,7 +132,8 @@ export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleI
     },
     // Held still, the shapes and drawing buttons open their variants beside the rail (a click just
     // takes the last one).
-    hold: (key: string) => { if (!VARIANTS.has(key)) return false; setVariants(key); return true; },
+    // («Стопка стикеров», src/labs: the sticker's too, a sticker or a pad of them.)
+    hold: (key: string) => { if (!VARIANTS.has(key) && !(key === 'sticky' && labOn('stickyPad'))) return false; setVariants(key); return true; },
     // Over the board, a line picked: its middles show and take what this would make ("Узел на линии", src/labs).
     over: (key: string, at: { x: number; y: number } | null) => {
       const t = toolOf(key), d = t ? DEFAULTS[(isPoly(t) ? 'polygon' : t) as keyof typeof DEFAULTS] : undefined;
@@ -228,6 +229,9 @@ export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleI
     if (key === 'sep') return <div key={key} {...sort.item(key)} className={`tsep ${sort.lifted(key) ? 'lifted' : ''}`} />;
     // («Документ», src/labs: its button only while it's switched on.)
     if (key === 'page' && !labs.docPage) return null;
+    // («Стопка стикеров», src/labs: the sticker's button lit for its pad too, showing which.)
+    if (key === 'sticky' && labs.stickyPad) return button(key, tool === 'sticky' || tool === 'pad', tool === 'pad' ? 'Стопка стикеров (зажмите — стикер)' : 'Заметки (N; зажмите — стопка стикеров)', tool === 'pad' ? 'layers' : 'sticker',
+      () => editor.setTool(tool === 'sticky' || tool === 'pad' ? 'select' : 'sticky'), { 'aria-pressed': tool === 'sticky' || tool === 'pad' });
     if (t) return button(key, tool === t[0], t[2], t[1], () => editor.setTool(t[0]), { 'aria-pressed': tool === t[0] });
     // With two or more items selected, the frame button puts a frame around them instead.
     if (key === 'frames') return button(key, tool === 'frame', 'Фрейм (F)', 'frame',
@@ -277,6 +281,15 @@ export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleI
     {variants === 'lines' && <LinePanel editor={editor} tool={tool} onPick={() => setVariants(null)} />}
     {variants === 'objects' && <ObjectsMenu editor={editor} tool={tool} onPick={(t) => { editor.setTool(t); setVariants(null); }} onClose={() => setVariants(null)} />}
     {variants === 'oval' && <ShapePanel editor={editor} tool={tool} zoom={zoom} onPick={() => setVariants(null)} />}
+    {/* «Стопка стикеров» (src/labs): a sticker or a pad of them. */}
+    {variants === 'sticky' && (
+      <div className="draw-panel shape-panel" role="toolbar" aria-label="Стикеры">
+        {([['sticky', 'sticker', 'Стикер'], ['pad', 'layers', 'Стопка стикеров']] as const).map(([t, icon, label]) => (
+          <button key={t} className={`fb ${tool === t ? 'on' : ''}`} title={label} aria-label={label} aria-pressed={tool === t}
+            onClick={() => { editor.setTool(t); setVariants(null); }}><PanelIcon name={icon} /></button>
+        ))}
+      </div>
+    )}
     <input ref={filePicker} type="file" accept={labs.docx ? 'image/*,.docx' : 'image/*'} multiple hidden
       onChange={(e) => { const at = pictureAt.current; void readFiles(e.target.files ?? []).then((pics) => editor.addPictures(pics, at)); e.target.value = ''; }} />
     {sort.ghost}

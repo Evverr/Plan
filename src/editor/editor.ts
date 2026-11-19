@@ -46,6 +46,7 @@ import { nodeEditing, shapedBy } from '../labs/paths';
 import { hiddenByLayers, layersVersion, newItemLayer } from '../labs/layers';
 import { clearDocLines, pagesTurned, setDocObjects } from '../labs/docPage';
 import { inDocLimit, offPage, tidyDocObjects } from '../labs/docObjects';
+import { addPad } from '../labs/stickyPad';
 import { zoomsWithKey } from '../labs/wheelZoom';
 import { codeFit, scrollCode } from '../labs/codeBlock';
 import { FORM_H, FORM_RAD, FORM_W } from '../labs/formObject';
@@ -1320,6 +1321,8 @@ export class Editor {
     if (tool === 'poll') { this.addPoll(this.toWorld(at.x, at.y)); return; }
     if (tool === 'kanban') { this.addKanban(this.toWorld(at.x, at.y)); return; }
     if (tool === 'header') { this.addHeader(this.toWorld(at.x, at.y)); return; }
+    // «Стопка стикеров» (src/labs): a pad of them.
+    if (tool === 'pad') { addPad(this, this.toWorld(at.x, at.y)); return; }
     const type = (isPoly(tool) ? 'polygon' : tool) as ItemType;
     if (!DEFAULTS[type]) return;
     const extra: Partial<Item> = isPoly(tool) ? { shape: tool, ...(tool === 'triangle' && { va: 'bottom' as const }) } : tool === 'table' ? freshTable() : tool === 'mind' ? { text: MIND_TOPIC } : {};
