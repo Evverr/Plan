@@ -111,6 +111,8 @@ export interface UIState {
 const CURSOR_WAIT = 60;
 /** How long a table line lit under the pointer takes to come in blue, in ms. */
 const LINE_FADE = 200;
+/** How long a table line picked no more takes going back from blue. */
+const LINE_UNFADE = 150;
 /** How far a copy made by Ctrl+D stands off what it's a copy of. */
 const DUPLICATE_GAP = 24;
 
@@ -205,7 +207,7 @@ export class Editor {
   hotLine: TableLine | null = null;
   private picked: TableLine[] = [];
   get pickedLines(): TableLine[] { return this.picked; }
-  /** (Picked no more: each going back from blue to its own colour over LINE_FADE, see lineFades.) */
+  /** (Picked no more: each going back from blue to its own colour over LINE_UNFADE, see lineFades.) */
   set pickedLines(ls: TableLine[]) {
     const now = performance.now();
     for (const l of this.picked) if (!ls.some((n) => sameLine(n, l))) this.lineFades.push({ line: l, since: now });
@@ -844,8 +846,8 @@ export class Editor {
     if (this.hotLine && hotT < 1) this.requestRender();
     // (Those picked no more, going out of blue, eased; again till they're gone.)
     const now = performance.now();
-    this.lineFades = this.lineFades.filter((f) => now - f.since < LINE_FADE);
-    const fadingLines = this.lineFades.filter((f) => !sameLine(f.line, this.hotLine)).map((f) => { const t = (now - f.since) / LINE_FADE; return { line: f.line, k: (1 - t) * (1 - t) }; });
+    this.lineFades = this.lineFades.filter((f) => now - f.since < LINE_UNFADE);
+    const fadingLines = this.lineFades.filter((f) => !sameLine(f.line, this.hotLine)).map((f) => { const t = (now - f.since) / LINE_UNFADE; return { line: f.line, k: (1 - t) * (1 - t) }; });
     if (fadingLines.length) this.requestRender();
     drawScene(this.ctx, {
       items: this.homed(this.withTyped(glide ? this.shown().map(glide) : this.shown())),
