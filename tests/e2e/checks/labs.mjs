@@ -1296,7 +1296,7 @@ export const checks = {
     await p.click(num);
     await sleep(300);
     const field = await p.ev(`(() => { const i = document.querySelector('.page-jump'); if (!i) return null; const r = i.getBoundingClientRect(); return { value: i.value, hint: i.placeholder, focused: document.activeElement === i, w: Math.round(r.width), dx: Math.round(r.left + r.width / 2 - ${num[0]}), dy: Math.round(r.top + r.height / 2 - ${num[1]}) }; })()`);
-    expect(JSON.stringify(field), 'a field over its number, empty, the page shown now its hint, the caret in it').toBe(JSON.stringify({ value: '', hint: '1', focused: true, w: 46, dx: 0, dy: 0 }));
+    expect(JSON.stringify(field), 'a field over its number, empty, the caret in it').toBe(JSON.stringify({ value: '', hint: '', focused: true, w: 46, dx: 0, dy: 0 }));
     await p.cdp('Input.insertText', { text: '57' });
     await p.key('Enter', 'Enter', 13);
     await sleep(300);
@@ -1471,6 +1471,29 @@ export const checks = {
     await p.drag(edge, [edge[0], edge[1] + 120], { steps: 8 });
     await sleep(200);
     expect(await p.ev(`JSON.stringify([planx.board.list().filter((x) => x.type === 'sticky' && !x.pad).length, planx.board.list().find((x) => x.pad).y - ${pad.y}])`), 'by its edge, moved: no sticker off it').toBe(JSON.stringify([1, 120]));
+  },
+
+  async '"Стопка стикеров": a sticker dragged off a pad, picked or not, no panel over it all the way, nor once let go'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setTool('pad'); })()`);
+    await p.click([600, 400]);
+    await sleep(200);
+    const pad = await p.ev(`(() => { const i = planx.board.list().find((x) => x.pad); return { id: i.id, x: i.x, y: i.y, w: i.w, h: i.h }; })()`);
+    const mid = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + pad.w / 2}, y: ${pad.y + pad.h / 2} }); return [s.x, s.y]; })()`);
+    for (const picked of [false, true]) {
+      if (picked) { await p.click(mid); await sleep(400); }
+      const vis = () => p.ev(`[...document.querySelectorAll('.bar.panel, .tfmt')].filter((el) => !el.classList.contains('gone') && getComputedStyle(el).opacity !== '0' && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[data-dock]')).map((el) => { const r = el.getBoundingClientRect(); return el.className.split(' ').slice(0, 3).join('.') + '@' + Math.round(r.left) + ',' + Math.round(r.top) + ' op' + getComputedStyle(el).opacity; }).join(' ; ')`);
+      await p.mouse('mouseMoved', ...mid);
+      await p.mouse('mousePressed', ...mid);
+      const seen = [];
+      for (let k = 1; k <= 12; k++) { await p.mouse('mouseMoved', mid[0] + k * 20, mid[1] + k * 6 + (picked ? 120 : 0)); await sleep(30); seen.push(await vis()); }
+      expect([...new Set(seen)].join(' | '), `no panel over it as it's dragged (the pad ${picked ? 'picked' : 'not picked'} before)`).toBe('');
+      await p.mouse('mouseReleased', mid[0] + 240, mid[1] + 72 + (picked ? 120 : 0));
+      await sleep(400);
+      expect(JSON.stringify([await vis(), await p.ev(`planx.editor.nudged`)]), 'let go: its frame alone, no panel').toBe(JSON.stringify(['', true]));
+      await p.ev(`planx.editor.setSelection([])`);
+      await sleep(200);
+    }
   },
 
   async '"Файлы в документ": .md, .txt, .html and .rtf dropped on the board, each a document side by side, to be typed in'(p) {
