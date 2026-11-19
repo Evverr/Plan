@@ -273,7 +273,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
 /** Page `n` of it zoomed out past its letters: each of its lines a faint rounded bar, as long as its text
  *  comes to (by its letters, roughly), as tall as a little over half of it, where it stands (a heading's
  *  bigger, a list's further in, a centred one in the middle); tables and dividers drawn as they are. */
-export function drawDocSkeleton(ctx: CanvasRenderingContext2D, it: Item, n: number, ink: string): void {
+export function drawDocSkeleton(ctx: CanvasRenderingContext2D, it: Item, n: number, ink: string, z = 1): void {
   const area = textArea(it), text = it.text ?? '';
   ctx.save();
   ctx.strokeStyle = ink;
@@ -281,7 +281,8 @@ export function drawDocSkeleton(ctx: CanvasRenderingContext2D, it: Item, n: numb
   ctx.globalAlpha = (it.to ?? 1) * 0.1;
   for (const l of docLines(it)) {
     if (l.page !== n || l.o || l.k === 'hr' || !text.slice(l.s, l.e).trim()) continue;
-    const room = area.w - l.indent, w = Math.min(room, (l.e - l.s) * l.size * (l.h ? 0.58 : 0.5)), h = l.size * 0.62;
+    // (3 px on the screen at least, its round ends seen so however far out; within its line, not one with the next.)
+    const room = area.w - l.indent, w = Math.min(room, (l.e - l.s) * l.size * (l.h ? 0.58 : 0.5)), h = Math.min(l.size * DOC_LINE * 0.7, Math.max(l.size * 0.62, 3 / z));
     ctx.lineWidth = h;
     const la = l.a ?? it.ta ?? 'left', x = it.x + area.x + l.indent + (la === 'center' ? (room - w) / 2 : la === 'right' ? room - w : 0);
     const y = it.y + area.y + l.y + (l.size * DOC_LINE - h) / 2;
