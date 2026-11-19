@@ -23,6 +23,7 @@ import { AudioRecorder } from './ui/AudioRecorder';
 import { catFor } from './emoji/emoji';
 import { MAX_DOC_MB, readFiles } from './labs/docx';
 import { isTextDoc, placeTextDocs } from './labs/docImport';
+import { PageJump } from './labs/PageJump';
 import { cellItem } from './model/table';
 import { useSortable } from './ui/sortable';
 import { Tooltips } from './ui/Tooltips';
@@ -610,6 +611,8 @@ export function App({ boardId }: { boardId: string }) {
         // («Документ», src/labs: typed in as it looks.)
         : editing.type === 'page' && labs.docPage ? <RichEditor key={editing.id} editor={editor} item={editing} />
         : <TextEditor key={editing.type === 'task' ? `${editing.id}:${ui.editingCell}` : editing.id} editor={editor} item={editing} />)}
+      {/* «Документ»: the page to go to typed in over its pager's number. */}
+      {labs.docPage && <PageJump editor={editor} />}
       {/* A task's people and date, picked where its row was pressed. */}
       <TaskPop editor={editor} me={conn.me} peers={peers} />
       <TaskTipBubble />

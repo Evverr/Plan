@@ -505,3 +505,9 @@
 .doc-view-pages { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; background: #8a8f98; }
 .doc-view-pages .docx-wrapper { background: none; padding: 16px; }
 .doc-view-pages .docx-wrapper > section.docx { margin-bottom: 16px; color: #000; }
+
+/* «Документ»: the page to go to, typed in over its pager's number (PageJump.tsx): three digits wide. */
+.page-jump { position: fixed; z-index: 6; transform: translate(-50%, -50%); width: 46px; height: 24px; box-sizing: border-box; padding: 0 6px;
+  border: 0; border-radius: 6px; background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1.5px var(--accent), var(--shadow);
+  font: 500 13px/24px var(--ui, inherit); text-align: center; outline: none; font-variant-numeric: tabular-nums; }
+.page-jump:focus, .page-jump:focus-visible { outline: none; }

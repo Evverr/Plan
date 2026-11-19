@@ -362,14 +362,15 @@ export function pagerAt(items: Item[], w: Point): { it: Item; dir: -1 | 0 | 1 } 
   return null;
 }
 
-/** «‹ n / of ›»'s number clicked: a page to go to asked for, it shown then (within those it has). */
-export function askPage(it: Item, done: () => void): void {
-  const of = pagesOf(it).length;
-  window.dispatchEvent(new CustomEvent('planx:confirm', { detail: {
-    text: `Перейти к странице (1–${of})`, action: 'Перейти', input: String(pageShown(it, of) + 1), placeholder: `1–${of}`,
-    ok: (v?: string) => { const n = Math.round(Number(v)); if (n >= 1) { showPage(it.id, Math.min(of, n) - 1); done(); } },
-  } }));
-}
+/** «‹ n / of ›»'s number clicked: a field for the page to go to over it (PageJump.tsx), typed in there. */
+let jumping: string | null = null;
+const jumpFns = new Set<() => void>();
+export const subscribeJump = (fn: () => void) => { jumpFns.add(fn); return () => { jumpFns.delete(fn); }; };
+export const jumpingIn = (): string | null => jumping;
+export function askPage(it: Item): void { jumping = it.id; jumpFns.forEach((f) => f()); }
+export function endJump(): void { if (!jumping) return; jumping = null; jumpFns.forEach((f) => f()); }
+/** Its pager's middle on the board (the field for a page to go to stands over it). */
+export const pagerAtMid = (it: Item): Point => pagerMid(it);
 
 /** The pager arrow under the pointer, as the renderer lights it (`pager:<id>:<−1|1>`). */
 export function pagerHot(items: Item[], w: Point): string | null {

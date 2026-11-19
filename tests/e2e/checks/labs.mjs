@@ -1291,16 +1291,17 @@ export const checks = {
     await p.ev(`(() => { planx.board.update('${id}', { text: Array.from({ length: 1600 }, (_, i) => (i % 20 === 0 ? 'Глава ' + i : ${JSON.stringify(para)})).join('\\n') }); planx.editor.setSelection([]); })()`);
     await sleep(500);
     expect(await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pagesOf(planx.board.get('${id}')).length)()`) > 50, 'past ten pages, all of it').toBe(true);
-    // its number clicked: a page asked for, 57, shown
+    // Its number clicked: a small field over it, the page shown now in it, picked; 57 typed, Enter: that page.
     const num = await p.ev(`(() => { const it = planx.board.get('${id}'), s = planx.editor.toScreen({ x: it.x + it.w / 2, y: it.y + it.h + 22 }); return [s.x, s.y]; })()`);
     await p.click(num);
     await sleep(300);
-    expect(await p.ev(`document.querySelector('.confirm-input')?.value ?? null`), 'its number clicked: a page asked for').toBe('1');
-    await p.ev(`(() => { const i = document.querySelector('.confirm-input'); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; set.call(i, '57'); i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
-    await sleep(100);
+    const field = await p.ev(`(() => { const i = document.querySelector('.page-jump'); if (!i) return null; const r = i.getBoundingClientRect(); return { value: i.value, focused: document.activeElement === i, picked: i.selectionStart === 0 && i.selectionEnd === i.value.length, w: Math.round(r.width), dx: Math.round(r.left + r.width / 2 - ${num[0]}), dy: Math.round(r.top + r.height / 2 - ${num[1]}) }; })()`);
+    expect(JSON.stringify(field), 'a field over its number, the page in it picked').toBe(JSON.stringify({ value: '1', focused: true, picked: true, w: 46, dx: 0, dy: 0 }));
+    await p.cdp('Input.insertText', { text: '57' });
     await p.key('Enter', 'Enter', 13);
     await sleep(300);
     expect(await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pageShown(planx.board.get('${id}')))()`), 'that page shown').toBe(56);
+    expect(await p.ev(`!!document.querySelector('.page-jump')`), 'the field gone').toBe(false);
   },
 
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
