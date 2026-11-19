@@ -51,6 +51,15 @@ export function tidyDocObjects(board: Board): void {
     if (lim?.cols || lim?.rows) Object.assign(p, lim);
     if (Object.keys(p).length) moves.set(it.id, p);
   }
+  // A place in a document's text for a table that's out of it now (on the board on its own, or in another):
+  // taken out, no room left for it there.
+  for (const doc of board.list()) {
+    if (doc.type !== 'page' || !doc.rs?.some((r) => r.o)) continue;
+    const stale = [...new Set(objectsIn(doc))].filter((o) => { const t = board.get(o); return !!t && t.inDoc !== doc.id; });
+    if (!stale.length) continue;
+    const t = stale.reduce((t, o) => withoutObject(t, o), { text: doc.text ?? '', rs: doc.rs as TextRun[] | undefined, links: doc.links });
+    moves.set(doc.id, { text: t.text, rs: t.rs, links: t.links });
+  }
   if (moves.size) board.forGood(() => moves.forEach((p, id) => board.updateForGood(id, p)));
 }
 
@@ -83,7 +92,12 @@ export function withObject(t: Text, id: string, after: number): Text {
 export function withoutObject(t: Text, id: string): Text {
   const a = t.rs?.find((r) => r.o === id);
   if (!a) return t;
-  const at = a.s, rs = setPara(t.text, t.rs, at, at, 'o', undefined);
+  // (Each place it has: any copied by a slip, one left over after the first taken out would keep its room.)
+  const t2 = withoutPlace(t, a.s);
+  return (t2.rs?.filter((r) => r.o === id).length ?? 0) < (t.rs?.filter((r) => r.o === id).length ?? 0) ? withoutObject(t2, id) : t2;
+}
+function withoutPlace(t: Text, at: number): Text {
+  const rs = setPara(t.text, t.rs, at, at, 'o', undefined);
   // (Its paragraph's empty: its line break goes, or, the last, the one before it, that paragraph's keys
   // kept on its end.)
   if (at < t.text.length) return { text: t.text.slice(0, at) + t.text.slice(at + 1), rs: cut(rs, at), links: cut(t.links, at) };

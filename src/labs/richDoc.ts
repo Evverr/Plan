@@ -1,7 +1,7 @@
 import { TEXT_COLORS, type Item } from '../model/types';
 import { headingAt, paraAt, setHeading, setPara, setRun, type RunStyle, type TextRun } from '../model/textLinks';
 import { FONTS } from '../canvas/text';
-import { CODE_SIZE, docObject, HEADING_GAP, HEADING_SIZE, LIST_DEPTH, OBJ_GAP } from './docPage';
+import { CODE_SIZE, docObjectIn, HEADING_GAP, HEADING_SIZE, LIST_DEPTH, OBJ_GAP } from './docPage';
 import { objectPicture } from './docObjects';
 
 /**
@@ -36,7 +36,7 @@ export function toHtml(it: Item): string {
     at += para.length + 1;
     // A table put in its place («Таблица в документе»): as tall as its room on the sheet, a picture of it
     // there, not typed in (taken out whole, as a letter is).
-    const oid = paraAt(text, runs, s0, 'o'), obj = oid && !placed.has(oid) ? docObject(oid) : undefined;
+    const oid = paraAt(text, runs, s0, 'o'), obj = oid && !placed.has(oid) ? docObjectIn(it, oid) : undefined;
     if (obj) placed.add(obj.id);
     if (obj) {
       const pic = objectPicture(obj);

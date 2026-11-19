@@ -8,6 +8,35 @@ const stickers = (p) => p.ev(`(() => { const e = planx.editor, b = planx.board, 
   b.add(a); b.add(c); return { a: a.id, c: c.id }; })()`);
 const select = (p, id) => p.ev(`planx.editor.setSelection(['${id}'])`);
 
+// («Таблица в документе»: a sheet with a table dragged into it, after its first paragraph; and that table dragged out.)
+const docTableSetup = async (p, editing) => {
+  await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 400, y: 400 }); })()`);
+  await sleep(200);
+  const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+  await p.ev(`(() => { planx.board.update('${id}', { text: 'Один\\nДва\\nТри' }); planx.editor.setSelection([]); planx.editor.dropItem('table', { x: 1000, y: 300 }); planx.editor.setSelection([]); })()`);
+  await sleep(200);
+  const scr = (x, y) => p.ev(`(() => { const s = planx.editor.toScreen({ x: ${x}, y: ${y} }); return [s.x, s.y]; })()`);
+  const T = () => p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), b = planx.board, doc = b.get('${id}'), t = b.list().find((i) => i.type === 'table');
+    return { doc: { x: doc.x, y: doc.y, text: doc.text, rs: doc.rs ?? null }, t: t && { x: t.x, y: t.y, inDoc: t.inDoc ?? null }, objs: d.docLines(doc).filter((l) => l.o).length, rich: !!document.querySelector('.rich-edit .rich-obj') }; })()`);
+  let s = await T();
+  await p.drag(await scr(s.t.x + 20, s.t.y + 5), await scr(s.doc.x + 100, s.doc.y + 80 + 5 + 22));
+  await sleep(300);
+  s = await T();
+  if (s.t.inDoc !== id) throw new Error('not in: ' + JSON.stringify(s));
+  if (editing) {
+    await p.ev(`planx.editor.startEditing('${id}', null, 'end')`);
+    await sleep(400);
+    if (editing === 'typed') { await p.cdp('Input.insertText', { text: '!' }); await sleep(100); }
+  }
+  return { id, scr, T };
+};
+const docTableOut = async (p, T, scr) => {
+  const s = await T();
+  await p.drag(await scr(s.t.x + 20, s.t.y + 5), await scr(s.doc.x + 1100, s.doc.y + 200));
+  await sleep(500);
+  return T();
+};
+
 export const checks = {
   async '"Код": its copy button copies the code; a block too small for its code scrolls it by the wheel'(p) {
     const text = Array.from({ length: 14 }, (_, i) => `const line${i} = "очень длинная строка кода номер ${i}, чтобы не влезла";`).join('\\n');
@@ -1726,6 +1755,21 @@ export const checks = {
     await p.key('Escape', 'Escape', 27);
     await sleep(300);
     expect(await p.ev(`planx.board.list().some((i) => i.type === 'table')`), 'its place taken out: gone').toBe(false);
+  },
+
+  async '"Таблица в документе": its place there twice (a slip), dragged out: all its places gone, no room left'(p) {
+    const { id, T, scr } = await docTableSetup(p);
+    await p.ev(`(() => { const b = planx.board, d = b.get('${id}'), o = d.rs[0].o; b.update('${id}', { text: d.text + '\\n', rs: [...d.rs, { s: d.text.length + 1, e: d.text.length + 2, o }] }); })()`);
+    await sleep(200);
+    const o = await docTableOut(p, T, scr);
+    expect(JSON.stringify([o.doc.text, o.doc.rs, o.objs]), 'dup').toBe(JSON.stringify(['Один\nДва\nТри', null, 0]));
+  },
+  async '"Таблица в документе": a place left in the text for a table out of it: taken out, no room, no picture'(p) {
+    const { id, T } = await docTableSetup(p);
+    await p.ev(`(() => { const b = planx.board, t = b.list().find((i) => i.type === 'table'); b.update(t.id, { inDoc: undefined, x: 2000 }); })()`);
+    await sleep(300);
+    const o = await T();
+    expect(JSON.stringify([o.doc.text, o.doc.rs, o.objs]), 'stale').toBe(JSON.stringify(['Один\nДва\nТри', null, 0]));
   },
 
   async '"Таблица в документе": no wider than its text, no taller than a page; typed over with its page picked, kept'(p) {

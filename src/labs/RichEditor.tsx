@@ -272,7 +272,7 @@ export function richTable(): boolean {
   // (Its look as the field has it, toHtml's: from the text with it.)
   const now = fromDom(el, getComputedStyle(el).color);
   const tpl = document.createElement('div');
-  tpl.innerHTML = toHtml({ text: now.text, rs: now.rs, fs: active.fs } as Item);
+  tpl.innerHTML = toHtml({ id, text: now.text, rs: now.rs, fs: active.fs } as Item);
   const made = [...tpl.children].find((c) => (c as HTMLElement).dataset.o === it.id);
   if (made) box.replaceWith(made);
   const placed = (made ?? box) as HTMLElement, next = placed.nextElementSibling as HTMLElement | null;
@@ -311,7 +311,7 @@ function rewrite(fn: (text: string, rs: TextRun[] | undefined, s: number, e: num
   const r = sel.getRangeAt(0), s = indexAt(el, r.startContainer, r.startOffset), e = indexAt(el, r.endContainer, r.endOffset);
   const was = fromDom(el, getComputedStyle(el).color), out = fn(was.text, was.rs, s, e);
   if (!out) return false;
-  el.innerHTML = toHtml({ text: out.text, rs: out.rs, fs: active.fs } as Item);
+  el.innerHTML = toHtml({ id: active.id, text: out.text, rs: out.rs, fs: active.fs } as Item);
   const a = domAt(el, out.s, out.e > out.s), b = domAt(el, out.e);
   if (a && b) {
     const q = document.createRange();

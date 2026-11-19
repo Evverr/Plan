@@ -44,6 +44,9 @@ export const CODE_SIZE = 0.9, CODE_IN = 12;
 let objectOf: (id: string) => Item | undefined = () => undefined;
 export const setDocObjects = (get: (id: string) => Item | undefined): void => { objectOf = get; };
 export const docObject = (id: string): Item | undefined => objectOf(id);
+/** The table `id` if it's in this document's text (`inDoc`): one gone out of it (its place left over in the
+ *  text, say) takes no room there and isn't shown in it. */
+export const docObjectIn = (doc: Item, id: string): Item | undefined => { const o = objectOf(id); return o?.inDoc === doc.id ? o : undefined; };
 export const OBJ_GAP = 8;
 /** A list in a list: how deep at most (0 the first), and its bullets at each depth. */
 export const LIST_DEPTH = 4, BULLETS = ['•', '◦', '▪'];
@@ -72,7 +75,7 @@ function piecesOf(runs: TextRun[], s: number, e: number): Array<{ s: number; e: 
 export function docLines(it: Item): DocLine[] {
   const text = it.text ?? '', fs = it.fs ?? 16, st = fontOf(it), runs = (it.rs ?? []) as Array<TextRun & { h?: number }>;
   // (And the sizes of what's put in it.)
-  const objs = runs.filter((r) => r.o).map((r) => { const o = objectOf(r.o!); return o ? `${o.w}x${o.h}` : '-'; }).join();
+  const objs = runs.filter((r) => r.o).map((r) => { const o = docObjectIn(it, r.o!); return o ? `${o.w}x${o.h}` : '-'; }).join();
   const area = textArea(it);
   // (Its text told apart on its own: the same string as last time (the board's, unchanged) at once, not
   // gone through letter by letter as part of a key, a hundred pages of it, each time it's drawn.)
@@ -127,7 +130,7 @@ export function docLines(it: Item): DocLine[] {
     const list = own('l') as string | undefined, depth = Math.min(LIST_DEPTH, (own('d') as number | undefined) ?? 0);
     if (k === 'hr') { nums = []; indent = 0; mark = undefined; box = undefined; put(s0, e0, size, 0, true); continue; }
     // A table put in its place: room as tall as it (on the next page whole, if not on this one).
-    const oid = runs.find((r) => r.o && r.s <= e0 && r.e > e0)?.o, obj = oid && !placed.has(oid) ? objectOf(oid) : undefined;
+    const oid = runs.find((r) => r.o && r.s <= e0 && r.e > e0)?.o, obj = oid && !placed.has(oid) ? docObjectIn(it, oid) : undefined;
     if (obj) placed.add(obj.id);
     if (obj) { nums = []; indent = 0; mark = undefined; box = undefined; a = undefined; k = undefined; put(s0, e0, size, 0, true, obj); continue; }
     // A numbered list counts on at its depth while its paragraphs follow one another (deeper ones, started
