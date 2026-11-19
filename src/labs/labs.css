@@ -511,3 +511,5 @@
   border: 0; border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
   font: 500 13px/34px var(--ui, inherit); text-align: center; outline: none; font-variant-numeric: tabular-nums; }
 .page-jump:focus, .page-jump:focus-visible { outline: none; }
+/* (Its number picked, to be typed over, but not shown so: the field white under it.) */
+.page-jump::selection { background: transparent; }
