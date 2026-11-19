@@ -1772,6 +1772,38 @@ export const checks = {
     expect(JSON.stringify([o.doc.text, o.doc.rs, o.objs]), 'stale').toBe(JSON.stringify(['Один\nДва\nТри', null, 0]));
   },
 
+  async '"Таблица в документе": dragged half onto a sheet, a place to go in shown; moved down within its page, in its text there, its place there once'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.75 }; e.camChanged(); e.dropItem('page', { x: 500, y: 450 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Один\\nДва\\nТри\\nЧетыре\\nПять' }); planx.editor.setSelection([]); planx.editor.dropItem('table', { x: 1260, y: 400 }); planx.editor.setSelection([]); })()`);
+    await sleep(200);
+    const scr = (x, y) => p.ev(`(() => { const s = planx.editor.toScreen({ x: ${x}, y: ${y} }); return [s.x, s.y]; })()`);
+    const T = () => p.ev(`(() => { const b = planx.board, doc = b.get('${id}'), t = b.list().find((i) => i.type === 'table'); return { doc: { x: doc.x, y: doc.y, text: doc.text, rs: doc.rs ?? null }, t: { x: t.x, y: t.y, w: t.w, h: t.h, inDoc: t.inDoc ?? null } }; })()`);
+    let s = await T();
+    // Onto it, halfway: a screenshot as it's over.
+    const a = await scr(s.t.x + 20, s.t.y + 5), b = await scr(s.doc.x + 100, s.doc.y + 80 + 5 + 22);
+    await p.mouse('mouseMoved', ...a); await p.mouse('mousePressed', ...a);
+    for (let k = 1; k <= 12; k++) { await p.mouse('mouseMoved', a[0] + (b[0] - a[0]) * k / 12, a[1] + (b[1] - a[1]) * k / 12); await sleep(30); }
+    await sleep(100);
+    expect(await p.ev(`(async () => !!(await import('/src/labs/docObjects.ts')).docDropAt(planx.board, planx.board.list().find((i) => i.type === 'table')))()`), 'over it: a place to go in').toBe(true);
+    await p.mouse('mouseReleased', ...b);
+    await sleep(300);
+    s = await T();
+    const one = JSON.stringify([s.doc.text, s.doc.rs?.length]);
+    // Down within it, under «Три».
+    const c = await scr(s.t.x + 40, s.t.y + 10), d = await scr(s.t.x + 40, s.t.y + 10 + s.t.h + 70);
+    await p.mouse('mouseMoved', ...c); await p.mouse('mousePressed', ...c);
+    for (let k = 1; k <= 12; k++) { await p.mouse('mouseMoved', c[0], c[1] + (d[1] - c[1]) * k / 12); await sleep(30); }
+    await sleep(100);
+    expect(await p.ev(`(async () => !!(await import('/src/labs/docObjects.ts')).docDropAt(planx.board, planx.board.list().find((i) => i.type === 'table')))()`), 'over it: a place to go in').toBe(true);
+    await p.mouse('mouseReleased', ...d);
+    await sleep(300);
+    const t2 = await T();
+    expect(one, 'in after the first').toBe(JSON.stringify(['Один\n\nДва\nТри\nЧетыре\nПять', 1]));
+    expect(JSON.stringify([t2.doc.text, t2.doc.rs.length, t2.t.inDoc === id]), 'moved down in it, after «Четыре», its place there once').toBe(JSON.stringify(['Один\nДва\nТри\nЧетыре\n\nПять', 1, true]));
+  },
+
   async '"Таблица в документе": no wider than its text, no taller than a page; typed over with its page picked, kept'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged(); e.dropItem('page', { x: 400, y: 400 }); })()`);
     await sleep(200);

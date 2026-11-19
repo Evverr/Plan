@@ -2,7 +2,7 @@ import type { Item } from '../model/types';
 import type { Board } from '../model/board';
 import { paraAt, setPara, type TextLink, type TextRun } from '../model/textLinks';
 import { colsOf, rowsOf } from '../model/table';
-import { DOC_LINE, docLines, docObject, OBJ_GAP, PAGE_TEXT, pageShown, showPage, textArea } from './docPage';
+import { DOC_LINE, docLines, docObject, OBJ_GAP, PAGE_TEXT, pageShown, showPage, textArea, type DocLine } from './docPage';
 import { drawScene, readTheme } from '../canvas/renderer';
 
 /**
@@ -108,19 +108,32 @@ function withoutPlace(t: Text, at: number): Text {
 /** The ids of the tables put in a document's text. */
 export const objectsIn = (doc: Item): string[] => ((doc.rs ?? []) as TextRun[]).filter((r) => r.o).map((r) => r.o!);
 
-/** The paragraph a point on a sheet's page shown is over or under the middle of (−1: over the first): the
- *  one a table let go there goes after. */
-function paragraphAt(doc: Item, y: number, skip?: string): number {
-  const text = doc.text ?? '', n = pageShown(doc), lines = docLines(doc).filter((l) => l.page === n && l.o !== skip);
+/** Where a table let go with its top at `y` goes in a sheet's page shown: after which paragraph (−1: over
+ *  the first), the one whose middle is over that or the last over it (its own place, `skip`, left out), and
+ *  where that is on the board (between that paragraph and the next, a little under it), for the blue line. */
+function spotAt(doc: Item, y: number, skip?: string): { after: number; y: number } {
+  const text = doc.text ?? '', n = pageShown(doc), top0 = doc.y + textArea(doc).y, lines = docLines(doc).filter((l) => l.page === n && l.o !== skip);
+  const para = (l: DocLine) => text.slice(0, l.s).split('\n').length - 1, top = (l: DocLine) => top0 + l.y, bottom = (l: DocLine) => top(l) + (l.tall ?? l.size * DOC_LINE);
   let after = -1;
   for (const l of lines) {
-    const mid = doc.y + textArea(doc).y + l.y + (l.tall ?? l.size * DOC_LINE) / 2;
-    if (y < mid) break;
-    after = text.slice(0, l.s).split('\n').length - 1;
+    if (y < (top(l) + bottom(l)) / 2) break;
+    after = para(l);
   }
   // (Over all of this page: after what's on the pages before it.)
-  if (after < 0 && n > 0 && lines.length) after = text.slice(0, lines[0].s).split('\n').length - 2;
-  return after;
+  if (after < 0 && n > 0 && lines.length) after = para(lines[0]) - 1;
+  const prev = lines.filter((l) => para(l) <= after).pop(), next = lines.find((l) => para(l) > after);
+  const from = prev ? bottom(prev) : top0, to = next ? top(next) : from + OBJ_GAP * 2;
+  return { after, y: Math.round(from + Math.min((to - from) / 2, OBJ_GAP)) };
+}
+
+/** The sheet a table goes into if let go where it is now: one half of it or more is over (the top one), and
+ *  where in it (see spotAt), the blue line across its text there. */
+export function docDropAt(board: Board, it: Item): { doc: Item; after: number; x: number; y: number; w: number } | null {
+  const half = (it.w * it.h) / 2, over = (d: Item) => Math.max(0, Math.min(it.x + it.w, d.x + d.w) - Math.max(it.x, d.x)) * Math.max(0, Math.min(it.y + it.h, d.y + d.h) - Math.max(it.y, d.y));
+  const doc = board.list().filter((i) => i.type === 'page' && !i.hid).reverse().find((d) => over(d) >= half);
+  if (!doc) return null;
+  const area = textArea(doc), spot = spotAt(doc, it.y + 10, it.id);
+  return { doc, after: spot.after, x: doc.x + area.x, y: spot.y, w: area.w };
 }
 
 /** A table fitted to a sheet: as wide as its text at most, as tall as a page (see inDocLimit). */
@@ -163,27 +176,32 @@ export function inDocLimit(it: Item, patch: Partial<Item>, here = true): Partial
   return out;
 }
 
-/** Tables let go after being dragged: onto a sheet (its middle on one), into its text there (out of the
- *  one they were in, if another); off one they were in, out of its text, tables of their own again. */
+/** Tables let go after being dragged: onto a sheet (half of one or more over it), into its text there (out
+ *  of the one they were in, if another; moved in it, if the same); off one they were in, out of its text,
+ *  tables of their own again. */
 export function dropTables(board: Board, ids: Iterable<string>): void {
-  const sheets = board.list().filter((i) => i.type === 'page');
+  const textOf = (d: Item): Text => ({ text: d.text ?? '', rs: d.rs as TextRun[] | undefined, links: d.links });
   for (const id of ids) {
     const it = board.get(id);
     if (it?.type !== 'table' || it.host) continue;
-    const cx = it.x + Math.min(it.w, PAGE_TEXT.w) / 2, cy = it.y + 10;
-    const doc = [...sheets].reverse().find((d) => cx >= d.x && cx <= d.x + d.w && cy >= d.y && cy <= d.y + d.h);
-    const was = it.inDoc ? board.get(it.inDoc) : undefined;
-    if (!doc && !was) continue;
+    const spot = docDropAt(board, it), was = it.inDoc ? board.get(it.inDoc) : undefined;
+    if (!spot && !was) continue;
     board.transact(() => {
+      // (Out of where it was; moved in the same one, put in again in what's left, its paragraphs after its
+      // place one fewer.)
+      let left: Text | null = null, after = spot?.after ?? -1;
       if (was) {
-        const t = withoutObject({ text: was.text ?? '', rs: was.rs as TextRun[] | undefined, links: was.links }, id);
-        board.update(was.id, { text: t.text, rs: t.rs, links: t.links });
+        left = withoutObject(textOf(was), id);
+        board.update(was.id, { text: left.text, rs: left.rs, links: left.links });
+        if (spot?.doc.id === was.id) {
+          const t = was.text ?? '';
+          for (const r of (was.rs ?? []) as TextRun[]) if (r.o === id && t.slice(0, r.s).split('\n').length - 1 <= spot.after) after--;
+        } else left = null;
       }
-      if (doc) {
-        const now = board.get(doc.id)!, after = paragraphAt(now, cy, id);
-        const t = withObject({ text: now.text ?? '', rs: now.rs as TextRun[] | undefined, links: now.links }, id, after);
+      if (spot) {
+        const doc = spot.doc, t = withObject(left ?? textOf(doc), id, after);
         board.update(doc.id, { text: t.text, rs: t.rs, links: t.links });
-        board.update(id, { inDoc: doc.id, ...fitted(it, doc.id), ...(it.z <= now.z && { z: board.maxZ() + 1 }) });
+        board.update(id, { inDoc: doc.id, ...fitted(it, doc.id), ...(it.z <= doc.z && { z: board.maxZ() + 1 }) });
       } else board.update(id, { inDoc: undefined });
     });
   }

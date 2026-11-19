@@ -159,6 +159,8 @@ export interface Scene {
   /** «Канбан»: the column a card being dragged would go into (lit as it's over it), and the line between
    *  its cards where it'd go in (drawn blue). */
   kanbanDrop?: { id: string; col: number; x: number; w: number; y: number | null } | null;
+  /** «Таблица в документе»: a table dragged over a sheet, drawn see-through, and where it'd go in its text (a blue line across it). */
+  docDrop?: { id: string; x: number; y: number; w: number } | null;
   /** «Канбан»: cards taken up (dragged over a kanban or out of one): drawn a little tilted, see-through. */
   lifted?: string[];
   /** Picked links' colours being set: drawn in them, not in the selection's blue. */
@@ -1471,7 +1473,7 @@ let ghostLayer: HTMLCanvasElement | null = null;
  *  70%, each a little tilted about its middle (as a table's row taken out, see labs/tableMove.ts). */
 let liftLayer: HTMLCanvasElement | null = null;
 const LIFT_TILT = -(4 / 3) * Math.PI / 180, LIFT_ALPHA = 0.7;
-function drawLifted(ctx: CanvasRenderingContext2D, s: Scene, ids: Set<string>): void {
+function drawLifted(ctx: CanvasRenderingContext2D, s: Scene, ids: Set<string>, tilt = LIFT_TILT, alpha = LIFT_ALPHA): void {
   const c = ctx.canvas;
   if (!liftLayer || liftLayer.width !== c.width || liftLayer.height !== c.height) { liftLayer = document.createElement('canvas'); liftLayer.width = c.width; liftLayer.height = c.height; }
   const g = liftLayer.getContext('2d');
@@ -1484,13 +1486,13 @@ function drawLifted(ctx: CanvasRenderingContext2D, s: Scene, ids: Set<string>): 
     const m = center(it);
     g.setTransform(ctx.getTransform());
     g.translate(m.x, m.y);
-    g.rotate(LIFT_TILT);
+    g.rotate(tilt);
     g.translate(-m.x, -m.y);
     drawItem(g, it, s);
   }
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = LIFT_ALPHA;
+  ctx.globalAlpha = alpha;
   ctx.drawImage(liftLayer, 0, 0);
   ctx.restore();
 }
@@ -1516,7 +1518,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
   const now0 = performance.now(), lifted = s.live && s.lifted?.length ? new Set(s.lifted) : null;
   for (const it of s.items) {
     const b = it.inst ? instanceBounds(it, s.items) : boxOf(it), box = it.type === 'frame' ? { x: b.x - 40, y: b.y - 40, w: b.w + 80, h: b.h + 80 } : b;
-    if (lifted?.has(it.id)) continue;
+    if (lifted?.has(it.id) || s.docDrop?.id === it.id) continue;
     // Hidden («Скрыть объект», src/labs), or in an instance hidden: not drawn (its frame shows it, picked).
     if (it.hid || (it.host && s.get(it.host)?.hid)) continue;
     if (rectsIntersect(box, view)) {
@@ -1530,9 +1532,11 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     }
   }
   if (lifted) drawLifted(ctx, s, lifted);
+  // («Таблица в документе»: one dragged over a sheet, over all, at 60%, not tilted.)
+  if (s.live && s.docDrop) drawLifted(ctx, s, new Set([s.docDrop.id]), 0, 0.6);
   // «Канбан»: where a card being dragged would go in, a blue line between the cards there (only between two).
-  if (s.kanbanDrop?.y != null) {
-    const d = s.kanbanDrop as { x: number; w: number; y: number };
+  if (s.kanbanDrop?.y != null || s.docDrop) {
+    const d = (s.docDrop ?? s.kanbanDrop) as { x: number; w: number; y: number };
     ctx.beginPath();
     ctx.moveTo(d.x, d.y);
     ctx.lineTo(d.x + d.w, d.y);

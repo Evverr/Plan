@@ -45,7 +45,7 @@ import { finishNib, nibPoints } from '../labs/nib';
 import { nodeEditing, shapedBy } from '../labs/paths';
 import { hiddenByLayers, layersVersion, newItemLayer } from '../labs/layers';
 import { clearDocLines, pagesTurned, setDocObjects } from '../labs/docPage';
-import { inDocLimit, offPage, tidyDocObjects } from '../labs/docObjects';
+import { docDropAt, inDocLimit, offPage, tidyDocObjects } from '../labs/docObjects';
 import { addPad } from '../labs/stickyPad';
 import { zoomsWithKey } from '../labs/wheelZoom';
 import { codeFit, scrollCode } from '../labs/codeBlock';
@@ -798,6 +798,9 @@ export class Editor {
     refitMind(this);
     const g = this.gesture;
     // «Канбан»: where a card being dragged over one would go in.
+    // («Таблица в документе», src/labs: a table dragged half over a sheet or more, see-through, a blue line where it'd go in.)
+    const dragged = g?.type === 'drag' && g.moved && labOn('docTable') ? this.board.get(g.id) : undefined;
+    const docSpot = dragged?.type === 'table' && !dragged.host ? docDropAt(this.board, dragged) : null;
     const drop = g?.type === 'drag' && g.moved && labOn('kanban') ? dropTarget(this.board.list(), this.board.get(g.id), new Set(g.orig.keys())) : null;
     let linkPreview = null;
     if (g?.type === 'link') {
@@ -903,6 +906,7 @@ export class Editor {
       dragging: (g?.type === 'drag' && (!!g.fresh || g.moved)) || this.nudged,
       dragMoved: (g?.type === 'drag' && g.moved) || this.nudged,
       kanbanDrop: drop,
+      docDrop: docSpot && dragged ? { id: dragged.id, x: docSpot.x, y: docSpot.y, w: docSpot.w } : null,
       // («Канбан»: a card taken up over one, or out of one, a little tilted, see-through.)
       lifted: g?.type === 'drag' && g.moved && (drop || (labOn('kanban') && kanbanOf(this.board.list(), g.id)))
         ? [...g.orig.keys()].filter((id) => { const it = this.board.get(id); return !!it && snaps(it); }) : undefined,
