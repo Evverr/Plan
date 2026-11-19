@@ -697,7 +697,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       ctx.restore();
       // (Being typed in: its pages as they come, «Документ».)
       const of = pagerCount(it), n = pageShown(it, of);
-      if (!editing && (it.fs ?? 16) * s.cam.z >= 2.5) {
+      // (Its letters while they come out 4 px at least, 25% at its usual size; smaller, its skeleton.)
+      if (!editing && (it.fs ?? 16) * s.cam.z >= 4) {
         drawDocPage(ctx, it, n, {
           ink: theme.ink, paper: theme.surface, link: shade(LINK_INK, theme.dim), onLink: it.rot ? undefined : (r) => textLinkRects.push(r),
           tint: (c) => shade(c.startsWith('#') ? c : TEXT_COLORS[c] || theme.ink, theme.dim),
