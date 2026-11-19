@@ -30,8 +30,8 @@ export function toggleMargins(ed: Editor, id: string): void { show(ed, shownFor 
 
 /** A millimetre on the sheet (A4: 210 mm across). */
 export const MM = PAGE.W / 210;
-/** At least this much margin, and this much room left for the text, each way. */
-const MIN = 0, ROOM = 60 * MM;
+/** At least a millimetre of margin, and this much room left for the text, each way. */
+const MIN = MM, ROOM = 60 * MM;
 
 /** The sheet whose margins are out, picked alone and not typed in. */
 function sheetOf(ed: Editor): Item | null {
