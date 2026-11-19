@@ -1318,6 +1318,31 @@ export const checks = {
     expect(await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'); return [d.pagesOf(it).length, d.pageShown(it)].join(); })()`), 'two pages, the second shown').toBe('2,1');
   },
 
+  async '"Документ": «Название документа» in its menu, its name typed in over it (no icon, grey), moved with it'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.dropItem('page', { x: 500, y: 500 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Текст документа' }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - it.x * 0.6, y: 120 - it.y * 0.6, z: 0.6 }; e.camChanged(); e.setSelection(['${id}']); })()`);
+    await sleep(300);
+    const at = await p.ev(`(() => { const it = planx.board.get('${id}'), s = planx.editor.toScreen({ x: it.x + 300, y: it.y + 300 }); return [s.x, s.y]; })()`);
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mouseMoved', x: at[0], y: at[1] });
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: at[0], y: at[1], button: 'right', buttons: 2, clickCount: 1 });
+    await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: at[0], y: at[1], button: 'right', buttons: 0, clickCount: 1 });
+    await sleep(200);
+    await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.context-menu .menu-row')].find((b) => b.textContent.includes('Название документа')).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
+    await sleep(300);
+    await p.cdp('Input.insertText', { text: 'План работ' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    const name = await p.ev(`(() => { const h = planx.board.list().find((x) => x.hd && x.tie === '${id}'), d = planx.board.get('${id}'); return h && { text: h.text, icon: h.icon, dx: h.x - d.x, below: d.y - (h.y + h.h) }; })()`);
+    expect(JSON.stringify(name), 'its name over its top left, no icon').toBe(JSON.stringify({ text: 'План работ', icon: 'none', dx: 0, below: 4 }));
+    await p.ev(`planx.editor.setSelection([])`);
+    await sleep(200);
+    await p.ev(`planx.board.update('${id}', { x: planx.board.get('${id}').x + 100 })`);
+    await sleep(200);
+    expect(await p.ev(`(() => { const h = planx.board.list().find((x) => x.hd && x.tie === '${id}'), d = planx.board.get('${id}'); return h.x - d.x; })()`), 'moved with it').toBe(0);
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

@@ -16,7 +16,7 @@ import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoo
 import { copiesOf } from './copies';
 import { carried, hiddenIn, linksIn, membersOf, peekView, pileHidden, pileParents, pileOrder, settled, stacked, unseen } from './frames';
 import { around, contents, firstInstance, hasComponents, stretched, syncOps } from '../model/components';
-import { HEADER_DESC, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, pickedTies, tidyTies, tiedAt, withTies } from '../labs/header';
+import { DOC_NAME_ICON, HEADER_DESC, HEADER_NAME, HEADER_W, headerFit, headerHeight, headerLayout, setHeaderTyping, pickedTies, tidyTies, tiedAt, withTies } from '../labs/header';
 import { remapLinks } from '../model/textLinks';
 import { DAY, dayKey, dayOf, lastsOnTimeline, TL_PAD, timelineSize } from '../canvas/timeline';
 import { DOODLE_SIZE } from '../canvas/doodles';
@@ -757,6 +757,19 @@ export class Editor {
     if (over) return;
     this.setTool('select');
     this.setSelection([it.id]);
+  }
+
+  /** «Документ» (src/labs): its name over it typed in, a title tied to it as a kanban's is (no icon, grey;
+   *  «Название документа»), made first if it has none. */
+  nameDocument(id: string): void {
+    const doc = this.board.get(id);
+    if (!doc) return;
+    let name = this.board.list().find((h) => h.hd && h.tie === id);
+    if (!name) {
+      this.addHeader({ x: doc.x, y: doc.y }, { item: doc, title: 'Документ', icon: DOC_NAME_ICON, color: 'ink' });
+      name = this.board.list().find((h) => h.hd && h.tie === id);
+    }
+    if (name) this.startEditing(name.id, null, 'all');
   }
 
   requestRender(): void {

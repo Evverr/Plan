@@ -19,7 +19,10 @@ export const HEADER_DESC = 'Здесь идет описание заголов�
 const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
 /** Tied to a kanban, timeline or table: smaller, its icon and title, the title semibold. */
 const TIED = { icon: 30, iconX: 2, iconY: -4, textX: 36, fs: 18, weight: 600 };
-const sizes = (it: Item) => (it.tie ? TIED : { icon: ICON, iconX: 0, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
+/** A document's name over it («Название документа»): a tied one with no icon (`icon` 'none'), its title alone. */
+const NAMED = { ...TIED, icon: 0, iconX: 0, textX: 0 };
+export const DOC_NAME_ICON = 'none';
+const sizes = (it: Item) => (it.tie ? (it.icon === DOC_NAME_ICON ? NAMED : TIED) : { icon: ICON, iconX: 0, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
 export const HEADER_W = TEXT_X + 620;
 /** How far over a timeline or kanban it stands. */
 export const HEADER_GAP = 4;
@@ -118,7 +121,7 @@ export function headerFieldBox(it: Item, cell: number | null): Rect & { fs: numb
 export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string, icon: (name: string, x: number, y: number, size: number) => void, cell?: number | null): void {
   // (Its «…» drawn by `icon` as MORE_ICON: half seen, all of it under the pointer, as its caller has it.)
   const l = headerLayout(it);
-  icon(it.icon ?? 'kanban', it.x + l.icon.x, it.y + l.icon.y, l.icon.w);
+  if (it.icon !== DOC_NAME_ICON) icon(it.icon ?? 'kanban', it.x + l.icon.x, it.y + l.icon.y, l.icon.w);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = ink;

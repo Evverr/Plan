@@ -238,6 +238,9 @@ export function ContextMenu({ editor, onToast }: { editor: Editor; onToast: (tex
         {/* A frame or a component (not a timeline, kanban or instance: theirs is named elsewhere): its title typed in at once. */}
         {/* (An instance: its component's name, without going into changing it.) */}
         {one?.type === 'frame' && !one.tl && !one.kb && !one.inst?.startsWith('@') && row('edit-l', 'Переименовать', run(() => editor.startEditing(one.id, null, 'all')))}
+        {/* «Документ» (src/labs): its name over it, as a title over a kanban (no icon, grey), typed in at once;
+            one there already, typed in again. */}
+        {one?.type === 'page' && labOn('docPage') && row('edit-l', 'Название документа', run(() => editor.nameDocument(one.id)))}
         {/* «Ссылка на объект» (src/labs/itemLink.ts): a link to it, to put in a text. */}
         {one && labOn('itemLinks') && row('link', 'Ссылка на объект', run(() => void copyItemLink(one.id)))}
         {row('copy', 'Скопировать', run(() => { if (editor.copy()) onToast('Скопировано. Вставить: Ctrl+V или правым кликом'); }))}

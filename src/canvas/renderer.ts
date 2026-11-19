@@ -18,7 +18,7 @@ import { gripsOn } from '../labs/tableMove';
 import { gridKind } from '../labs/boardGrid';
 import { drawCode } from '../labs/codeBlock';
 import { drawForm } from '../labs/formObject';
-import { drawHeader, MORE_ICON } from '../labs/header';
+import { DOC_NAME_ICON, drawHeader, MORE_ICON } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
 import { drawDocPage, drawDocSkeleton, drawPager, pageCount, pageShown } from '../labs/docPage';
@@ -533,7 +533,9 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         const c = it.color ?? 'blue', ink = c.startsWith('#') ? shade(c, theme.dim) : ICON_COLORS[c] || FILLS[c] ? shade(ICON_COLORS[c] || FILLS[c], theme.dim) : theme.ink;
         // (Its icon as opaque as set on its panel.)
         // (Its «…», «Троеточие у титула»: muted, as a button.)
-        drawHeader(ctx, it, theme.ink, (name, x, y, size) => { ctx.globalAlpha = name === MORE_ICON ? (s.hotPlus === `more:${it.id}` ? 1 : 0.3) : fillOpacity(it); drawIcon(ctx, name, x, y, size, name === MORE_ICON ? theme.ink : ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
+        // (A document's name over it, «Название документа»: no icon, a lighter grey, #555 on the light board.)
+        const titleInk = it.icon === DOC_NAME_ICON ? (theme.surface.toLowerCase() === '#ffffff' ? '#555555' : theme.muted) : theme.ink;
+        drawHeader(ctx, it, titleInk, (name, x, y, size) => { ctx.globalAlpha = name === MORE_ICON ? (s.hotPlus === `more:${it.id}` ? 1 : 0.3) : fillOpacity(it); drawIcon(ctx, name, x, y, size, name === MORE_ICON ? theme.ink : ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
         break;
       }
       // A poll («Голосование», src/labs), the part under the pointer lit.
