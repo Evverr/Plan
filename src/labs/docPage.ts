@@ -269,6 +269,26 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   ctx.restore();
 }
 
+/** Page `n` of it zoomed out past its letters: each of its lines a faint rounded bar, as long as its text
+ *  comes to (by its letters, roughly), as tall as a little over half of it, where it stands (a heading's
+ *  bigger, a list's further in, a centred one in the middle); tables and dividers drawn as they are. */
+export function drawDocSkeleton(ctx: CanvasRenderingContext2D, it: Item, n: number, ink: string): void {
+  const area = textArea(it), text = it.text ?? '';
+  ctx.save();
+  ctx.fillStyle = ink;
+  ctx.globalAlpha = (it.to ?? 1) * 0.1;
+  for (const l of docLines(it)) {
+    if (l.page !== n || l.o || l.k === 'hr' || !text.slice(l.s, l.e).trim()) continue;
+    const room = area.w - l.indent, w = Math.min(room, (l.e - l.s) * l.size * (l.h ? 0.58 : 0.5)), h = l.size * 0.62;
+    const la = l.a ?? it.ta ?? 'left', x = it.x + area.x + l.indent + (la === 'center' ? (room - w) / 2 : la === 'right' ? room - w : 0);
+    const y = it.y + area.y + l.y + (l.size * DOC_LINE - h) / 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, h / 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 /** Where the paragraph a character's in ends (its line break, or the end of the text). */
 const paraEnd = (text: string, at: number) => { const n = text.indexOf('\n', at); return n < 0 ? text.length : n; };
 

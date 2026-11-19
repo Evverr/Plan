@@ -21,7 +21,7 @@ import { drawForm } from '../labs/formObject';
 import { drawHeader, MORE_ICON } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
-import { drawDocPage, drawPager, pageCount, pageShown } from '../labs/docPage';
+import { drawDocPage, drawDocSkeleton, drawPager, pageCount, pageShown } from '../labs/docPage';
 import { drawTaskCard, TASK_RAD, taskShown } from './task';
 import { dotsAlways, dotsUnder } from '../labs/linkTool';
 import { drawnLinks } from '../model/textLinks';
@@ -697,6 +697,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
           tint: (c) => shade(c.startsWith('#') ? c : TEXT_COLORS[c] || theme.ink, theme.dim),
         });
       }
+      // Zoomed out past its letters (any in it): its lines as faint bars, where they are.
+      else if (!editing && it.text?.trim()) drawDocSkeleton(ctx, it, n, theme.ink);
       drawPager(ctx, it, n, of, theme, s.hotPlus);
       break;
     }
