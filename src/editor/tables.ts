@@ -56,15 +56,15 @@ export function setTableLines(ed: Editor, patch: { sc?: string; so?: number; vc?
   ed.board.update(it.id, next);
 }
 
-/** The pointer on a table line: its cursor at once; lit and taken once it's rested there LINE_REST (a
- *  picked line, or any of a table one's been dragged on, see Editor.linesWarm, at once): a press near it
+/** The pointer on a table line: its cursor at once; lit and taken once it's rested there LINE_REST (any of
+ *  a table a line of which is picked, or one's been dragged on, see Editor.linesWarm, at once): a press near it
  *  before that is the table's. */
 export function restOn(ed: Editor, line: TableLine | null): void {
   if (sameLine(line, ed.lineRest?.line ?? null)) return;
   clearTimeout(ed.lineRest?.timer);
   ed.lineRest = null;
   if (!line) return;
-  const ready = ed.pickedLines.some((l) => sameLine(l, line)) || ed.linesWarm === line.id, rest = { line, armed: ready, lit: ready, timer: 0 };
+  const ready = ed.pickedLines.some((l) => l.id === line.id) || ed.linesWarm === line.id, rest = { line, armed: ready, lit: ready, timer: 0 };
   if (!ed.gesture) ed.setCursor(line.axis === 'col' ? 'col-resize' : 'row-resize');
   // (Ready at once: blue at once too, with its cursor.)
   if (rest.lit && !ed.gesture) ed.setHotLine(line, false);
@@ -78,12 +78,13 @@ export function restOn(ed: Editor, line: TableLine | null): void {
   ed.lineRest = rest;
 }
 
-/** The table line a press here takes hold of: one picked already; with the mouse, one it has rested
+/** The table line a press here takes hold of: any of a table a line of which is picked; with the mouse, one it has rested
  *  on; with a finger, one of the table that's selected. */
 export function grabbableLine(ed: Editor, w: Point, hit: Item | null, pointer: string): TableLine | null {
   const tl = tableLineAt(ed, w, hit);
   if (!tl) return null;
-  if (ed.pickedLines.some((l) => sameLine(l, tl))) return tl;
+  // (A line of its table picked already, «Линии»: any of its lines, at once.)
+  if (ed.pickedLines.some((l) => l.id === tl.id)) return tl;
   if (pointer === 'touch') return ed.selection.size === 1 && ed.selection.has(tl.id) ? tl : null;
   return ed.lineRest?.armed && sameLine(ed.lineRest.line, tl) ? tl : null;
 }

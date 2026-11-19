@@ -1393,6 +1393,26 @@ export const checks = {
     expect(await lit(), 'something else done: waited for again').toBe(false);
   },
 
+  async 'a table line picked, any other of that table taken at once, with its cursor (not a cell)'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('table', 200, 200, { id: 't', w: 360, h: 120, cols: [120, 120, 120], rows: [40, 40, 40], cells: Array(9).fill('') })); e.setSelection(['t']); })()`);
+    await sleep(200);
+    await p.mouse('mouseMoved', 320, 260); await sleep(700);
+    await p.click([320, 260]); await sleep(200);
+    expect(await p.ev('JSON.stringify(planx.editor.pickedLines.map((l) => [l.axis, l.index]))'), 'first picked').toBe('[["col",0]]');
+    // Straight onto the next column line and pressed, no waiting.
+    await p.mouse('mouseMoved', 400, 290); await sleep(40);
+    await p.mouse('mouseMoved', 440, 290); await sleep(40);
+    expect(await p.ev('planx.editor.canvas.style.cursor'), 'its cursor').toBe('col-resize');
+    await p.click([440, 290]); await sleep(200);
+    expect(await p.ev('JSON.stringify([planx.editor.pickedLines.map((l) => [l.axis, l.index]), planx.editor.cells?.length ?? 0])'), 'that line, no cell').toBe('[[["col",1]],0]');
+    // A row line too.
+    await p.mouse('mouseMoved', 500, 280); await sleep(40);
+    await p.mouse('mouseMoved', 500, 240); await sleep(40);
+    await p.click([500, 240]); await sleep(200);
+    expect(await p.ev('JSON.stringify(planx.editor.pickedLines.map((l) => [l.axis, l.index]))'), 'the row line').toBe('[["row",0]]');
+  },
+
   async 'a shape being drawn moves along with the pointer while Space is held, and goes on growing once it\'s let go'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setTool('rect'); })()`);
     const space = (type) => p.cdp('Input.dispatchKeyEvent', { type, key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
