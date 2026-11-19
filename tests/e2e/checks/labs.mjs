@@ -1526,18 +1526,19 @@ export const checks = {
     await sleep(200);
     const pad = await p.ev(`(() => { const i = planx.board.list().find((x) => x.pad); return { id: i.id, x: i.x, y: i.y, w: i.w, h: i.h }; })()`);
     const mid = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + pad.w / 2}, y: ${pad.y + pad.h / 2} }); return [s.x, s.y]; })()`);
-    for (const picked of [false, true]) {
+    // (Not picked; picked, its panel over it; one torn off it last picked, its frame alone.)
+    for (const picked of [false, true, false]) {
       if (picked) { await p.click(mid); await sleep(400); }
       const vis = () => p.ev(`[...document.querySelectorAll('.bar.panel, .tfmt')].filter((el) => !el.classList.contains('gone') && getComputedStyle(el).opacity !== '0' && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[data-dock]')).map((el) => { const r = el.getBoundingClientRect(); return el.className.split(' ').slice(0, 3).join('.') + '@' + Math.round(r.left) + ',' + Math.round(r.top) + ' op' + getComputedStyle(el).opacity; }).join(' ; ')`);
       await p.mouse('mouseMoved', ...mid);
       await p.mouse('mousePressed', ...mid);
-      const seen = [];
+      await sleep(60);
+      const seen = [await vis()];
       for (let k = 1; k <= 12; k++) { await p.mouse('mouseMoved', mid[0] + k * 20, mid[1] + k * 6 + (picked ? 120 : 0)); await sleep(30); seen.push(await vis()); }
       expect([...new Set(seen)].join(' | '), `no panel over it as it's dragged (the pad ${picked ? 'picked' : 'not picked'} before)`).toBe('');
       await p.mouse('mouseReleased', mid[0] + 240, mid[1] + 72 + (picked ? 120 : 0));
       await sleep(400);
       expect(JSON.stringify([await vis(), await p.ev(`planx.editor.nudged`)]), 'let go: its frame alone, no panel').toBe(JSON.stringify(['', true]));
-      await p.ev(`planx.editor.setSelection([])`);
       await sleep(200);
     }
   },

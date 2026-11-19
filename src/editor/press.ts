@@ -367,6 +367,8 @@ export function press(ed: Editor, e: PointerEvent): void {
   if ((e.metaKey || e.ctrlKey) && openLink(ed, hit, w)) return;
   // A pad of stickers taken from inside («Стопка стикеров», src/labs): dragged, a sticker off it.
   if (hit?.pad && labOn('stickyPad') && e.button === 0 && !e.shiftKey && !e.altKey && !isLocked(hit) && offPad(ed, hit, w)) {
+    // (What was picked let go of at once, the sticker torn off last say: no panel over it as this one's taken.)
+    ed.setSelection([]);
     ed.gesture = { type: 'padTear', id: hit.id, start: w, moved: false };
     return;
   }
