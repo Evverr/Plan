@@ -1535,16 +1535,19 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
   // («Таблица в документе»: one dragged over a sheet, over all, at 60%, not tilted.)
   if (s.live && s.docDrop) drawLifted(ctx, s, new Set([s.docDrop.id]), 0, 0.6);
   // «Канбан»: where a card being dragged would go in, a blue line between the cards there (only between two).
+  // («Таблица в документе»: where a table'd go in a sheet's text, so too, but a pixel thin, at half.)
   if (s.kanbanDrop?.y != null || s.docDrop) {
     const d = (s.docDrop ?? s.kanbanDrop) as { x: number; w: number; y: number };
+    ctx.save();
+    if (s.docDrop) ctx.globalAlpha = 0.5;
     ctx.beginPath();
     ctx.moveTo(d.x, d.y);
     ctx.lineTo(d.x + d.w, d.y);
-    ctx.lineWidth = 2 / cam.z;
+    ctx.lineWidth = (s.docDrop ? 1 : 2) / cam.z;
     ctx.lineCap = 'round';
     ctx.strokeStyle = SELECT_COLOR;
     ctx.stroke();
-    ctx.lineCap = 'butt';
+    ctx.restore();
   }
 
   // («Полукруги на рамке», src/labs: the copy a click on the ball out would make, at 40%, easing in and out.)
