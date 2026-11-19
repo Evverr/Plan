@@ -6,17 +6,15 @@ const URLS = import.meta.glob<string>('../../assets/emoji/*.png', { eager: true,
 export interface EmojiDef { id: string; url: string }
 
 /** The first thirty of the standard emoji, drawn by the system's own emoji font (whatever it is on
- *  each computer): id "emoji-u" and their code points in hex. */
+ *  each computer): id "emoji-u" and their code points in hex. Not in the picker any more (Женя's own set
+ *  alone there), only drawn where they're on a board already. */
 const NATIVE = ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '🫠', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '☺️', '😚', '😙', '🥲', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗'];
 const nativeId = (ch: string) => `emoji-u${[...ch].map((c) => c.codePointAt(0)!.toString(16)).join('-')}`;
 const CHAR_BY_ID = new Map(NATIVE.map((ch) => [nativeId(ch), ch]));
 
-export const EMOJI: EmojiDef[] = [
-  ...NATIVE.map((ch) => ({ id: nativeId(ch), url: '' })),
-  ...Object.entries(URLS)
-    .map(([path, url]) => ({ id: path.match(/(emoji-\d+)\.png$/)![1], url }))
-    .sort((a, b) => Number(a.id.slice(6)) - Number(b.id.slice(6))),
-];
+export const EMOJI: EmojiDef[] = Object.entries(URLS)
+  .map(([path, url]) => ({ id: path.match(/(emoji-\d+)\.png$/)![1], url }))
+  .sort((a, b) => Number(a.id.slice(6)) - Number(b.id.slice(6)));
 
 const URL_BY_ID = new Map(EMOJI.filter((e) => e.url).map((e) => [e.id, e.url]));
 export const emojiUrl = (id: string): string | undefined => URL_BY_ID.get(id);
