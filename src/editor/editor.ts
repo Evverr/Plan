@@ -152,7 +152,9 @@ export class Editor {
   nudged = false;
   pens: Pens = readPens();
   /** Whether the text overlay opens with all the text picked (to type over it) or the caret at its end. */
-  editCaret: 'all' | 'end' = 'all';
+  /** Where the caret's put as typing starts: all of it picked, at its end, or («Документ») on a plain line
+   *  of its own over its text or under it (a double click there). */
+  editCaret: 'all' | 'end' | 'above' | 'below' = 'all';
 
   // Shared with the editor's modules.
   canvas: HTMLCanvasElement | null = null;
@@ -1923,7 +1925,7 @@ export class Editor {
   /* ---------- text editing ---------- */
 
   /** Opens an item's text for typing; for a table, one cell's (the first unless given). */
-  startEditing(id: string, cell?: number | null, caret: 'all' | 'end' = 'all'): void {
+  startEditing(id: string, cell?: number | null, caret: 'all' | 'end' | 'above' | 'below' = 'all'): void {
     const it = this.board.get(id);
     // (Nor a shape with no typing in it, «Без текста», nor a form: it's typed into by its fields.)
     if (!it || !EDITABLE.includes(it.type) || isLocked(it) || it.nt || it.form || it.poll) return;

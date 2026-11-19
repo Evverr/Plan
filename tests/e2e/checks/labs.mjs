@@ -1710,6 +1710,41 @@ export const checks = {
     await p.key('Escape', 'Escape', 27);
   },
 
+  async '"Markdown в документе": a checklist alone in it, double-clicked under it or over it (the margin over it too): a plain line there to type on, not one more item'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.8 }; e.camChanged(); e.dropItem('page', { x: 500, y: 450 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'купить\\nпозвонить', rs: [{ s: 6, e: 7, l: 'todo' }, { s: 16, e: 17, l: 'todo' }] }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 150 - it.x * 0.8, y: 120 - it.y * 0.8, z: 0.8 }; e.camChanged(); e.setSelection([]); })()`);
+    await sleep(300);
+    const dbl = async (wy) => {
+      const at = await p.ev(`(() => { const it = planx.board.get('${id}'), s = planx.editor.toScreen({ x: it.x + 300, y: it.y + ${wy} }); return [s.x, s.y]; })()`);
+      for (const c of [1, 2]) { await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: at[0], y: at[1], button: 'left', clickCount: c }); await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: at[0], y: at[1], button: 'left', clickCount: c }); await sleep(40); }
+      await sleep(400);
+    };
+    // Under it: a plain line after the checklist.
+    await dbl(400);
+    await p.cdp('Input.insertText', { text: 'Итог' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    let it = await p.ev(`planx.board.get('${id}')`);
+    expect(JSON.stringify([it.text, it.rs]), 'under it: plain text after it').toBe(JSON.stringify(['купить\nпозвонить\nИтог', [{ s: 6, e: 7, l: 'todo' }, { s: 16, e: 17, l: 'todo' }]]));
+    // Over it, in the sheet's top margin: a plain line before it.
+    await p.ev(`planx.editor.setSelection([])`);
+    await dbl(30);
+    await p.cdp('Input.insertText', { text: 'План' });
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    it = await p.ev(`planx.board.get('${id}')`);
+    expect(JSON.stringify([it.text, it.rs]), 'over it: plain text before it').toBe(JSON.stringify(['План\nкупить\nпозвонить\nИтог', [{ s: 11, e: 12, l: 'todo' }, { s: 21, e: 22, l: 'todo' }]]));
+    // Double-clicked over it, nothing typed: no empty line left.
+    await p.ev(`planx.board.update('${id}', { text: 'купить', rs: [{ s: 6, e: 7, l: 'todo' }] })`);
+    await p.ev(`planx.editor.setSelection([])`);
+    await dbl(30);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(await p.ev(`planx.board.get('${id}').text`), 'nothing typed: as it was').toBe('купить');
+  },
+
   async '"Markdown в документе": a list in a list by Tab (numbered at its depth), out by Shift+Tab and Enter; a block of code by «```», Tab two spaces in it, out by Enter'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

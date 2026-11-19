@@ -379,13 +379,15 @@ function markdownWhole(t: string): { l?: string; hr?: boolean; code?: boolean } 
 const dashLine = (t: string) => /^([-–—]{2,}|—|\*{3,}|_{3,})$/.test(t);
 
 export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
-  const ref = useRef<HTMLDivElement>(null), done = useRef(false), plain = useRef(false), id = item.id, fs = item.fs ?? 16;
+  const ref = useRef<HTMLDivElement>(null), done = useRef(false), plain = useRef(false), added = useRef<HTMLElement | null>(null), id = item.id, fs = item.fs ?? 16;
 
   /** Done with it: its text and styles kept (as typed text is, see commitText). */
   const commit = () => {
     const el = ref.current;
     if (done.current || !el) return;
     done.current = true;
+    // (The line put over it or under it for a double click there, left empty: not kept.)
+    if (added.current?.isConnected && !added.current.textContent && el.children.length > 1) added.current.remove();
     const { text, rs } = fromDom(el, getComputedStyle(el).color);
     // (A table put in it whose place was taken out as it was typed in: gone with it, «Таблица в документе».)
     const was = editor.board.get(id), kept = new Set((rs ?? []).filter((r) => r.o).map((r) => r.o));
@@ -408,7 +410,7 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     // several pages, that one's alone).
     const sel = getSelection(), r = document.createRange(), page = pageShown(item);
     r.selectNodeContents(el);
-    if (editor.editCaret === 'end') r.collapse(false);
+    if (editor.editCaret !== 'all') r.collapse(editor.editCaret === 'above');
     else {
       const on = docLines(item).filter((l) => l.page === page), a = on.length ? domAt(el, on[0].s) : null, b = on.length ? domAt(el, on[on.length - 1].e) : null;
       if (a && b) { r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); }
@@ -417,6 +419,16 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     sel?.addRange(r);
     // (At its end, a table last in it: on a line of its own under it.)
     if (editor.editCaret === 'end') caretOffObject(el);
+    // Double-clicked under its text or over it: on a plain line there, a new one past a list, a checklist, a
+    // quote, code or a table (not going on with it), else the last or first one there.
+    const special = (p: Element | null) => !!p && (!!(p as HTMLElement).dataset.l || !!(p as HTMLElement).dataset.k || !!(p as HTMLElement).dataset.o);
+    if (editor.editCaret === 'below') {
+      const last = el.lastElementChild;
+      if (special(last) || !last) { const p = emptyPara(); el.append(p); caretTo(p); added.current = p; }
+    } else if (editor.editCaret === 'above') {
+      const first = el.firstElementChild as HTMLElement | null;
+      if (special(first) || !first) { const p = emptyPara(); el.prepend(p); caretTo(p); added.current = p; } else caretTo(first);
+    }
     // Opened on a page past the first (its pager turned): scrolled to where that page starts, not the top,
     // its first line at the top; again a frame on, past anything the browser did to show what's picked.
     // (The page shown in it, as it was opened on, or as the caret's gone on to, see follow below.)

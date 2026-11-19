@@ -364,6 +364,14 @@ export function belowText(it: Item, p: Point): boolean {
   return !last || p.y > it.y + area.y + last.y + (last.tall ?? last.size * DOC_LINE);
 }
 
+/** Whether a point on it is over its text, on its first page shown (over its first line, the sheet's top
+ *  margin too): double-clicked there, a plain line over all of it to type on. */
+export function aboveText(it: Item, p: Point): boolean {
+  if (pageShown(it) !== 0 || p.y < it.y || p.x < it.x || p.x > it.x + it.w) return false;
+  const first = docLines(it)[0];
+  return !!first && p.y < it.y + textArea(it).y + first.y;
+}
+
 /** The pager under it: its middle, and its arrows' each side of it. */
 const PAGER_Y = 22, ARROW_DX = 44;
 const pagerMid = (it: Item): Point => ({ x: it.x + it.w / 2, y: it.y + it.h + PAGER_Y });
