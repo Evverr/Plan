@@ -351,7 +351,9 @@ export function App({ boardId }: { boardId: string }) {
   const asCells = (t: Item): Item => {
     if (t.type !== 'table' || !ui.cells.length || editing) return t;
     const one = <T,>(f: (c: Item) => T) => { const vs = new Set(ui.cells.map((c) => f(cellItem(t, c)))); return vs.size === 1 ? [...vs][0] : MIXED; };
-    return { ...t, ta: one((c) => alignOf(c)), va: one((c) => c.va) } as Item;
+    // (Put by what the panels of its cells go by, as the selection panel is: the one turning into the
+    // other where it stands, not gliding across the screen from the cell to the table, ui/cellAnchor.ts.)
+    return { ...t, ta: one((c) => alignOf(c)), va: one((c) => c.va), ...cellAnchor(editor, t, ui.cells) } as Item;
   };
   const panelNow = tMode ? asCells(tItem!) : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : asCells(textItem)) : null;
   const lastPanel = useRef<Item | null>(null);

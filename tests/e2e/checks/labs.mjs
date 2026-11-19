@@ -1840,6 +1840,28 @@ export const checks = {
     await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('panelOver', false); l.setLab('panelGlide', false); })()`);
   },
 
+  async '"Панель над элементом": cells of a big table picked and typed in one after another, now and then: the panels turning into one another never fly to the screen\'s top left'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
+    await sleep(200);
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('table', { x: 640, y: 450 }); const t = planx.board.list().find((i) => i.type === 'table'); planx.board.update(t.id, { rows: Array(14).fill(60), h: 840, cells: Array(56).fill('') }); e.cam = { x: 640 - (t.x + 240), y: -(t.y + 200), z: 1 }; e.camChanged(); e.setSelection([]); })()`);
+    await sleep(300);
+    const cell = (i) => p.ev(`(async () => { const m = await import('/src/model/table.ts'), e = planx.editor, t = planx.board.list().find((i) => i.type === 'table'), r = m.cellRect(t, ${i}), s = e.toScreen({ x: r.x + 20, y: r.y + r.h / 2 }); return [s.x, s.y]; })()`);
+    const dbl = async ([x, y]) => { for (const c of [1, 2]) { await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: c }); await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: c }); await sleep(30); } };
+    await p.ev(`(() => { window.__fr = []; window.__on = true; const f = () => { const row = [Math.round(performance.now())]; for (const el of document.querySelectorAll('.tfmt, .bar.panel, .panel-shell')) { const r = el.getBoundingClientRect(); row.push(el.className.split(' ').slice(0, 2).join('.') + ':' + Math.round(r.left) + ',' + Math.round(r.top) + ':' + getComputedStyle(el).opacity.slice(0, 4)); } window.__fr.push(row.join(' ')); if (window.__on) requestAnimationFrame(f); }; requestAnimationFrame(f); })()`);
+    const marks = [];
+    let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const seq = Array.from({ length: 16 }, () => [16 + Math.floor(rnd() * 28), 350 + Math.floor(rnd() * 400), rnd() < 0.3, rnd() < 0.7]);
+    for (const [i, wait, typeIt, single] of seq) {
+      marks.push(await p.ev(`Math.round(performance.now())`) + ' dbl ' + i + ' after ' + wait);
+      if (single) { const c = await cell(i); await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: c[0], y: c[1], button: 'left', clickCount: 1 }); await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: c[0], y: c[1], button: 'left', clickCount: 1 }); } else await dbl(await cell(i));
+      if (typeIt) await p.cdp('Input.insertText', { text: 'x' });
+      await sleep(wait);
+    }
+    await sleep(500);
+    const fr = await p.ev(`(() => { window.__on = false; return window.__fr; })()`);
+    expect(fr.filter((r) => /panel-shell:-?\d{1,2},-?\d{1,2}:/.test(r)).length, 'its body never off to the screen\'s top left corner').toBe(0);
+  },
+
   async '"Панель над элементом": a cell picked, typed in: the panel over the table turning into the text panel from where it stands, not from one left at the bottom'(p) {
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('panelOver', true))()`);
     await sleep(200);

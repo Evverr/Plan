@@ -70,8 +70,10 @@ function grow(a: HTMLElement | null, r: DOMRect, to: 'tfmt' | 'panel', swap: () 
     swap();
     let tries = 0;
     const find = () => {
-      const b = to === 'tfmt' ? document.querySelector<HTMLElement>('.tfmt:not(.gone):not(.leaving)') : selectionPanel();
-      if (!b) { if (++tries < 10) requestAnimationFrame(find); else done(); return; }
+      const seek = () => (to === 'tfmt' ? document.querySelector<HTMLElement>('.tfmt:not(.gone):not(.leaving)') : selectionPanel());
+      const first = seek();
+      if (!first) { if (++tries < 10) requestAnimationFrame(find); else done(); return; }
+      let b: HTMLElement = first;
       shell.style.boxShadow = getComputedStyle(b).boxShadow;
       b.dataset.morph = '';
       // Its usual coming in (with a slide) is off for good: it only fades in, below.
@@ -84,7 +86,19 @@ function grow(a: HTMLElement | null, r: DOMRect, to: 'tfmt' | 'panel', swap: () 
       let last = '', since = performance.now(), shown = 0;
       const t0 = since;
       const follow = () => {
-        const q = settledRect(b), now = `${Math.round(q.left)}|${Math.round(q.top)}|${Math.round(q.width)}|${Math.round(q.height)}`, t = performance.now();
+        // (The one it's turning into taken away as it goes, another put in its place (a cell of a table
+        // picked after another, say): that one followed; none, it's done. Never to where a panel no longer
+        // on the page stands, the screen's top left corner: the body flew there.)
+        if (!b.isConnected) {
+          const next = seek();
+          if (!next) { done(); return; }
+          b = next;
+          b.dataset.morph = '';
+          b.getAnimations().forEach((a) => a.cancel());
+        }
+        const q = settledRect(b);
+        if (q.width < 1) { requestAnimationFrame(follow); return; }
+        const now = `${Math.round(q.left)}|${Math.round(q.top)}|${Math.round(q.width)}|${Math.round(q.height)}`, t = performance.now();
         if (now !== last) {
           last = now;
           since = t;

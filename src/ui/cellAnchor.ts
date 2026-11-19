@@ -18,7 +18,10 @@ const topSeen = (ed: Editor, t: Item): boolean => {
 
 /** The box to put the panels of table `t` by, its cells `cells` picked (or typed in). */
 export function cellAnchor(ed: Editor, t: Item, cells: number[]): Rect {
-  if (!cells.length || topSeen(ed, t)) { anchor = null; return { x: t.x, y: t.y, w: t.w, h: t.h }; }
+  if (topSeen(ed, t)) { anchor = null; return { x: t.x, y: t.y, w: t.w, h: t.h }; }
+  // (None picked a moment, between one cell typed in and the next double-clicked: the cell it's kept by
+  // still, not let go of, the next one taking it then wherever it is, the panel jumping there.)
+  if (!cells.length) return anchor?.id === t.id && anchor.cell < cellCount(t) ? cellRect(t, anchor.cell) : { x: t.x, y: t.y, w: t.w, h: t.h };
   // (The highest of those picked.)
   const top = cells.reduce((a, c) => (cellRect(t, c).y < cellRect(t, a).y ? c : a), cells[0]);
   if (!anchor || anchor.id !== t.id || anchor.cell >= cellCount(t) || cellRect(t, top).y < cellRect(t, anchor.cell).y) anchor = { id: t.id, cell: top };
