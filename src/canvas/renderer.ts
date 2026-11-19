@@ -138,6 +138,8 @@ export interface Scene {
   linesOnly?: string | null;
   /** The one of them under the pointer (not picked), and how far it's come in blue (0…1). */
   hotLine?: { line: TableLine; k: number } | null;
+  /** Lines picked no more, going back from blue (how much blue is left, 1…0). */
+  fadingLines?: { line: TableLine; k: number }[];
   /** The pen or highlighter line being drawn, in board units. */
   stroke: InkStroke | null;
   /** Cells picked in a table, outlined in blue. */
@@ -1105,15 +1107,15 @@ function drawTable(ctx: CanvasRenderingContext2D, it: Item, s: Scene, editingCel
   }
   ctx.globalAlpha = 1;
   // Lines under the pointer or picked to drag, in blue.
-  const marked = s.tableLines.filter((l) => l.id === it.id);
-  if (marked.length) {
+  const marked = s.tableLines.filter((l) => l.id === it.id), fading = (s.fadingLines ?? []).filter((f) => f.line.id === it.id);
+  if (marked.length || fading.length) {
     const cols = colsOf(it), rows = rowsOf(it), upto = (a: number[], i: number) => a.slice(0, i + 1).reduce((t, v) => t + v, 0);
     ctx.strokeStyle = SELECT_COLOR;
     ctx.lineWidth = 2 / cam.z;
     // (The one under the pointer coming in, see Scene.hotLine.)
     const hot = s.hotLine?.line;
-    for (const l of marked) {
-      ctx.globalAlpha = hot && hot.id === l.id && hot.axis === l.axis && hot.index === l.index ? s.hotLine!.k : 1;
+    for (const [l, k] of [...marked.map((l) => [l, null] as const), ...fading.map((f) => [f.line, f.k] as const)]) {
+      ctx.globalAlpha = k ?? (hot && hot.id === l.id && hot.axis === l.axis && hot.index === l.index ? s.hotLine!.k : 1);
       ctx.beginPath();
       if (l.axis === 'col') { const lx = it.x + upto(cols, l.index); ctx.moveTo(lx, it.y); ctx.lineTo(lx, it.y + it.h); }
       else { const ly = it.y + upto(rows, l.index); ctx.moveTo(it.x, ly); ctx.lineTo(it.x + it.w, ly); }

@@ -7,8 +7,8 @@ import { font } from '../canvas/text';
  * «Стопка стикеров» (src/labs): a pad of stickers on the board (`pad`), in a holder of its own, as a folded
  * frame looks: «Стикеры» along its top in the middle, faint, the pad in it 24 in from its sides and bottom, 36 from its top, a
  * sticker with more under it, no text. Taken from the pad, a new sticker comes off it, its colour and size,
- * dragged along and its frame alone once let go (no panel: a click, it; a double click, typed in); the pad
- * stays where it is, for the next. Taken by its holder, moved; the holder clicked, the pad picked (its sticker clicked, nothing) (its colour
+ * dragged along and its frame alone once let go all out of the holder (no panel: a click, it; a double click,
+ * typed in), let go over it, gliding back onto the pad, gone; the pad stays where it is, for the next. Taken by its holder, moved; the holder clicked, the pad picked (its sticker clicked, nothing) (its colour
  * then set as a sticker's is, those coming off it that colour). Put on the board by the sticker's button
  * held, «Стопка стикеров».
  */

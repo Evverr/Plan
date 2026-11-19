@@ -43,7 +43,7 @@ import { under } from '../labs/clickThrough';
 export type Gesture =
   | { type: 'pan'; sx: number; sy: number; cx: number; cy: number; tap?: boolean; moved?: boolean }
   | { type: 'pinch'; d0: number; z0: number; anchor: Point }
-  | { type: 'drag'; start: Point; orig: Map<string, Point>; moved: boolean; id: string; dbl: boolean; fresh?: boolean; was?: string[]; sub?: number; subTo?: number; pulled?: boolean; guides?: Guide[]; cell?: boolean; enter?: boolean; again?: boolean; vias?: Map<string, Point[]>; url?: string; tap?: Point; mindTo?: string | null; mindWay?: Way; torn?: boolean }
+  | { type: 'drag'; start: Point; orig: Map<string, Point>; moved: boolean; id: string; dbl: boolean; fresh?: boolean; was?: string[]; sub?: number; subTo?: number; pulled?: boolean; guides?: Guide[]; cell?: boolean; enter?: boolean; again?: boolean; vias?: Map<string, Point[]>; url?: string; tap?: Point; mindTo?: string | null; mindWay?: Way; torn?: string }
   /** (`scale`: a timeline stretched by its right side or corner with Cmd, its step as it goes: what was on it as it was.) */
   | { type: 'resize'; id: string; start: Point; orig: Item; box?: Rect; only?: 'w' | 'h' | 'l' | 't' | 'tl' | 'bl'; scale?: Item[] }
   | { type: 'rotate'; id: string; c: Point; a0: number; rot0: number; held: Array<{ id: string; c: Point; rot0: number }> }
@@ -411,7 +411,7 @@ export function moveGesture(ed: Editor, g: Gesture, e: PointerEvent, sp: Point, 
       const it = tearOff(ed, pad, { x: w.x - g.start.x, y: w.y - g.start.y }), from = padStart(pad);
       // (Being moved, as anything dragged: no panel over it, nor over the pad picked before. The drag first,
       // then it picked: never a moment with a panel for it, kept then.)
-      ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, from]]), moved: true, id: it.id, dbl: false, torn: true };
+      ed.gesture = { type: 'drag', start: g.start, orig: new Map([[it.id, from]]), moved: true, id: it.id, dbl: false, torn: pad.id };
       ed.setMoving(true);
       ed.setSelection([it.id]);
       ed.requestRender();
@@ -578,6 +578,17 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         return;
       }
       if (g.moved) {
+        // (One torn off a pad of stickers, «Стопка стикеров», let go not all out of its holder: back onto the
+        // pad, gliding, and gone; on the board only once all off it.)
+        const torn = g.torn ? board.get(g.id) : undefined, pad = g.torn ? board.get(g.torn) : undefined;
+        if (torn && pad && rectsIntersect(torn, pad)) {
+          ed.homeSticker(torn, padStart(pad));
+          board.remove([torn.id]);
+          board.endGesture();
+          ed.setSelection([]);
+          ed.requestRender();
+          return;
+        }
         // What was dragged into a frame is in it now, and what was dragged out of one is out.
         ed.settle([...ed.selection].map((id) => board.get(id)?.host ?? id));
         // A table let go on a document's sheet, in its text there; off the one it was in, out of it

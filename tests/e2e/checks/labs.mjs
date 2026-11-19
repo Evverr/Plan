@@ -1544,6 +1544,32 @@ export const checks = {
     }
   },
 
+  async '"Стопка стикеров": a sticker let go not all out of the holder glides back onto the pad and is gone; all out, on the board'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setTool('pad'); })()`);
+    await p.click([600, 400]);
+    await sleep(200);
+    const pad = await p.ev(`(() => { const i = planx.board.list().find((x) => x.pad); return { x: i.x, y: i.y, w: i.w, h: i.h }; })()`);
+    const mid = await p.ev(`(() => { const s = planx.editor.toScreen({ x: ${pad.x + pad.w / 2}, y: ${pad.y + pad.h / 2} }); return [s.x, s.y]; })()`);
+    const stickers = () => p.ev(`planx.board.list().filter((x) => x.type === 'sticky' && !x.pad).length`);
+    // (Half out of it, to the right: back.)
+    await p.drag(mid, [mid[0] + 120, mid[1] + 20], { steps: 8 });
+    await sleep(100);
+    expect(await stickers(), 'half out: not on the board').toBe(0);
+    expect(await p.ev(`planx.editor.selection.size`), 'nothing picked').toBe(0);
+    await sleep(400);
+    // (All out of it: there.)
+    await p.drag(mid, [mid[0] + pad.w, mid[1] + 20], { steps: 8 });
+    await sleep(300);
+    expect(await stickers(), 'all out: on the board').toBe(1);
+  },
+
+  async 'Table: a line picked no more goes back from blue gently'(p) {
+    const left = await p.ev(`(() => { const e = planx.editor; e.pickedLines = [{ id: 'x', axis: 'col', index: 0 }]; e.pickedLines = []; return e.lineFades.length; })()`);
+    expect(left, 'fading out').toBe(1);
+    await sleep(400);
+    expect(await p.ev(`planx.editor.lineFades.length`), 'gone once faded').toBe(0);
+  },
+
   async '"Файлы в документ": .md, .txt, .html and .rtf dropped on the board, each a document side by side, to be typed in'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.25 }; e.camChanged(); })()`);
     await p.ev(`(() => {

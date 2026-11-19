@@ -203,7 +203,18 @@ export class Editor {
   byFinger = false;
   /** The table line under the pointer, and the lines picked with Shift to be dragged together. */
   hotLine: TableLine | null = null;
-  pickedLines: TableLine[] = [];
+  private picked: TableLine[] = [];
+  get pickedLines(): TableLine[] { return this.picked; }
+  /** (Picked no more: each going back from blue to its own colour over LINE_FADE, see lineFades.) */
+  set pickedLines(ls: TableLine[]) {
+    const now = performance.now();
+    for (const l of this.picked) if (!ls.some((n) => sameLine(n, l))) this.lineFades.push({ line: l, since: now });
+    this.lineFades = this.lineFades.filter((f) => !ls.some((n) => sameLine(n, f.line)));
+    this.picked = ls;
+    if (this.lineFades.length) this.requestRender();
+  }
+  /** Table lines picked no more, going back from blue, and since when. */
+  lineFades: { line: TableLine; since: number }[] = [];
   /** The table line the mouse rests on: it can be taken hold of once it's been there half a second
    *  (till then a press there takes the table), which is when it lights up. */
   lineRest: { line: TableLine; armed: boolean; lit: boolean; timer: number } | null = null;
@@ -831,8 +842,13 @@ export class Editor {
     // (A table line lit under the pointer coming in blue, eased; again till it's there.)
     const hotT = Math.min(1, (performance.now() - this.hotLineSince) / LINE_FADE), hotK = 1 - (1 - hotT) * (1 - hotT);
     if (this.hotLine && hotT < 1) this.requestRender();
+    // (Those picked no more, going out of blue, eased; again till they're gone.)
+    const now = performance.now();
+    this.lineFades = this.lineFades.filter((f) => now - f.since < LINE_FADE);
+    const fadingLines = this.lineFades.filter((f) => !sameLine(f.line, this.hotLine)).map((f) => { const t = (now - f.since) / LINE_FADE; return { line: f.line, k: (1 - t) * (1 - t) }; });
+    if (fadingLines.length) this.requestRender();
     drawScene(this.ctx, {
-      items: this.withTyped(glide ? this.shown().map(glide) : this.shown()),
+      items: this.homed(this.withTyped(glide ? this.shown().map(glide) : this.shown())),
       // (Only once it's going: taken hold of, it stays as it is till then.)
       links: relinked && g?.type === 'relink' && g.going ? this.shownLinks().filter((l) => l.id !== relinked.id) : this.shownLinks(),
       hotLink: g ? null : this.hotLink,
@@ -873,6 +889,7 @@ export class Editor {
       mindMove: g?.type === 'mindMove' ? { from: g.from, to: g.to, target: g.target ? this.board.get(g.target) ?? null : null } : null,
       tableLines: this.hotLine ? [...this.pickedLines, this.hotLine] : this.pickedLines,
       linesOnly: this.pickedLines[0]?.id ?? null,
+      fadingLines,
       hotLine: this.hotLine && !this.pickedLines.some((l) => sameLine(l, this.hotLine)) ? { line: this.hotLine, k: hotK } : null,
       editingCell: this.editingCell,
       live: true,
@@ -2053,6 +2070,22 @@ export class Editor {
     }
     this.emit();
     this.requestRender();
+  }
+
+  /** «Стопка стикеров» (src/labs): a sticker let go over its pad, gone from the board, drawn gliding back onto it
+   *  (to `to`) over 300 ms. */
+  private homing: { it: Item; to: Point; since: number } | null = null;
+  homeSticker(it: Item, to: Point): void {
+    this.homing = { it, to, since: performance.now() };
+    this.requestRender();
+  }
+  private homed(items: Item[]): Item[] {
+    const h = this.homing;
+    if (!h) return items;
+    const t = Math.min(1, (performance.now() - h.since) / 300), k = 1 - (1 - t) ** 3;
+    if (t >= 1) { this.homing = null; return items; }
+    this.requestRender();
+    return [...items, { ...h.it, x: h.it.x + (h.to.x - h.it.x) * k, y: h.it.y + (h.to.y - h.it.y) * k }];
   }
 
   /** Moves things to new places, drawn gliding there from where they were over 300 ms. */
