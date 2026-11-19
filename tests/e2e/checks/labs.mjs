@@ -1336,6 +1336,7 @@ export const checks = {
     await sleep(300);
     const name = await p.ev(`(() => { const h = planx.board.list().find((x) => x.hd && x.tie === '${id}'), d = planx.board.get('${id}'); return h && { text: h.text, icon: h.icon, dx: h.x - d.x, below: d.y - (h.y + h.h) }; })()`);
     expect(JSON.stringify(name), 'its name over its top left, no icon').toBe(JSON.stringify({ text: 'План работ', icon: 'none', dx: 0, below: 4 }));
+    expect(await p.ev(`(async () => { const h = await import('/src/labs/header.ts'), n = planx.board.list().find((x) => x.hd && x.tie === '${id}'); return [h.headerLayout(n).title.x, h.moreBox(n)]; })()`).then(JSON.stringify), 'its title 4 in, no «…»').toBe(JSON.stringify([4, null]));
     await p.ev(`planx.editor.setSelection([])`);
     await sleep(200);
     await p.ev(`planx.board.update('${id}', { x: planx.board.get('${id}').x + 100 })`);

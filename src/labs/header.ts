@@ -19,8 +19,9 @@ export const HEADER_DESC = 'Здесь идет описание заголов�
 const ICON = 36, ICON_Y = -4, TEXT_X = 40, TITLE_FS = 24, TITLE_Y = 1, DESC_GAP = 2, DESC_FS = 20;
 /** Tied to a kanban, timeline or table: smaller, its icon and title, the title semibold. */
 const TIED = { icon: 30, iconX: 2, iconY: -4, textX: 36, fs: 18, weight: 600 };
-/** A document's name over it («Название документа»): a tied one with no icon (`icon` 'none'), its title alone. */
-const NAMED = { ...TIED, icon: 0, iconX: 0, textX: 0 };
+/** A document's name over it («Название документа»): a tied one with no icon (`icon` 'none'), its title alone,
+ *  4 in from its corner, no «…». */
+const NAMED = { ...TIED, icon: 0, iconX: 0, textX: 4 };
 export const DOC_NAME_ICON = 'none';
 const sizes = (it: Item) => (it.tie ? (it.icon === DOC_NAME_ICON ? NAMED : TIED) : { icon: ICON, iconX: 0, iconY: ICON_Y, textX: TEXT_X, fs: TITLE_FS, weight: 700 });
 export const HEADER_W = TEXT_X + 620;
@@ -102,7 +103,7 @@ const MORE = 20, MORE_GAP = 7;
 export const MORE_ICON = 'more-l';
 let measure: CanvasRenderingContext2D | null = null;
 export function moreBox(it: Item): Rect | null {
-  if (!it.tie || !labOn('headerMore')) return null;
+  if (!it.tie || it.icon === DOC_NAME_ICON || !labOn('headerMore')) return null;
   measure ??= document.createElement('canvas').getContext('2d');
   if (!measure) return null;
   const s = sizes(it);

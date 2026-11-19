@@ -417,10 +417,12 @@ export function drawPager(ctx: CanvasRenderingContext2D, it: Item, n: number, of
   // (Its number lit under the pointer, a page to go to by a click on it.)
   ctx.fillStyle = hot === `pager:${it.id}:0` ? look.ink : look.muted;
   ctx.fillText(`${n + 1} / ${of}`, m.x, m.y);
-  ctx.font = font(18, 500);
   for (const [dir, x, can] of [[-1, m.x - ARROW_DX, n > 0], [1, m.x + ARROW_DX, n < of - 1]] as const) {
+    // (Under the pointer, 1.4 times as big.)
+    const on = can && hot === `pager:${it.id}:${dir}`;
+    ctx.font = font(on ? 25 : 18, 500);
     ctx.globalAlpha = can ? 1 : 0.3;
-    ctx.fillStyle = can && hot === `pager:${it.id}:${dir}` ? look.ink : look.muted;
+    ctx.fillStyle = on ? look.ink : look.muted;
     ctx.fillText(dir < 0 ? '‹' : '›', x, m.y - 1);
   }
   ctx.restore();
