@@ -1304,6 +1304,20 @@ export const checks = {
     expect(await p.ev(`!!document.querySelector('.page-jump')`), 'the field gone').toBe(false);
   },
 
+  async '"Документ": of one page, typed on past its end: its next page shown, the caret in sight, kept so once done'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.dropItem('page', { x: 400, y: 400 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: Array.from({ length: 33 }, (_, i) => 'Строка ' + (i + 1)).join('\\n') }); const it = planx.board.get('${id}'); const e = planx.editor; e.cam = { x: 100 - it.x * 0.6, y: 40 - it.y * 0.6, z: 0.6 }; e.camChanged(); e.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    for (let k = 0; k < 14; k++) { await p.cdp('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' }); await p.cdp('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter' }); await p.cdp('Input.insertText', { text: 'новая ' + k }); await sleep(60); }
+    await sleep(200);
+    expect(await p.ev(`(() => { const el = document.querySelector('.rich-edit'), r = getSelection().getRangeAt(0).getBoundingClientRect(), f = el.getBoundingClientRect(); return r.top >= f.top && r.bottom <= f.bottom && el.scrollTop > 0; })()`), 'typed past its one page\'s end: on the next, the caret in sight').toBe(true);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'); return [d.pagesOf(it).length, d.pageShown(it)].join(); })()`), 'two pages, the second shown').toBe('2,1');
+  },
+
   async '"Документ": a selection dragged leftward past the text\'s edge, into the margin: picked to that line\'s start, not the lines over it'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);

@@ -511,5 +511,3 @@
   border: 0; border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
   font: 500 13px/34px var(--ui, inherit); text-align: center; outline: none; font-variant-numeric: tabular-nums; }
 .page-jump:focus, .page-jump:focus-visible { outline: none; }
-/* (The page shown now grey in it, a hint: another to be typed.) */
-.page-jump::placeholder { color: var(--muted); opacity: 1; }

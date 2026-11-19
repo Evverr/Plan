@@ -445,8 +445,8 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     };
     // Kept on its page while it's typed in: scrolled back there whatever scrolls it (the browser bringing
     // what's picked into sight, a selection dragged past its top or bottom, a wheel).
-    // (Of several pages only: one alone scrolls on as it's typed past its end.)
-    const paged = pagesOf(item).length > 1;
+    // (One of a single page too: typed on past its end, the next one shown, its pager turned, see follow.)
+    const paged = true;
     let target = 0, last = page === pagesOf(item).length - 1;
     const settle = () => { if (paged && Math.abs(el.scrollTop - target) > 1) el.scrollTop = target; };
     if (page > 0) {
