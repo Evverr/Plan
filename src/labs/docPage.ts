@@ -276,16 +276,20 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
 export function drawDocSkeleton(ctx: CanvasRenderingContext2D, it: Item, n: number, ink: string): void {
   const area = textArea(it), text = it.text ?? '';
   ctx.save();
-  ctx.fillStyle = ink;
+  ctx.strokeStyle = ink;
+  ctx.lineCap = 'round';
   ctx.globalAlpha = (it.to ?? 1) * 0.1;
   for (const l of docLines(it)) {
     if (l.page !== n || l.o || l.k === 'hr' || !text.slice(l.s, l.e).trim()) continue;
     const room = area.w - l.indent, w = Math.min(room, (l.e - l.s) * l.size * (l.h ? 0.58 : 0.5)), h = l.size * 0.62;
+    ctx.lineWidth = h;
     const la = l.a ?? it.ta ?? 'left', x = it.x + area.x + l.indent + (la === 'center' ? (room - w) / 2 : la === 'right' ? room - w : 0);
     const y = it.y + area.y + l.y + (l.size * DOC_LINE - h) / 2;
+    // (Round at both ends however small it comes out: a stroke with round caps, its ends within the bar.)
     ctx.beginPath();
-    ctx.roundRect(x, y, w, h, h / 2);
-    ctx.fill();
+    ctx.moveTo(x + h / 2, y + h / 2);
+    ctx.lineTo(Math.max(x + h / 2, x + w - h / 2), y + h / 2);
+    ctx.stroke();
   }
   ctx.restore();
 }

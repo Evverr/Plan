@@ -5,7 +5,7 @@ import { font } from '../canvas/text';
 
 /**
  * «Стопка стикеров» (src/labs): a pad of stickers on the board (`pad`), in a holder of its own, as a folded
- * frame looks: «Стикеры» along its top, the pad in it 12 in from its sides and bottom, 24 from its top, a
+ * frame looks: «Стикеры» along its top in the middle, faint, the pad in it 24 in from its sides and bottom, 36 from its top, a
  * sticker with more under it, no text. Taken from the pad, a new sticker comes off it, its colour and size,
  * dragged along and its frame alone once let go (no panel: a click, it; a double click, typed in); the pad
  * stays where it is, for the next. Taken by its holder, moved; the holder clicked, the pad picked (its colour
@@ -14,7 +14,7 @@ import { font } from '../canvas/text';
  */
 
 /** The holder round the pad: its room each side and under it, and over it (for its name). */
-export const PAD_IN = 12, PAD_TOP = 24, PAD_NAME = 'Стикеры';
+export const PAD_IN = 24, PAD_TOP = 36, PAD_NAME = 'Стикеры';
 
 /** The pad's top sticker in its holder (the item). */
 export const padSticker = (it: Item): Rect => ({ x: it.x + PAD_IN, y: it.y + PAD_TOP, w: Math.max(1, it.w - PAD_IN * 2), h: Math.max(1, it.h - PAD_TOP - PAD_IN) });
@@ -59,10 +59,10 @@ export function drawPadHolder(ctx: CanvasRenderingContext2D, it: Item, look: { f
   ctx.stroke();
   ctx.font = font(12, 600);
   ctx.fillStyle = look.ink;
-  ctx.globalAlpha = 0.7;
-  ctx.textAlign = 'left';
+  ctx.globalAlpha = 0.45;
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(PAD_NAME, it.x + PAD_IN, it.y + PAD_TOP / 2);
+  ctx.fillText(PAD_NAME, it.x + it.w / 2, it.y + PAD_TOP / 2);
   ctx.globalAlpha = 1;
   const r = padSticker(it);
   for (const [k, a] of [[2, 0.55], [1, 0.8]] as const) {

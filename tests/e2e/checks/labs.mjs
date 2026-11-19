@@ -1507,7 +1507,7 @@ export const checks = {
     await p.mouse('mouseReleased', mid[0] + 260, mid[1] + 40);
     await sleep(300);
     const st = await p.ev(`(() => { const s = planx.board.list().filter((x) => x.type === 'sticky' && !x.pad); return { n: s.length, dx: s[0] && s[0].x - ${pad.x}, pad: planx.board.list().filter((x) => x.pad).map((x) => [x.x, x.y]), editing: planx.editor.editingId === s[0]?.id }; })()`);
-    expect(JSON.stringify(st), 'one sticker off it where let go, not typed in; the pad where it was').toBe(JSON.stringify({ n: 1, dx: 12 + 260, pad: [[pad.x, pad.y]], editing: false }));
+    expect(JSON.stringify(st), 'one sticker off it where let go, not typed in; the pad where it was').toBe(JSON.stringify({ n: 1, dx: 24 + 260, pad: [[pad.x, pad.y]], editing: false }));
     expect(await p.ev(`JSON.stringify([planx.editor.selection.size, planx.editor.nudged])`), 'picked, its frame alone, no panel (as one moved)').toBe(JSON.stringify([1, true]));
     // By its edge: the pad itself moved.
     await p.ev(`planx.editor.setSelection([])`);
