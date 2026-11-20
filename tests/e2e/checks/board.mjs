@@ -1209,9 +1209,15 @@ export const checks = {
     await p.click(await p.at('.bar.panel button[aria-label="Свернуть фрейм"]'));
     await sleep(300);
     expect(!!(await p.ev(`planx.board.get('f').fold`)), 'folded').toBe(true);
+    // (Folded: no colour on its panel, no resize handle to take.)
+    expect(!!(await p.rect('.bar.panel button[aria-label="Цвет"]')), 'folded: no colour').toBe(false);
+    const f = await p.ev(`(() => { const f = planx.board.get('f'), s = planx.editor.toScreen({ x: f.x + f.w, y: f.y + f.h }); return [s.x + 3, s.y + 3]; })()`);
+    await p.mouse('mouseMoved', ...f); await sleep(100);
+    expect(await p.ev(`planx.editor.canvas.style.cursor`), 'folded: no resize cursor at its corner').toBe('');
     await p.click(await p.at('.bar.panel button[aria-label="Развернуть фрейм"]'));
     await sleep(300);
     expect(!!(await p.ev(`planx.board.get('f').fold`)), 'unfolded').toBe(false);
+    expect(!!(await p.rect('.bar.panel button[aria-label="Цвет"]')), 'unfolded: its colour').toBe(true);
   },
 
   async 'the usual arrow over items, text and all; a second click on a picked item\'s text types in it'(p) {

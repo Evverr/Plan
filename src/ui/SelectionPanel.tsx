@@ -470,7 +470,8 @@ export function SelectionPanel({ editor, items, cells, linkCount, docked, over, 
   // «Группы» (src/labs): one group picked, all of it (how many in it, and undoing it); or several picked
   // that aren't one, to be made one.
   const oneGroup = labs.groups ? pickedGroup(editor.board.list(), editor.selection) : null;
-  const colored = items.some((i) => (fillable(i) && !i.code) || i.type === 'icon' || i.type === 'ink');
+  // (Not a folded frame: drawn as a bar of its own, it has no colour to set.)
+  const colored = items.some((i) => (fillable(i) && !i.code && !i.fold) || i.type === 'icon' || i.type === 'ink');
   const btn = (icon: PanelIconName, title: string, fn: () => void) => (
     <button className={`ib ${icon === 'trashcan' ? 'danger' : ''}`} title={title} aria-label={title} onClick={fn}><PanelIcon name={icon} /></button>
   );
