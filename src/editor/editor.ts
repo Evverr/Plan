@@ -113,6 +113,8 @@ const CURSOR_WAIT = 60;
 const LINE_FADE = 200;
 /** How long a table line picked no more takes going back from blue. */
 const LINE_UNFADE = 150;
+/** How long a pad's holder under the pointer takes to darken, and to go back, in ms. */
+const PAD_GLOW = 200, PAD_UNGLOW = 150;
 /** How far a copy made by Ctrl+D stands off what it's a copy of. */
 const DUPLICATE_GAP = 24;
 
@@ -181,6 +183,23 @@ export class Editor {
   hotLink: string | null = null;
   /** A pad of stickers whose holder (not its top sticker) is under the pointer, its line darker. */
   hotPad: string | null = null;
+  /** Pads' holders darkening or going back: from how dark, towards which, since when (see setHotPad). */
+  private padGlows = new Map<string, { from: number; to: 0 | 1; since: number }>();
+  private padGlow(id: string, now: number): number {
+    const g = this.padGlows.get(id);
+    if (!g) return 0;
+    const t = Math.min(1, (now - g.since) / (g.to ? PAD_GLOW : PAD_UNGLOW)), e = 1 - (1 - t) * (1 - t);
+    return g.from + (g.to - g.from) * e;
+  }
+  /** The pad whose holder is under the pointer: it darkens, the one before goes back, both eased. */
+  setHotPad(id: string | null): void {
+    if (id === this.hotPad) return;
+    const now = performance.now();
+    if (this.hotPad) this.padGlows.set(this.hotPad, { from: this.padGlow(this.hotPad, now), to: 0, since: now });
+    if (id) this.padGlows.set(id, { from: this.padGlow(id, now), to: 1, since: now });
+    this.hotPad = id;
+    this.requestRender();
+  }
   /** «Связи» on ("Связи инструментом", src/labs): the links under the pointer, lit, and what they join. */
   related: { links: Set<string>; items: Set<string> } | null = null;
   /** The picked links' colours being set (their params open): drawn as they are, not blue. */
@@ -854,12 +873,20 @@ export class Editor {
     this.lineFades = this.lineFades.filter((f) => now - f.since < LINE_UNFADE);
     const fadingLines = this.lineFades.filter((f) => !sameLine(f.line, this.hotLine)).map((f) => { const t = (now - f.since) / LINE_UNFADE; return { line: f.line, k: (1 - t) * (1 - t) }; });
     if (fadingLines.length) this.requestRender();
+    // (Pads' holders darkening or going back; again till they're there.)
+    const padGlow = new Map<string, number>();
+    for (const [id, f] of this.padGlows) {
+      const k = this.padGlow(id, now);
+      if (k !== f.to) this.requestRender();
+      else if (!f.to) { this.padGlows.delete(id); continue; }
+      padGlow.set(id, k);
+    }
     drawScene(this.ctx, {
       items: this.homed(this.withTyped(glide ? this.shown().map(glide) : this.shown())),
       // (Only once it's going: taken hold of, it stays as it is till then.)
       links: relinked && g?.type === 'relink' && g.going ? this.shownLinks().filter((l) => l.id !== relinked.id) : this.shownLinks(),
       hotLink: g ? null : this.hotLink,
-      hotPad: g ? null : this.hotPad,
+      padGlow,
       linksAsThey: this.linksAsThey,
       get: glide ? (id) => { const it = this.board.get(id); return it && glide(it); } : (id) => this.board.get(id),
       cam: this.cam,

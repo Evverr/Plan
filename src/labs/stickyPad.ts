@@ -15,6 +15,8 @@ import { font } from '../canvas/text';
 
 /** The holder round the pad: its room each side and under it, and over it (for its name). */
 export const PAD_IN = 24, PAD_TOP = 48, PAD_NAME = 'Стикеры';
+/** How far its holder's line goes towards the darker one with the pointer on it (a touch lighter than all the way). */
+const PAD_HOT = 0.6;
 
 /** The pad's top sticker in its holder (the item). */
 export const padSticker = (it: Item): Rect => ({ x: it.x + PAD_IN, y: it.y + PAD_TOP, w: Math.max(1, it.w - PAD_IN * 2), h: Math.max(1, it.h - PAD_TOP - PAD_IN) });
@@ -48,7 +50,7 @@ export const padStart = (pad: Item): Point => { const r = padSticker(pad); retur
 
 /** Its holder, as a folded frame is drawn (its fill, a hairline round it, round corners), «Стикеры» along
  *  its top; then the stickers under its top one: two, lower and further right each, a shade darker. */
-export function drawPadHolder(ctx: CanvasRenderingContext2D, it: Item, look: { frame: string; line: string; ink: string; z: number }, under: string): void {
+export function drawPadHolder(ctx: CanvasRenderingContext2D, it: Item, look: { frame: string; line: string; hot: string; glow: number; ink: string; z: number }, under: string): void {
   ctx.save();
   ctx.fillStyle = look.frame;
   ctx.strokeStyle = look.line;
@@ -57,6 +59,14 @@ export function drawPadHolder(ctx: CanvasRenderingContext2D, it: Item, look: { f
   ctx.roundRect(it.x, it.y, it.w, it.h, 16);
   ctx.fill();
   ctx.stroke();
+  // (Its holder under the pointer: its line part way to the darker one, as much as it's come in, see PAD_HOT.)
+  if (look.glow > 0) {
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = a * look.glow * PAD_HOT;
+    ctx.strokeStyle = look.hot;
+    ctx.stroke();
+    ctx.globalAlpha = a;
+  }
   ctx.font = font(12, 600);
   ctx.fillStyle = look.ink;
   ctx.globalAlpha = 0.45;

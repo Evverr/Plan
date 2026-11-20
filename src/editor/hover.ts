@@ -340,7 +340,7 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   // A pad of stickers' holder, under the pointer off its top sticker: its line darker, for what a press
   // takes there is the pad, not a sticker («Стопка стикеров», src/labs).
   const pad = labOn('stickyPad') && under?.pad && !offPad(ed, under, w) ? under.id : null;
-  if (pad !== ed.hotPad) { ed.hotPad = pad; ed.requestRender(); }
+  ed.setHotPad(pad);
   // The picked instance's diamond (or that of the one holding what's picked) is lit as "glyph:<its id>".
   const glyph = picked && onInstanceGlyph(ed, picked, w) ? `glyph:${picked.inst ? picked.id : picked.host}` : null;
   // A mind map node the pointer is on, or on its buttons, shows them as if it were picked.
