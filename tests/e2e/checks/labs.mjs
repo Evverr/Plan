@@ -17,7 +17,7 @@ const docTableSetup = async (p, editing) => {
   await sleep(200);
   const scr = (x, y) => p.ev(`(() => { const s = planx.editor.toScreen({ x: ${x}, y: ${y} }); return [s.x, s.y]; })()`);
   const T = () => p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), b = planx.board, doc = b.get('${id}'), t = b.list().find((i) => i.type === 'table');
-    return { doc: { x: doc.x, y: doc.y, text: doc.text, rs: doc.rs ?? null }, t: t && { x: t.x, y: t.y, inDoc: t.inDoc ?? null }, objs: d.docLines(doc).filter((l) => l.o).length, rich: !!document.querySelector('.rich-edit .rich-obj') }; })()`);
+    return { doc: { x: doc.x, y: doc.y, text: doc.text, rs: doc.rs ?? null }, t: t && { x: t.x, y: t.y, h: t.h, inDoc: t.inDoc ?? null }, objs: d.docLines(doc).filter((l) => l.o).length, rich: !!document.querySelector('.rich-edit .rich-obj') }; })()`);
   let s = await T();
   await p.drag(await scr(s.t.x + 20, s.t.y + 5), await scr(s.doc.x + 100, s.doc.y + 80 + 5 + 22));
   await sleep(300);
@@ -32,7 +32,10 @@ const docTableSetup = async (p, editing) => {
 };
 const docTableOut = async (p, T, scr) => {
   const s = await T();
-  await p.drag(await scr(s.t.x + 20, s.t.y + 5), await scr(s.doc.x + 1100, s.doc.y + 200));
+  // (Picked first: not picked, the whole document would go.)
+  // (In a cell, not by its top line: picked, that would be taken.)
+  await p.ev(`planx.editor.setSelection([planx.board.list().find((i) => i.type === 'table').id])`);
+  await p.drag(await scr(s.t.x + 40, s.t.y + s.t.h / 2), await scr(s.doc.x + 1100, s.doc.y + 200));
   await sleep(500);
   return T();
 };
@@ -1694,6 +1697,32 @@ export const checks = {
       return pageShown(d) + ':' + planx.editor.shown().filter((i) => i.type === 'table').every((t) => slotOf(d, t.id)?.page === 0); })()`), 'its first page: only its own tables on it').toBe('0:true');
   },
 
+  async '"Таблица в документе": a table in it not picked, dragged: the whole document goes; picked first, dragged: it comes out of it'(p) {
+    const md = '# Начало\n\nТекст.\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n| 3 | 4 |\n\nПосле.\n';
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(md)}], 'a.md', { type: 'text/markdown' }));
+      document.querySelector('.board-canvas').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: 600, clientY: 500, bubbles: true, cancelable: true })); })()`);
+    await sleep(600);
+    await p.ev(`(() => { const e = planx.editor, d = planx.board.list().find((i) => i.type === 'page'); e.setSelection([]); e.cam = { x: 300 - d.x, y: 100 - d.y, z: 1 }; e.camChanged(); })()`);
+    await sleep(200);
+    const st = () => p.ev(`(() => { const d = planx.board.list().find((i) => i.type === 'page'), t = planx.board.list().find((i) => i.type === 'table'); return { d: [Math.round(d.x), Math.round(d.y)], inDoc: t.inDoc === d.id, place: (d.rs ?? []).filter((r) => r.o).map((r) => r.s), dt: [Math.round(t.x - d.x), Math.round(t.y - d.y)] }; })()`);
+    const at = () => p.ev(`(() => { const t = planx.board.list().find((i) => i.type === 'table'), s = planx.editor.toScreen({ x: t.x + 40, y: t.y + t.h - 20 }); return [s.x, s.y]; })()`);
+    const before = await st();
+    await p.drag(await at(), [(await at())[0] + 120, (await at())[1] + 60]);
+    await sleep(300);
+    const after = await st();
+    expect(JSON.stringify([after.d[0] - before.d[0], after.d[1] - before.d[1], after.inDoc, after.place, after.dt]), 'not picked: the document moved, the table in its place in it').toBe(JSON.stringify([120, 60, true, before.place, before.dt]));
+    // Picked first, then dragged off: out of it.
+    await p.click(await at());
+    await sleep(300);
+    expect(await p.ev(`planx.editor.selection.has(planx.board.list().find((i) => i.type === 'table').id)`), 'a click picks it').toBe(true);
+    const from = await at();
+    await p.drag(from, [from[0] + 900, from[1]]);
+    await sleep(300);
+    const out = await st();
+    expect(JSON.stringify([out.d, out.inDoc, out.place.length]), 'picked: dragged out of it, the document where it was').toBe(JSON.stringify([after.d, false, 0]));
+  },
+
   async '"Markdown полностью": Markdown pasted in a document as it\'s typed in: its table ours in it, its link a link'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);
@@ -1815,9 +1844,10 @@ export const checks = {
     await p.ev(`planx.board.update('${id}', { x: ${ins.doc.x + 100} })`);
     await sleep(100);
     expect((await T()).t.x - ins.t.x, 'moved with it').toBe(100);
-    // Dragged off: out of its text, its own again.
+    // Dragged off (picked first: not picked, the whole document would go): out of its text, its own again.
     const now = await T();
-    await p.drag(await scr(now.t.x + 20, now.t.y + 5), await scr(now.doc.x + 1100, now.doc.y + 200));
+    await p.ev(`planx.editor.setSelection(['${now.t.id}'])`);
+    await p.drag(await scr(now.t.x + 40, now.t.y + now.t.h / 2),await scr(now.doc.x + 1100, now.doc.y + 200));
     await sleep(200);
     const off = await T();
     expect(JSON.stringify([off.t.inDoc, off.doc.text, off.doc.rs ?? null]), 'out of it').toBe(JSON.stringify([null, 'Один\nДва\nТри', null]));
@@ -1879,7 +1909,8 @@ export const checks = {
     await sleep(300);
     s = await T();
     const one = JSON.stringify([s.doc.text, s.doc.rs?.length]);
-    // Down within it, under «Три».
+    // Down within it, under «Три» (picked first: not picked, the whole document would go).
+    await p.ev(`planx.editor.setSelection([planx.board.list().find((i) => i.type === 'table').id])`);
     const c = await scr(s.t.x + 40, s.t.y + 10), d = await scr(s.t.x + 40, s.t.y + 10 + s.t.h + 70);
     await p.mouse('mouseMoved', ...c); await p.mouse('mousePressed', ...c);
     for (let k = 1; k <= 12; k++) { await p.mouse('mouseMoved', c[0], c[1] + (d[1] - c[1]) * k / 12); await sleep(30); }

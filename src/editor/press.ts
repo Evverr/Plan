@@ -398,7 +398,11 @@ export function press(ed: Editor, e: PointerEvent): void {
     const tap = hit.type === 'task' && !entering && !e.shiftKey && e.button === 0 && ed.editingId !== hit.id && taskButtonAt(hit, w) ? sp : undefined;
     // A subtask pressed: dragged, it goes elsewhere among them ("Перетаскивание подзадач", src/labs).
     const part = tap && labOn('subDrag') ? taskPartAt(hit, w) : null, sub = typeof part === 'object' && part && !part.del ? part.sub : undefined;
-    ed.gesture = { type: 'drag', start: w, orig: ed.dragSet(items), moved: false, id: hit.id, dbl, cell, enter, again, url, tap, sub, fresh, was };
+    // A table in a document's text not picked before («Таблица в документе», src/labs): dragged, the whole
+    // document goes (the table in its place in it); only picked first, it's taken out of it.
+    const doc = fresh && hit.type === 'table' && hit.inDoc && labOn('docTable') ? ed.board.get(hit.inDoc) : undefined;
+    const orig = doc && !isLocked(doc) ? ed.dragSet(items, new Set([doc.id])) : ed.dragSet(items);
+    ed.gesture = { type: 'drag', start: w, orig, moved: false, id: hit.id, dbl, cell, enter, again, url, tap, sub, fresh, was, ...(doc && orig.has(doc.id) && { whole: true }) };
     return;
   }
   ed.lastTap = { id: '', t: 0 };

@@ -855,7 +855,8 @@ export class Editor {
     const g = this.gesture;
     // «Канбан»: where a card being dragged over one would go in.
     // («Таблица в документе», src/labs: a table dragged half over a sheet or more, see-through, a blue line where it'd go in.)
-    const dragged = g?.type === 'drag' && g.moved && labOn('docTable') ? this.board.get(g.id) : undefined;
+    // (Not a table taken with its whole document, see press.ts: it goes nowhere in it.)
+    const dragged = g?.type === 'drag' && g.moved && !g.whole && labOn('docTable') ? this.board.get(g.id) : undefined;
     const docSpot = dragged?.type === 'table' && !dragged.host ? docDropAt(this.board, dragged) : null;
     const drop = g?.type === 'drag' && g.moved && labOn('kanban') ? dropTarget(this.board.list(), this.board.get(g.id), new Set(g.orig.keys())) : null;
     let linkPreview = null;
@@ -2344,10 +2345,10 @@ export class Editor {
   }
 
   /** Shared: the selected items plus what the selected frames hold (but those locked in place). */
-  dragSet(items: Item[]): Map<string, Point> {
+  dragSet(items: Item[], of: Set<string> = this.selection): Map<string, Point> {
     // What's in an instance moves only with it: one picked in it takes the whole instance along.
     // (A header and what it's tied to, src/labs/header.ts, only together.)
-    const picked = withTies(items, this.selection);
+    const picked = withTies(items, of);
     const sel = new Map(items.filter((i) => picked.has(i.id)).map((i) => i.host ? this.board.get(i.host) : i)
       .filter((i): i is Item => !!i && !heldInPlace(i, items)).map((i) => [i.id, i]));
     // (And the tables put in the text of the documents carried, a frame's say, with them as they go: not
