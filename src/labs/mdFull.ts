@@ -4,7 +4,7 @@ import type { TextLink, TextRun } from '../model/textLinks';
 import { newTable, ROW_H } from '../model/table';
 import { font, measureTextHeight } from '../canvas/text';
 import { docTableLook, objMax, withObject } from './docObjects';
-import { textArea } from './docPage';
+import { docLines, OBJ_GAP, textArea } from './docPage';
 import { shownMarkdown } from './mdInline';
 
 /**
@@ -71,7 +71,7 @@ const CELL_FS = 14, PAD_X = 16, PAD_Y = 8;
  *  least as its longest word, the rest shared by how much more each would take), its rows as tall as their
  *  text comes to, its header in our tables' look. Taller than `maxH`, cut into parts that fit, each with
  *  the header over it. */
-export function tableItems(t: MdTable, w: number, maxH: number): Array<Partial<Item>> {
+export function tableItems(t: MdTable, w: number, maxH: number, firstH = maxH): Array<Partial<Item>> {
   const n = t.rows[0].length, cells = t.rows.map((r) => r.map(plainCell));
   const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
   // (Code's letters wider than the text's: a tenth more room for a cell with any.)
@@ -95,11 +95,12 @@ export function tableItems(t: MdTable, w: number, maxH: number): Array<Partial<I
   }
   cols = cols.map((v) => Math.floor(v * 10) / 10);
   const rowH = cells.map((r, k) => Math.max(ROW_H, Math.ceil(Math.max(...r.map((cell, c) => measureTextHeight(cell.shown || ' ', Math.max(1, (cols[c] - PAD_X * 2) / (cell.code ? 1.1 : 1)), CELL_FS, { weight: k === 0 ? 700 : 400 }))) + PAD_Y * 2)));
-  // Parts a page tall at most, each with the header over it.
-  const parts: number[][] = [];
+  // Parts a page tall at most, each with the header over it; the first as tall as `firstH` (what's left of the
+  // page it starts on: no room left empty under what's before it), unless not even a row would fit there.
+  const parts: number[][] = [], first = rowH[0] + (rowH[1] ?? 0) <= firstH ? firstH : maxH;
   let part: number[] = [], h = rowH[0];
   for (let k = 1; k < rowH.length; k++) {
-    if (part.length && h + rowH[k] > maxH) { parts.push(part); part = []; h = rowH[0]; }
+    if (part.length && h + rowH[k] > (parts.length ? maxH : first)) { parts.push(part); part = []; h = rowH[0]; }
     part.push(k);
     h += rowH[k];
   }
@@ -129,7 +130,10 @@ export function placeMdTables(ed: Editor, doc: Item, tables: MdTable[]): { text:
   tables.forEach((table, n) => {
     const key = tableKey(n), place = t.rs?.find((r) => r.o === key);
     if (!place) return;
-    const ids = tableItems(table, area.w, max.h).map((fields) => {
+    // (What's left of the page where it starts, with those before it in: its first part as tall as that.)
+    const at = docLines({ ...doc, text: t.text, rs: t.rs, links: t.links }).find((l) => l.s === place.s);
+    const room = at ? area.h - at.y - OBJ_GAP * 2 : max.h;
+    const ids = tableItems(table, area.w, max.h, room).map((fields) => {
       const it = ed.newItem('table', doc.x + area.x, doc.y + area.y, { ...fields, inDoc: doc.id });
       ed.addItem(it);
       return it.id;
