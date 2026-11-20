@@ -1,7 +1,7 @@
 import type { Item } from '../model/types';
 import type { Board } from '../model/board';
 import { paraAt, setPara, type TextLink, type TextRun } from '../model/textLinks';
-import { colsOf, rowsOf } from '../model/table';
+import { colsOf, rowsOf, tableLook } from '../model/table';
 import { DOC_LINE, docLines, docObject, OBJ_GAP, PAGE_TEXT, pageShown, showPage, textArea, type DocLine } from './docPage';
 import { drawScene, readTheme } from '../canvas/renderer';
 
@@ -135,6 +135,15 @@ export function docDropAt(board: Board, it: Item): { doc: Item; after: number; x
   const area = textArea(doc), spot = spotAt(doc, it.y + 10, it.id);
   return { doc, after: spot.after, x: doc.x + area.x, y: spot.y, w: area.w };
 }
+
+/** How a table made in a document looks to begin with (by «Стиль» → «Таблица», or a Markdown file's): as one
+ *  drawn on the board, but its header row in a light grey of its own (not the light blue). One dragged in
+ *  keeps its own look. */
+export const DOC_TABLE_HEAD = '#EEF0F7';
+export const docTableLook = (n: number): Partial<Item> => {
+  const look = tableLook(n);
+  return { ...look, cellFmt: look.cellFmt?.map((f) => (f ? { ...f, bg: DOC_TABLE_HEAD, bgo: 1 } : f)) };
+};
 
 /** A table fitted to a sheet: as wide as its text at most, as tall as a page (see inDocLimit). */
 const fitted = (it: Item, doc: string): Partial<Item> => inDocLimit({ ...it, inDoc: doc }, {}) ?? {};

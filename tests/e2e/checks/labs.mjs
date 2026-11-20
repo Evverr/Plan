@@ -1334,6 +1334,18 @@ export const checks = {
     await sleep(300);
     expect(await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pageShown(planx.board.get('${id}')))()`), 'that page shown').toBe(56);
     expect(await p.ev(`!!document.querySelector('.page-jump')`), 'the field gone').toBe(false);
+    // Of more than five pages: double arrows past the arrows, to its last page and its first.
+    const jump = (dx) => p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), m = d.pagerAtMid(planx.board.get('${id}')), s = planx.editor.toScreen({ x: m.x + ${dx}, y: m.y }); return [s.x, s.y]; })()`);
+    const shown = () => p.ev(`(async () => (await import('/src/labs/docPage.ts')).pageShown(planx.board.get('${id}')))()`);
+    const last = await p.ev(`(async () => (await import('/src/labs/docPage.ts')).pagesOf(planx.board.get('${id}')).length - 1)()`);
+    await p.click(await jump(72));
+    expect(await shown(), '»: its last page').toBe(last);
+    await p.click(await jump(-72));
+    expect(await shown(), '«: its first').toBe(0);
+    // Of five pages or fewer: none.
+    await p.ev(`planx.board.update('${id}', { text: Array.from({ length: 60 }, () => ${JSON.stringify(para)}).join('\\n') })`);
+    await sleep(300);
+    expect(await p.ev(`(async () => { const d = await import('/src/labs/docPage.ts'), it = planx.board.get('${id}'), m = d.pagerAtMid(it); return JSON.stringify([d.pagesOf(it).length <= 5, d.pagerAt([it], { x: m.x - 72, y: m.y })]); })()`), 'of a few pages: no double arrows').toBe('[true,null]');
   },
 
   async '"Документ": of one page, typed on past its end: its next page shown, the caret in sight, kept so once done'(p) {
@@ -1643,8 +1655,8 @@ export const checks = {
       document.querySelector('.board-canvas').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: 600, clientY: 400, bubbles: true, cancelable: true })); })()`);
     await sleep(800);
     const got = await p.ev(`(() => { const d = planx.board.list().find((i) => i.type === 'page'), t = planx.board.list().filter((i) => i.type === 'table');
-      return { links: (d.links ?? []).map((l) => d.text.slice(l.s, l.e) + '>' + l.url), parts: t.length, inDoc: t.every((x) => x.inDoc === d.id), header: t.every((x) => x.cells[0] === 'Поле'), rows: t.reduce((n, x) => n + x.rows.length - 1, 0) }; })()`);
-    expect(JSON.stringify(got), 'its links, its table ours in it in parts with the header over each').toBe(JSON.stringify({ links: ['ссылкой>https://example.com/a', 'https://x.y>https://x.y'], parts: 2, inDoc: true, header: true, rows: 24 }));
+      return { links: (d.links ?? []).map((l) => d.text.slice(l.s, l.e) + '>' + l.url), parts: t.length, inDoc: t.every((x) => x.inDoc === d.id), header: t.every((x) => x.cells[0] === 'Поле'), rows: t.reduce((n, x) => n + x.rows.length - 1, 0), head: t[0].cellFmt[0].bg + '@' + t[0].cellFmt[0].bgo }; })()`);
+    expect(JSON.stringify(got), 'its links, its table ours in it in parts with the header over each (in a document\'s light grey)').toBe(JSON.stringify({ links: ['ссылкой>https://example.com/a', 'https://x.y>https://x.y'], parts: 2, inDoc: true, header: true, rows: 24, head: '#EEF0F7@1' }));
     const saved = () => p.ev(`(async () => { const { docMarkdown } = await import('/src/labs/docExport.ts'); return docMarkdown(planx.board.list().find((i) => i.type === 'page')); })()`);
     expect(await saved(), 'saved as it came').toBe(md);
     // Typed in and left: as it was.

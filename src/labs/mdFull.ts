@@ -1,9 +1,9 @@
 import type { Editor } from '../editor/editor';
 import type { Item } from '../model/types';
 import type { TextLink, TextRun } from '../model/textLinks';
-import { newTable, tableLook, ROW_H } from '../model/table';
+import { newTable, ROW_H } from '../model/table';
 import { font, measureTextHeight } from '../canvas/text';
-import { objMax, withObject } from './docObjects';
+import { docTableLook, objMax, withObject } from './docObjects';
 import { textArea } from './docPage';
 import { shownMarkdown } from './mdInline';
 
@@ -105,7 +105,7 @@ export function tableItems(t: MdTable, w: number, maxH: number): Array<Partial<I
   }
   parts.push(part);
   return parts.map((ks) => {
-    const rows = [0, ...ks], m = rows.length, look = tableLook(n);
+    const rows = [0, ...ks], m = rows.length, look = docTableLook(n);
     const fmt = rows.flatMap((k) => cells[k].map((_, c) => {
       const f: Record<string, unknown> = k === 0 ? { ...(look.cellFmt?.[c] ?? {}) } : {};
       if (t.aligns[c]) f.ta = t.aligns[c];
