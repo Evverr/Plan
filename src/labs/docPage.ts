@@ -447,11 +447,27 @@ export function pagerHot(items: Item[], w: Point): string | null {
 }
 
 /** Draws its pager: «‹ n / of ›», small, the arrows faint where there's no page that way, lit under the pointer. */
-export function drawPager(ctx: CanvasRenderingContext2D, it: Item, n: number, of: number, look: { ink: string; muted: string }, hot: string | null): void {
+export function drawPager(ctx: CanvasRenderingContext2D, it: Item, n: number, of: number, look: { ink: string; muted: string }, hot: string | null, skeleton = false): void {
   // (A sheet of one page: none.)
   if (of < 2) return;
   const m = pagerMid(it);
   ctx.save();
+  // Zoomed out past its letters (its sheet a skeleton, drawDocSkeleton): its number a faint bar as long as it
+  // comes to, its arrows faint dots.
+  if (skeleton) {
+    const bar = 13 * 0.62, w = `${n + 1} / ${of}`.length * 13 * 0.5, far = jumps(it) ? [ARROW_DX + JUMP_DX] : [];
+    ctx.strokeStyle = look.ink;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = bar;
+    ctx.globalAlpha = 0.1;
+    ctx.beginPath();
+    ctx.moveTo(m.x - w / 2 + bar / 2, m.y);
+    ctx.lineTo(m.x + w / 2 - bar / 2, m.y);
+    for (const dx of [ARROW_DX, ...far]) for (const x of [m.x - dx, m.x + dx]) { ctx.moveTo(x, m.y); ctx.lineTo(x, m.y); }
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
   ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
   ctx.font = font(13, 500);

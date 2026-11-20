@@ -19,7 +19,7 @@ import { gripsOn } from '../labs/tableMove';
 import { gridKind } from '../labs/boardGrid';
 import { drawCode } from '../labs/codeBlock';
 import { drawForm } from '../labs/formObject';
-import { DOC_NAME_ICON, drawHeader, MORE_ICON } from '../labs/header';
+import { DOC_NAME_ICON, drawHeader, drawHeaderSkeleton, MORE_ICON } from '../labs/header';
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
 import { drawDocPage, drawDocSkeleton, drawPager, pagerCount, pageShown } from '../labs/docPage';
@@ -592,6 +592,9 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
         // (Its «…», «Троеточие у титула»: muted, as a button.)
         // (A document's name over it, «Название документа»: no icon, a light grey, #777 on the light board.)
         const titleInk = it.icon === DOC_NAME_ICON ? (theme.surface.toLowerCase() === '#ffffff' ? '#777777' : theme.muted) : theme.ink;
+        // (Its document zoomed out past its letters: its name faint bars too, as the document's text.)
+        const named = it.icon === DOC_NAME_ICON && it.tie ? s.get(it.tie) : undefined;
+        if (named?.type === 'page' && !editing && (named.fs ?? 16) * cam.z < DOC_SKELETON) { drawHeaderSkeleton(ctx, it, theme.ink); break; }
         drawHeader(ctx, it, titleInk, (name, x, y, size) => { ctx.globalAlpha = name === MORE_ICON ? (s.hotPlus === `more:${it.id}` ? 1 : 0.3) : fillOpacity(it); drawIcon(ctx, name, x, y, size, name === MORE_ICON ? theme.ink : ink); ctx.globalAlpha = 1; }, editing ? s.editingCell : undefined);
         break;
       }
@@ -763,7 +766,8 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       }
       // Zoomed out past its letters (any in it): its lines as faint bars, where they are.
       else if (!editing && it.text?.trim()) drawDocSkeleton(ctx, it, n, theme.ink);
-      drawPager(ctx, it, n, of, theme, s.hotPlus);
+      // (Past its letters, its pager too: faint, as its text.)
+      drawPager(ctx, it, n, of, theme, s.hotPlus, !editing && (it.fs ?? 16) * s.cam.z < DOC_SKELETON);
       break;
     }
     case 'ink':

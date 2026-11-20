@@ -119,6 +119,27 @@ export function headerFieldBox(it: Item, cell: number | null): Rect & { fs: numb
 }
 
 /** Draws it: its icon by `icon`, its title and description in `ink`, but the part being typed in (`cell`). */
+/** A document's name over it zoomed out past the document's letters: its lines faint bars, as the document's
+ *  are then (docPage.ts's drawDocSkeleton), as long as their text comes to. */
+export function drawHeaderSkeleton(ctx: CanvasRenderingContext2D, it: Item, ink: string): void {
+  const l = headerLayout(it), lh = l.fs * LINE_HEIGHT, bar = l.fs * 0.62;
+  ctx.save();
+  ctx.font = font(l.fs, l.weight);
+  ctx.strokeStyle = ink;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = bar;
+  ctx.globalAlpha = 0.1;
+  wrapText(it.text ?? '', l.title.w, (t) => ctx.measureText(t).width).forEach((line, i) => {
+    if (!line.trim()) return;
+    const x = it.x + l.title.x, w = Math.min(l.title.w, line.length * l.fs * 0.5), y = it.y + l.title.y + lh * i + lh / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + bar / 2, y);
+    ctx.lineTo(Math.max(x + bar / 2, x + w - bar / 2), y);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 export function drawHeader(ctx: CanvasRenderingContext2D, it: Item, ink: string, icon: (name: string, x: number, y: number, size: number) => void, cell?: number | null): void {
   // (Its «…» drawn by `icon` as MORE_ICON: half seen, all of it under the pointer, as its caller has it.)
   const l = headerLayout(it);
