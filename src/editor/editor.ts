@@ -1903,7 +1903,10 @@ export class Editor {
     if (!at) this.clipboard = JSON.stringify({ items, links });
     // (Picked, but what a folded frame among them holds: out of sight, no frames of their own nor a panel for it.)
     const away = foldedIn(items);
-    this.setSelection(items.filter((i) => !away.has(i.id)).map((i) => i.id));
+    // (Nor the tables in a document's text copied with it, «Таблица в документе»: they go with it anyway, and
+    // those on its other pages, out of sight, would show their frames over the page it shows.)
+    const docs = new Set(items.filter((i) => i.type === 'page').map((i) => i.id));
+    this.setSelection(items.filter((i) => !away.has(i.id) && !(i.inDoc && docs.has(i.inDoc))).map((i) => i.id));
   }
 
   /** Puts copies of items, and of the links among them, on the board (see copiesOf). */

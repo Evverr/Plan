@@ -1695,6 +1695,10 @@ export const checks = {
     expect(await places(), 'its tables where they were in its text').toBe(before);
     expect(await p.ev(`(async () => { const { pageShown } = await import('/src/labs/docPage.ts'), { slotOf } = await import('/src/labs/docObjects.ts'); const d = planx.board.list().find((i) => i.type === 'page');
       return pageShown(d) + ':' + planx.editor.shown().filter((i) => i.type === 'table').every((t) => slotOf(d, t.id)?.page === 0); })()`), 'its first page: only its own tables on it').toBe('0:true');
+    // Duplicated: the copy picked alone (its tables with it, in its text, not picked: no frames of theirs over its page).
+    await p.ev(`(() => { const d = planx.board.list().find((i) => i.type === 'page'); planx.editor.setSelection([d.id]); planx.editor.duplicate(); })()`);
+    await sleep(300);
+    expect(await p.ev(`(() => { const sel = planx.editor.selectedItems(), copy = sel[0]; return JSON.stringify([sel.length, copy?.type, planx.board.list().filter((i) => i.type === 'table' && i.inDoc === copy?.id).length]); })()`), 'the copy alone picked, its tables in it').toBe(JSON.stringify([1, 'page', 4]));
   },
 
   async '"Таблица в документе": a table in it not picked, dragged: the whole document goes; picked first, dragged: it comes out of it'(p) {
