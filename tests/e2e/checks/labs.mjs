@@ -1574,6 +1574,19 @@ export const checks = {
     }
   },
 
+  async '"Стопка стикеров": the pointer on its holder, its line darker; on its sticker or off it, as before'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setTool('pad'); })()`);
+    await p.click([600, 400]);
+    await sleep(200);
+    const pad = await p.ev(`(() => { const i = planx.board.list().find((x) => x.pad); return { id: i.id, x: i.x, y: i.y, w: i.w, h: i.h }; })()`);
+    const at = (x, y) => p.ev(`(() => { const s = planx.editor.toScreen({ x: ${x}, y: ${y} }); return [s.x, s.y]; })()`);
+    const hot = async (pt) => { await p.mouse('mouseMoved', ...pt); await sleep(100); return p.ev('planx.editor.hotPad'); };
+    expect(await hot(await at(pad.x + 8, pad.y + 8)), 'on its holder').toBe(pad.id);
+    expect(await hot(await at(pad.x + pad.w / 2, pad.y + pad.h / 2)), 'on its sticker').toBe(null);
+    expect(await hot(await at(pad.x + pad.w / 2, pad.y + 10)), 'on its holder again').toBe(pad.id);
+    expect(await hot(await at(pad.x - 60, pad.y - 60)), 'off it').toBe(null);
+  },
+
   async '"Стопка стикеров": a sticker let go not all out of the holder glides back onto the pad and is gone; all out, on the board'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.setTool('pad'); })()`);
     await p.click([600, 400]);

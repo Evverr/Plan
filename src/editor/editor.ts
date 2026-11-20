@@ -179,6 +179,8 @@ export class Editor {
   linkDots: string | null = null;
   /** Shared: the link under the pointer, faintly lit. */
   hotLink: string | null = null;
+  /** A pad of stickers whose holder (not its top sticker) is under the pointer, its line darker. */
+  hotPad: string | null = null;
   /** «Связи» on ("Связи инструментом", src/labs): the links under the pointer, lit, and what they join. */
   related: { links: Set<string>; items: Set<string> } | null = null;
   /** The picked links' colours being set (their params open): drawn as they are, not blue. */
@@ -857,6 +859,7 @@ export class Editor {
       // (Only once it's going: taken hold of, it stays as it is till then.)
       links: relinked && g?.type === 'relink' && g.going ? this.shownLinks().filter((l) => l.id !== relinked.id) : this.shownLinks(),
       hotLink: g ? null : this.hotLink,
+      hotPad: g ? null : this.hotPad,
       linksAsThey: this.linksAsThey,
       get: glide ? (id) => { const it = this.board.get(id); return it && glide(it); } : (id) => this.board.get(id),
       cam: this.cam,

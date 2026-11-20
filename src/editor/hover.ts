@@ -21,6 +21,7 @@ import { rotateCursor } from './cursors';
 import { restOn, tableLineAt } from './tables';
 import type { Editor } from './editor';
 import { isLocked, labOn } from '../labs/labs';
+import { offPad } from '../labs/stickyPad';
 import { dotsOn, relatedAt } from '../labs/linkTool';
 import { linkPartAt } from '../labs/textLink';
 import { boardTip, linkTip } from '../labs/itemLink';
@@ -336,6 +337,10 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   const under = pickedUnder(ed, w) ?? hitItem(ed.shown(), w, ed.cam.z);
   const link = under && under.type !== 'frame' ? null : hitLink(ed.shownLinks(), (id) => ed.board.get(id), w, ed.cam.z);
   if ((link?.id ?? null) !== ed.hotLink) { ed.hotLink = link?.id ?? null; ed.requestRender(); }
+  // A pad of stickers' holder, under the pointer off its top sticker: its line darker, for what a press
+  // takes there is the pad, not a sticker («Стопка стикеров», src/labs).
+  const pad = labOn('stickyPad') && under?.pad && !offPad(ed, under, w) ? under.id : null;
+  if (pad !== ed.hotPad) { ed.hotPad = pad; ed.requestRender(); }
   // The picked instance's diamond (or that of the one holding what's picked) is lit as "glyph:<its id>".
   const glyph = picked && onInstanceGlyph(ed, picked, w) ? `glyph:${picked.inst ? picked.id : picked.host}` : null;
   // A mind map node the pointer is on, or on its buttons, shows them as if it were picked.

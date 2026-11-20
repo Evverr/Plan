@@ -124,6 +124,8 @@ export interface Scene {
   folded?: Map<string, Map<Way, number>>;
   /** The link under the pointer, faintly lit. */
   hotLink?: string | null;
+  /** A pad of stickers whose holder is under the pointer: its line darker. */
+  hotPad?: string | null;
   /** How far out from the "+" to the chevron's place each folded node's count is, 0…1, by `id:way`. */
   slide?: Map<string, number>;
   /** The node and way (`id:way`) a "+" has just given its first branches, with no chevron there yet. */
@@ -521,7 +523,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       ctx.globalAlpha = it.fo ?? 1;
       // A pad of them («Стопка стикеров», src/labs): in its holder, as a folded frame, more under its top one.
       if (it.pad) {
-        drawPadHolder(ctx, it, { frame: theme.frame, line: theme.line, ink: theme.ink, z: cam.z }, shade(stickyGradient(it.color ?? 'yellow')[1], theme.dim));
+        drawPadHolder(ctx, it, { frame: theme.frame, line: s.hotPad === it.id ? theme.link : theme.line, ink: theme.ink, z: cam.z }, shade(stickyGradient(it.color ?? 'yellow')[1], theme.dim));
         drawSticky(ctx, { ...it, ...padSticker(it) }, cam.z * s.dpr, theme.dim);
         ctx.globalAlpha = 1;
         break;
