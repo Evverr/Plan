@@ -252,11 +252,20 @@ export function App({ boardId }: { boardId: string }) {
   // (None while a line's led out of what's picked, or it's moved by the arrow keys: see UIState.away.)
   // Something to type in (a sticker, a sheet, a shape…) just picked by a click: no panel for it yet, for as long
   // as a second click takes to come (DBL_WAIT): a double click types in it, its text panel then, straight away.
-  const freeAt = useRef({ key: '', at: 0 }), pickKey = ui.selection.join(), [, waited] = useState(0);
+  const freeAt = useRef<{ key: string; at: number; typed?: string }>({ key: '', at: 0 }), pickKey = ui.selection.join(), [, waited] = useState(0);
+  // (What was typed in last, and till when: Infinity while it still is.)
+  const typing = useRef<{ id: string | null; till: number }>({ id: null, till: 0 });
+  if (ui.editingId) typing.current = { id: ui.editingId, till: Infinity };
+  else if (typing.current.till === Infinity) typing.current.till = performance.now();
+  // (A sticker typed in just now, another one picked by a press: the same wait, its text panel staying where
+  // it is meanwhile, so going sticker to sticker by double clicks it's the text panel all the way, see holdText.)
+  const typedSticker = typing.current.id && performance.now() - typing.current.till < 200 && board.get(typing.current.id)?.type === 'sticky' ? typing.current.id : null;
   // (Only picked by a press, nothing picked before: picked any other way, or a panel over something else
   // already, going over to it at once, «Перестроение панели», its panel at once.)
-  if (freeAt.current.key !== pickKey) freeAt.current = { key: pickKey, at: ui.picking && !freeAt.current.key ? 0 : -1 };
-  else if (!ui.picking && !freeAt.current.at) freeAt.current.at = performance.now();
+  if (freeAt.current.key !== pickKey) {
+    const fromTyping = ui.picking && !!typedSticker && typedSticker !== pickKey && picked.length === 1 && picked[0].type === 'sticky';
+    freeAt.current = { key: pickKey, at: ui.picking && (!freeAt.current.key || fromTyping) ? 0 : -1, typed: fromTyping ? typedSticker! : undefined };
+  } else if (!ui.picking && !freeAt.current.at) freeAt.current.at = performance.now();
   const typable = picked.length === 1 && TYPABLE.includes(picked[0].type) && !picked[0].code && !picked[0].hd ? picked[0].id : null;
   const holding = !!typable && !ui.editingId && !ui.picking && freeAt.current.at > 0 && performance.now() - freeAt.current.at < DBL_WAIT;
   useEffect(() => {
@@ -360,7 +369,12 @@ export function App({ boardId }: { boardId: string }) {
   }, [editor]);
   // The text panel: shown as above; once it goes, it fades out (half as long as it fades in), still
   // showing what it showed.
-  const panelOn = tMode || (!!textItem && textShown === textItem.id && quiet !== textItem.id);
+  const lastPanel = useRef<Item | null>(null);
+  // (A sticker typed in, another picked by a press: the text panel held as it is while a second click may
+  // come, see freeAt; double-clicked, till its own text panel's there.)
+  const holdText = !!freeAt.current.typed && !!lastPanel.current && !ui.moving
+    && (ui.picking || holding || (!!ui.editingId && ui.editingId === typable && textShown !== typable));
+  const panelOn = holdText || tMode || (!!textItem && textShown === textItem.id && quiet !== textItem.id);
   // A table's cell typed in: its text panel by what the panels of its cells go by (ui/cellAnchor.ts: over the
   // table's top while that's on the screen, else over the cell first typed in, kept but for one higher up).
   const typedCell = editing?.id === textItem?.id && editing?.type === 'table' && ui.editingCell !== null ? { ...cellItem(editing, ui.editingCell), ...cellAnchor(editor, editing, [ui.editingCell]) } : null;
@@ -374,8 +388,7 @@ export function App({ boardId }: { boardId: string }) {
     // other where it stands, not gliding across the screen from the cell to the table, ui/cellAnchor.ts.)
     return { ...t, ta: one((c) => alignOf(c)), va: one((c) => c.va), ...cellAnchor(editor, t, ui.cells) } as Item;
   };
-  const panelNow = tMode ? asCells(tItem!) : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : asCells(textItem)) : null;
-  const lastPanel = useRef<Item | null>(null);
+  const panelNow = holdText ? lastPanel.current : tMode ? asCells(tItem!) : panelOn && textItem ? typedCell ?? (heldCell && heldCell.id === textItem.id ? heldCell : asCells(textItem)) : null;
   const [, panelGone] = useState(0);
   if (panelNow) lastPanel.current = panelNow;
   useEffect(() => {

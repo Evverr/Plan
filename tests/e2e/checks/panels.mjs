@@ -24,6 +24,23 @@ export const checks = {
     }
   },
 
+  async 'a sticker typed in, another double-clicked: the text panel all the way, never its panel between; clicked once, its panel after a moment'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); b.add(e.newItem('sticky', 400, 300, { id: 's1', w: 160, h: 160, color: 'yellow', text: 'Один' })); b.add(e.newItem('sticky', 700, 300, { id: 's2', w: 160, h: 160, color: 'yellow', text: 'Два' })); e.setSelection([]); })()`);
+    await sleep(300);
+    const dbl = async (x, y) => { await p.mouse('mouseMoved', x, y); await p.mouse('mousePressed', x, y); await p.mouse('mouseReleased', x, y); await sleep(150); await p.mouse('mousePressed', x, y, 0, 2); await p.mouse('mouseReleased', x, y, 0, 2); };
+    await dbl(480, 380); await sleep(1000);
+    expect(await p.ev('planx.editor.editingId'), 'the first typed in').toBe('s1');
+    await p.ev(panelsRec);
+    await dbl(780, 380); await sleep(1300);
+    expect(await p.ev('planx.editor.editingId'), 'the second typed in').toBe('s2');
+    const seen = (await p.ev(panelsSeen)).replace(/@\d+/g, '');
+    expect(seen.split(' ').every((v) => v.startsWith('T')) ? 'T only' : seen, 'the text panel all the way').toBe('T only');
+    // (Clicked once, from typing: the text panel a moment, then its panel.)
+    await p.ev(panelsRec);
+    await p.click([480, 380]); await sleep(1300);
+    expect((await p.ev(panelsSeen)).replace(/@\d+/g, '').split(' ').pop(), 'clicked once: its panel in the end').toBe('P');
+  },
+
   async 'menus come in out of nothing, sliding 5.33px from where they open'(p) {
     // (Not with «Панели без сдвига» on, for now: only the fade then.)
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('stillPops', false))()`);
