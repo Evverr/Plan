@@ -4,7 +4,7 @@ import type { TextRun } from '../model/textLinks';
 import { FONTS, fontOf } from '../canvas/text';
 import { cellItem, cellRect, cellText, colsOf, rowsOf } from '../model/table';
 import { lightTheme } from './exportPng';
-import { CODE_IN, CODE_SIZE, DOC_LINE, docLines, LIST_IN, pagesOf, QUOTE_ALPHA, textArea, type DocLine } from './docPage';
+import { BOX_SIZE, CODE_IN, CODE_SIZE, DOC_LINE, DONE_ALPHA, docLines, LIST_IN, pagesOf, QUOTE_ALPHA, textArea, type DocLine } from './docPage';
 import { objectsIn, slotOf } from './docObjects';
 import { codeTokens } from './codeColors';
 import { labOn } from './labs';
@@ -59,13 +59,13 @@ function pageHtml(ed: Editor, it: Item, n: number, all: DocLine[]): string {
     }
     if (l.k === 'hr') { out.push(`<div style="position:absolute;left:${left}px;top:${Math.round(top + tall / 2)}px;width:${area.w}px;height:1px;background:${faint(ink, 0.2)}"></div>`); return; }
     const pe = text.indexOf('\n', l.s) < 0 ? text.length : text.indexOf('\n', l.s), done = runs.find((r) => r.l && r.s <= pe && r.e > pe)?.l === 'done';
-    const alpha = (it.to ?? 1) * (l.k === 'quote' ? QUOTE_ALPHA : 1) * (done ? 0.5 : 1);
+    const alpha = (it.to ?? 1) * (l.k === 'quote' ? QUOTE_ALPHA : 1) * (done ? DONE_ALPHA : 1);
     if (l.k === 'quote') out.push(`<div style="position:absolute;left:${left}px;top:${top}px;width:3px;height:${tall}px;background:${faint(ink, 0.2 * alpha)}"></div>`);
     const font = `font:${l.h ? 700 : st.weight ?? 400} ${l.size}px/${tall}px ${block ? fam('mono') : fam(st.family)}${st.italic ? ';font-style:italic' : ''}`;
     const markX = left + l.indent - LIST_IN + 4;
     if (l.mark) out.push(`<div style="position:absolute;left:${markX}px;top:${top}px;height:${tall}px;white-space:pre;${font};color:${ink};opacity:${alpha}">${esc(l.mark)}</div>`);
     if (l.box) {
-      const s = Math.round(l.size * 0.8), y = top + tall / 2 - s / 2;
+      const s = Math.round(l.size * BOX_SIZE), y = top + tall / 2 - s / 2;
       out.push(l.box === 'done'
         ? `<svg style="position:absolute;left:${markX}px;top:${y}px;opacity:${alpha}" width="${s}" height="${s}"><rect x="0.75" y="0.75" width="${s - 1.5}" height="${s - 1.5}" rx="4" fill="${ink}"/><path d="M${s * 0.27} ${s * 0.52}L${s * 0.43} ${s * 0.68}L${s * 0.73} ${s * 0.34}" stroke="#fff" stroke-width="${Math.max(1.5, s / 8)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`
         : `<svg style="position:absolute;left:${markX}px;top:${y}px;opacity:${alpha * 0.5}" width="${s}" height="${s}"><rect x="0.75" y="0.75" width="${s - 1.5}" height="${s - 1.5}" rx="4" fill="none" stroke="${ink}" stroke-width="1.5"/></svg>`);

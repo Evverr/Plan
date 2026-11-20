@@ -44,6 +44,8 @@ export const DOC_LINE = LINE_HEIGHT * 1.2;
 export const LIST_IN = 28;
 /** A quote's paragraphs: how far in (a bar down their left), and how faint against the rest. */
 export const QUOTE_IN = 20, QUOTE_ALPHA = 0.75;
+/** A checklist's box against its text's size, and how faint a ticked item's text (struck through) is. */
+export const BOX_SIZE = 0.9, DONE_ALPHA = 0.7;
 /** Code in a line («Markdown в документе»): its size against the text round it; a block of code's, the
  *  room inside its grey each side. */
 export const CODE_SIZE = 0.9, CODE_IN = 12;
@@ -228,7 +230,7 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
     }
     // A quote: a bar down its left, its text fainter; a ticked item of a checklist fainter still.
     const pe = paraEnd(text, l.s), done = runs.find((r) => r.l && r.s <= pe && r.e > pe)?.l === 'done';
-    const faint = (l.k === 'quote' ? QUOTE_ALPHA : 1) * (done ? 0.5 : 1);
+    const faint = (l.k === 'quote' ? QUOTE_ALPHA : 1) * (done ? DONE_ALPHA : 1);
     ctx.globalAlpha = alpha * faint;
     if (l.k === 'quote') {
       ctx.fillStyle = ink;
@@ -318,7 +320,7 @@ const paraEnd = (text: string, at: number) => { const n = text.indexOf('\n', at)
 
 /** A checklist's box, `size` the text's: its left at x, its middle at y; ticked, filled with a tick in it. */
 function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ticked: boolean, ink: string, paper: string): void {
-  const s = Math.round(size * 0.8), top = y - s / 2;
+  const s = Math.round(size * BOX_SIZE), top = y - s / 2;
   ctx.save();
   ctx.beginPath();
   ctx.roundRect(x + 0.75, top + 0.75, s - 1.5, s - 1.5, 4);
@@ -353,7 +355,7 @@ export function docBoxAt(items: Item[], w: Point): { it: Item; at: number } | nu
     const n = pageShown(it), area = textArea(it);
     for (const l of docLines(it)) {
       if (l.page !== n || !l.box) continue;
-      const x = it.x + area.x + l.indent - LIST_IN + 4, mid = it.y + area.y + l.y + l.size * DOC_LINE / 2, s = Math.round(l.size * 0.8);
+      const x = it.x + area.x + l.indent - LIST_IN + 4, mid = it.y + area.y + l.y + l.size * DOC_LINE / 2, s = Math.round(l.size * BOX_SIZE);
       // (Taken well round it, not aimed at: from the text's edge to its text's start, the line's height.)
       if (w.x >= x - 10 && w.x <= x + s + 8 && Math.abs(w.y - mid) <= (l.size * DOC_LINE) / 2) return { it, at: l.s };
     }
