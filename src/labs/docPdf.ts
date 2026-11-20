@@ -4,7 +4,7 @@ import type { TextLink, TextRun } from '../model/textLinks';
 import { font, fontOf, layoutText, type FontStyle } from '../canvas/text';
 import { cellItem, cellRect, cellText, colsOf, rowsOf } from '../model/table';
 import { lightTheme } from './exportPng';
-import { BOX_SIZE, BULLETS, CODE_IN, CODE_SIZE, DOC_LINE, docLines, DONE_ALPHA, LIST_IN, pagesOf, QUOTE_ALPHA, textArea, type DocLine } from './docPage';
+import { BOX_ON_ALPHA, BOX_SIZE, BULLETS, CODE_IN, CODE_SIZE, DOC_LINE, docLines, DONE_ALPHA, LIST_IN, pagesOf, QUOTE_ALPHA, textArea, type DocLine } from './docPage';
 import { objectsIn, slotOf } from './docObjects';
 import { codeTokens } from './codeColors';
 import { labOn } from './labs';
@@ -181,7 +181,7 @@ function box(pg: Page, x: number, mid: number, size: number, ticked: boolean, in
   const s = Math.round(size * BOX_SIZE), top = mid - s / 2;
   if (!ticked) { pg.stroke(roundRect(x + 0.75, top + 0.75, s - 1.5, s - 1.5, 4), ink, 1.5, alpha * 0.5); return; }
   const b = s + 2, bx = x - 1, by = top - 1;
-  pg.rect(bx, by, b, b, on, alpha, 5);
+  pg.rect(bx, by, b, b, on, alpha * BOX_ON_ALPHA, 5);
   pg.stroke(`${n2(bx + b * 0.27)} ${n2(by + b * 0.52)} m ${n2(bx + b * 0.43)} ${n2(by + b * 0.68)} l ${n2(bx + b * 0.73)} ${n2(by + b * 0.34)} l`, '#ffffff', Math.max(1.5, b / 8), alpha);
 }
 

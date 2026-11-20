@@ -313,9 +313,9 @@
   top: calc((1lh - .9em) / 2); border: 1.5px solid color-mix(in srgb, currentColor 50%, transparent); border-radius: 4px; cursor: pointer; }
 /* (Its text faint, not its box: the colour it's in at 70%.) */
 .rich-edit > div[data-l="done"] { color: color-mix(in srgb, currentColor 70%, transparent); text-decoration: line-through; }
-/* (Ticked: a pixel bigger each side, in the blue of the tool picked on the rail, a white tick in it.) */
+/* (Ticked: a pixel bigger each side, in the blue of a picked item's frame (BOX_ON_ALPHA), a white tick in it.) */
 .rich-edit > div[data-l="done"]::before { border: 0; border-radius: 5px; width: calc(.9em + 2px); height: calc(.9em + 2px); margin-left: -1px; top: calc((1lh - .9em) / 2 - 1px);
-  background: var(--fmt-on-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.7 5.2l1.6 1.6 3-3.4' fill='none' stroke='white' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat; }
+  background: color-mix(in srgb, var(--fmt-on-ink) 80%, transparent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.7 5.2l1.6 1.6 3-3.4' fill='none' stroke='white' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat; }
 /* A quote: 20 in (QUOTE_IN), a bar down its left, its text fainter; a list in it, its marker past the bar. */
 .rich-edit > div[data-k="quote"] { padding-left: 20px; opacity: .75; box-shadow: inset 3px 0 0 color-mix(in srgb, currentColor 20%, transparent); }
 .rich-edit > div[data-k="quote"][data-l] { padding-left: 48px; }

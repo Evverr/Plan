@@ -46,6 +46,8 @@ export const LIST_IN = 28;
 export const QUOTE_IN = 20, QUOTE_ALPHA = 0.75;
 /** A checklist's box against its text's size, and how faint a ticked item's text (struck through) is. */
 export const BOX_SIZE = 0.9, DONE_ALPHA = 0.7;
+/** A ticked box's blue as opaque as a picked item's frame is (PICK_FRAME in canvas/renderer.ts): that blue. */
+export const BOX_ON_ALPHA = 0.8;
 /** Code in a line («Markdown в документе»): its size against the text round it; a block of code's, the
  *  room inside its grey each side. */
 export const CODE_SIZE = 0.9, CODE_IN = 12;
@@ -329,7 +331,9 @@ function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: numb
     const b = s + 2, bx = x - 1, by = top - 1;
     ctx.roundRect(bx, by, b, b, 5);
     ctx.fillStyle = on;
+    ctx.globalAlpha *= BOX_ON_ALPHA;
     ctx.fill();
+    ctx.globalAlpha /= BOX_ON_ALPHA;
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = Math.max(1.5, b / 8);
     ctx.lineCap = 'round';
