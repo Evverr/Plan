@@ -140,9 +140,10 @@ export function docDropAt(board: Board, it: Item): { doc: Item; after: number; x
  *  drawn on the board, but its header row in a grey of its own (not the light blue): 'doc', #EEF0F7 in the
  *  light theme, #282D38 in the dark (--doc-head, styles/theme.css). One dragged in keeps its own look. */
 export const DOC_TABLE_HEAD = 'doc';
+/** (Its lines twice as dark as a board table's, 16% and 8%: on paper, a PDF of it, they'd be hardly seen.) */
 export const docTableLook = (n: number): Partial<Item> => {
   const look = tableLook(n);
-  return { ...look, cellFmt: look.cellFmt?.map((f) => (f ? { ...f, bg: DOC_TABLE_HEAD, bgo: 1 } : f)) };
+  return { ...look, so: (look.so ?? 0.08) * 2, vo: (look.vo ?? 0.04) * 2, cellFmt: look.cellFmt?.map((f) => (f ? { ...f, bg: DOC_TABLE_HEAD, bgo: 1 } : f)) };
 };
 
 /** A table fitted to a sheet: as wide as its text at most, as tall as a page (see inDocLimit). */
