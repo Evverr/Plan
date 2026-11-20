@@ -331,6 +331,38 @@ function ensureFont(f: string) {
   if (!document.fonts.check(f)) void document.fonts.load(f);
 }
 
+/** «Документ»: how big its letters come out on the screen (px) before it's drawn as its skeleton, faint bars
+ *  where its lines are; the tables in it the same. */
+const DOC_SKELETON = 4;
+
+/** A table's cell in a document zoomed out past its letters: its lines as faint bars, as the document's are
+ *  (drawDocSkeleton), as long as their text comes to, where they'd be (a header's a little longer, bold). */
+function drawCellSkeleton(ctx: CanvasRenderingContext2D, it: Item, pad: number, color: string, _shrink: boolean, _s: Scene, padY = pad) {
+  const text = it.text ?? '';
+  if (!text.trim()) return;
+  const size = it.fs ?? 16, st = fontOf(it), bold = (st.weight ?? 400) >= 600, align = alignOf(it);
+  const w = it.w - pad * 2, h = it.h - padY * 2;
+  const l = cachedLayout(ctx, `${it.type}|${w}|${h}|${size}|${st.weight}|${st.family}|${st.italic}|${text}`, text, w, h, size, st);
+  const total = l.lines.length * l.lineHeight, bar = l.size * 0.62;
+  let y = it.va === 'top' ? it.y + padY : it.va === 'bottom' ? it.y + it.h - padY - total : it.y + it.h / 2 - total / 2;
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = bar;
+  ctx.globalAlpha = (it.to ?? 1) * 0.1;
+  for (const line of l.lines) {
+    const lw = Math.min(w, line.length * l.size * (bold ? 0.58 : 0.5)), x = it.x + pad + (align === 'center' ? (w - lw) / 2 : align === 'right' ? w - lw : 0), mid = y + l.lineHeight / 2;
+    if (line.trim()) {
+      ctx.beginPath();
+      ctx.moveTo(x + bar / 2, mid);
+      ctx.lineTo(Math.max(x + bar / 2, x + lw - bar / 2), mid);
+      ctx.stroke();
+    }
+    y += l.lineHeight;
+  }
+  ctx.restore();
+}
+
 /** An item's text with its font, colour, highlight, underline, strikethrough, alignment and list.
  *  `shrink` is for stickers and shapes: the text is centred vertically and shrinks to fit the box. */
 function drawText(ctx: CanvasRenderingContext2D, it: Item, pad: number, color: string, shrink: boolean, s: Scene, padY = pad) {
@@ -723,7 +755,7 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       // (Being typed in: its pages as they come, «Документ».)
       const of = pagerCount(it), n = pageShown(it, of);
       // (Its letters while they come out 4 px at least, 25% at its usual size; smaller, its skeleton.)
-      if (!editing && (it.fs ?? 16) * s.cam.z >= 4) {
+      if (!editing && (it.fs ?? 16) * s.cam.z >= DOC_SKELETON) {
         drawDocPage(ctx, it, n, {
           ink: theme.ink, paper: theme.surface, link: shade(LINK_INK, theme.dim), onLink: it.rot ? undefined : (r) => textLinkRects.push(r),
           tint: (c) => shade(c.startsWith('#') ? c : TEXT_COLORS[c] || theme.ink, theme.dim),
@@ -1152,11 +1184,14 @@ function drawTable(ctx: CanvasRenderingContext2D, it: Item, s: Scene, editingCel
       ctx.strokeRect(r.x + inset, r.y + inset, r.w - inset * 2, r.h - inset * 2);
     }
   }
-  const n = colsOf(it).length * rowsOf(it).length;
+  const n = colsOf(it).length * rowsOf(it).length, doc = it.inDoc ? s.get(it.inDoc) : undefined;
+  // (Past its document's letters, as the page case has them: see DOC_SKELETON.)
+  const skeleton = !!doc && (doc.fs ?? 16) * cam.z < DOC_SKELETON;
   for (let i = 0; i < n; i++) {
     const text = cellText(it, i);
     // (Its Markdown drawn as what it marks, «Markdown полностью»: typed in as it is.)
-    if (text && i !== editingCell) drawText(ctx, mdCell(cellItem(it, i)), textPad(it), theme.ink, true, s, textPadY(it));
+    // (In a document zoomed out past its letters, as its text then: faint bars, «Таблица в документе».)
+    if (text && i !== editingCell) (skeleton ? drawCellSkeleton : drawText)(ctx, mdCell(cellItem(it, i)), textPad(it), theme.ink, true, s, textPadY(it));
   }
   ctx.restore();
   // The outer edge, whole, over the clip.
