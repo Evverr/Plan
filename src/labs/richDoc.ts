@@ -1,7 +1,7 @@
 import { TEXT_COLORS, type Item } from '../model/types';
 import { headingAt, paraAt, setHeading, setPara, setRun, type RunStyle, type TextRun } from '../model/textLinks';
 import { FONTS } from '../canvas/text';
-import { CODE_SIZE, docObjectIn, HEADING_GAP, HEADING_SIZE, headingUnder, LIST_DEPTH, OBJ_GAP } from './docPage';
+import { CODE_SIZE, docObjectIn, HEADING_SIZE, headingOver, headingUnder, LIST_DEPTH, OBJ_GAP } from './docPage';
 import { objectPicture } from './docObjects';
 import { codeTokens } from './codeColors';
 import { labOn } from './labs';
@@ -29,7 +29,7 @@ export function headingStyle(level: number, fs: number, first: boolean, own?: nu
   const size = own ?? Math.round(fs * HEADING_SIZE[level]), a = align ? `text-align:${align}` : '';
   // (And the room under it, «Markdown полностью»: what follows not stuck to it.)
   const under = level ? headingUnder(size) : 0;
-  return [level ? `font-size:${size}px;font-weight:700;margin-top:${first ? 0 : Math.round(size * HEADING_GAP)}px${under ? `;margin-bottom:${under}px` : ''}` : own ? `font-size:${own}px` : '', a].filter(Boolean).join(';');
+  return [level ? `font-size:${size}px;font-weight:700;margin-top:${first ? 0 : headingOver(size)}px${under ? `;margin-bottom:${under}px` : ''}` : own ? `font-size:${own}px` : '', a].filter(Boolean).join(';');
 }
 
 /** Its text as the field's HTML: a <div> a paragraph (data-h its level), a <span> a styled piece. */

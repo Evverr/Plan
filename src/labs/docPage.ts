@@ -35,6 +35,8 @@ export const HEADING_SIZE = [1, 1.75, 1.375, 1.125, 1, 0.875, 0.75], HEADING_GAP
 export const HEADING_UNDER = 0.4;
 /** The room under a heading at `size`, if any (with «Markdown полностью» on). */
 export const headingUnder = (size: number): number => (labOn('mdFull') ? Math.round(size * HEADING_UNDER) : 0);
+/** The room over a heading at `size` that isn't a page's first (with «Markdown полностью» on, 1.4 times as much). */
+export const headingOver = (size: number): number => Math.round(size * HEADING_GAP * (labOn('mdFull') ? 1.4 : 1));
 /** Its lines 20% further apart than text elsewhere on the board. */
 export const DOC_LINE = LINE_HEIGHT * 1.2;
 
@@ -114,7 +116,7 @@ export function docLines(it: Item): DocLine[] {
   // (The room under the paragraph before, a heading's: over this one, as much as its own over it, not both.)
   let under = 0, carry = 0;
   const put = (s: number, e: number, size: number, h: number, first: boolean, obj?: Item) => {
-    const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = first && y > 0 ? Math.max(h ? size * HEADING_GAP : 0, under) : 0;
+    const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = first && y > 0 ? Math.max(h ? headingOver(size) : 0, under) : 0;
     // (A pixel's grace: a table stretched to the page's bottom, its rows rounded a little over, kept there.)
     if (y + gap + tall > area.h + 1 && y > 0) { page++; y = 0; }
     else y += gap;
