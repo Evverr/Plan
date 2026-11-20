@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "e2e": "node tests/e2e/run.mjs",
-    "icons": "python3 scripts/gen_icons.py"
+    "icons": "python3 scripts/gen_icons.py",
+    "pack": "npm run build && node scripts/pack.mjs"
   },
   "dependencies": {
     "docx-preview": "0.3.7",
