@@ -69,6 +69,8 @@ const PLUS_DELAY = 330, PLUS_FADE = 300;
 const CLIP_KEY = 'planx-clipboard';
 /** Whether "the instance differs from its component" isn't to be said any more. */
 const DIFFERS_KEY = 'planx-no-differs-note';
+/** «Правка главного компонента»: its note not to be shown again (see warnComponent). */
+const MAIN_COMP_KEY = 'planx-no-main-comp-note';
 
 /** What the editor needs from the collaboration layer. Optional, so the editor also runs alone. */
 export interface Presence {
@@ -479,6 +481,8 @@ export class Editor {
       if (tr.origin === LOCAL || tr.origin === this.board.undoManager) queueMicrotask(() => tidyTies(this.board));
       // A table put in a document's text where its room there is («Таблица в документе», src/labs), not while something's dragged.
       if ((tr.origin === LOCAL || tr.origin === this.board.undoManager) && !this.gesture) queueMicrotask(() => tidyDocObjects(this.board));
+      // A main component changed here as it is, not brought out to be changed: said so once («Правка главного компонента», src/labs).
+      if (tr.origin === LOCAL) queueMicrotask(() => this.warnComponent());
     };
     doc.on('afterTransaction', tidy);
     offs.push(() => doc.off('afterTransaction', tidy));
@@ -555,6 +559,37 @@ export class Editor {
   private pickedComponent(out: Item[]): Item | undefined {
     if (!this.selection.size) return undefined;
     return out.find((c) => { const held = this.carried([c]); return [...this.selection].some((id) => held.has(id)); });
+  }
+
+  /** «Правка главного компонента» (src/labs): a component picked (or something in it) on the board as it is,
+   *  not brought out to be changed in an instance's place, with instances of it: how it and all it holds
+   *  looked when picked (where they are against it, not on the board: moved, it's the same), to tell when
+   *  it's changed. */
+  private compSeen: { id: string; sig: string; said: boolean } | null = null;
+  private mainComponent(): Item | undefined {
+    if (!labOn('compWarn')) return undefined;
+    const c = this.pickedComponent(this.board.list().filter((i) => i.comp && !i.stowed));
+    return c && !c.standsIn && this.board.list().some((i) => i.inst === c.id) ? c : undefined;
+  }
+  private compSig(c: Item): string {
+    return JSON.stringify([...this.carried([c]).keys()].sort().map((id) => { const it = this.board.get(id); return it && { ...it, x: it.x - c.x, y: it.y - c.y, z: undefined }; }));
+  }
+  /** Picked: how it looks now. */
+  private noteComponent(): void {
+    const c = this.mainComponent();
+    this.compSeen = c ? { id: c.id, sig: this.compSig(c), said: false } : null;
+  }
+  /** Changed here, the first time since it was picked: said that all its instances change with it (as if it
+   *  were changed brought out in an instance's place). */
+  private warnComponent(): void {
+    const seen = this.compSeen, c = seen && !seen.said && !this.gesture ? this.mainComponent() : undefined;
+    if (!seen || !c || c.id !== seen.id || this.compSig(c) === seen.sig || readJSON<boolean>(MAIN_COMP_KEY)) return;
+    seen.said = true;
+    const n = this.board.list().filter((i) => i.inst === c.id).length;
+    window.dispatchEvent(new CustomEvent('planx:confirm', { detail: {
+      text: `Это главный компонент: изменения затронут все его экземпляры (${n}).`, action: 'Понятно', only: true,
+      check: 'Больше не выводить это предупреждение', ok: (_: string, never: boolean) => { if (never) writeJSON(MAIN_COMP_KEY, true); },
+    } }));
   }
 
   /** A click off the component being changed here: done with it, as by its tick; what the click picked stays picked. */
@@ -1137,6 +1172,8 @@ export class Editor {
     const here = this.pickedComponent(this.board.list().filter((c) => c.comp && !c.stowed));
     if (here) this.compHere = here.id;
     else if (this.compHere && this.board.get(this.compHere)?.stowed !== undefined) this.compHere = null;
+    // («Правка главного компонента»: a main component picked anew, how it looks now, see warnComponent.)
+    if (!was1 || this.compSeen?.id !== this.mainComponent()?.id) this.noteComponent();
     if (this.cells.length && (this.selection.size !== 1 || !this.selection.has(was[0]))) { this.cells = []; this.cellAnchor = null; }
     this.presence?.setSelection([...this.selection]);
     // An open task picked no more (a click elsewhere, Esc) closes, unless it's to stay open.

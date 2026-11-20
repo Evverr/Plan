@@ -25,6 +25,35 @@ const glyph = (p, at) => p.ev(`(() => { const e = planx.editor; e.render(); cons
 const twoStickers = `(() => { const e = planx.editor, b = planx.board; const a = e.newItem('sticky', 100, 100, { w: 160, h: 160, color: 'yellow', text: 'A' }), c = e.newItem('sticky', 300, 100, { w: 160, h: 160, color: 'yellow', text: 'B' }); b.add(a); b.add(c); return [a.id, c.id]; })()`;
 
 export const checks = {
+  async '"Правка главного компонента": the main component picked as it is and changed: a note that all its instances change, once; moved, none; brought out to be changed, none'(p) {
+    await fixture(p);
+    const note = () => p.ev(`document.querySelector('.confirm p')?.textContent ?? null`);
+    await p.ev(`(() => { const e = planx.editor, c = planx.board.get('source'); e.cam = { x: 600 - c.x - 175, y: 300 - c.y - 100, z: 1 }; e.camChanged(); e.setSelection(['source']); })()`);
+    await sleep(200);
+    // Moved: nothing changes in its instances, no note.
+    await p.ev(`planx.board.transact(() => { for (const id of ['source', 'a', 'b']) planx.board.update(id, { x: planx.board.get(id).x + 30 }); })`);
+    await sleep(200);
+    expect(await note(), 'moved: no note').toBe(null);
+    // Something in it changed (its colour, by the panel's colours).
+    await p.ev(`planx.editor.setSelection(['a'])`);
+    await sleep(100);
+    await p.ev(`planx.board.update('a', { color: 'green' })`);
+    await sleep(300);
+    expect(await note(), 'changed: the note').toBe('Это главный компонент: изменения затронут все его экземпляры (1).');
+    expect(await p.ev(`planx.board.list().find((i) => i.host === 'instance' && i.id.endsWith('~a'))?.color`), 'its instance changed with it').toBe('green');
+    await p.click(await p.at('.confirm .btn.primary'));
+    await sleep(200);
+    await p.ev(`planx.board.update('a', { color: 'pink' })`);
+    await sleep(300);
+    expect(await note(), 'changed again, still picked: no note again').toBe(null);
+    // Brought out to be changed in its instance's place: no note.
+    await p.ev(`planx.editor.setSelection([]); planx.editor.editComponentAt('instance')`);
+    await sleep(500);
+    await p.ev(`planx.editor.setSelection(['a']); planx.board.update('a', { color: 'blue' })`);
+    await sleep(300);
+    expect(await note(), 'brought out to be changed: no note').toBe(null);
+  },
+
   async 'a group made a component: no group then, a component round it; F with a group picked: nothing'(p) {
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('groups', true))()`);
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('frameAround', true))()`);
