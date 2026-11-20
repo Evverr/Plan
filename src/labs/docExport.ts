@@ -9,6 +9,7 @@ import { docObject, pagesOf, showPage } from './docPage';
 import { objectsIn, slotOf } from './docObjects';
 import { cellText, colsOf, rowsOf } from '../model/table';
 import { labOn } from './labs';
+import { printDoc } from './docPrint';
 
 /**
  * «Документ» (docPage.ts) saved as a file: Markdown (its styles as Markdown has them: bold **, italic *,
@@ -104,6 +105,8 @@ export function saveMarkdown(ed: Editor, it: Item): void {
 
 /** Saves it as a PDF, a page of A4 for each of its pages, at twice the board's size for sharpness. */
 export async function savePdf(ed: Editor, it: Item): Promise<void> {
+  // («PDF с текстом», src/labs: by the browser's printing, its text real text in it, not pictures of its pages.)
+  if (labOn('pdfText')) { await printDoc(ed, it, titleOf(it)); return; }
   const scale = 2, pages = pagesOf(it), out: Array<{ jpeg: Uint8Array; w: number; h: number }> = [];
   // (A long one takes a while: how far it's got said at the top, every few pages.)
   const say = (text: string) => window.dispatchEvent(new CustomEvent('planx:say', { detail: { text } }));
