@@ -8,6 +8,7 @@ import { objectsIn } from './docObjects';
 import { newTable, tableLook } from '../model/table';
 import { cleanPaste, cssColor, fromDom, fromMarkdown, headingStyle, looksLikeMarkdown, toHtml } from './richDoc';
 import { labOn } from './labs';
+import { placeMdTables } from './mdFull';
 
 /**
  * «Документ» typed in as it looks: a field the browser edits laid over the sheet's text (scaled with the
@@ -388,13 +389,17 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
     done.current = true;
     // (The line put over it or under it for a double click there, left empty: not kept.)
     if (added.current?.isConnected && !added.current.textContent && el.children.length > 1) added.current.remove();
-    const { text, rs } = fromDom(el, getComputedStyle(el).color);
+    const { text, rs, urls } = fromDom(el, getComputedStyle(el).color);
     // (A table put in it whose place was taken out as it was typed in: gone with it, «Таблица в документе».)
     const was = editor.board.get(id), kept = new Set((rs ?? []).filter((r) => r.o).map((r) => r.o));
-    const gone = was ? objectsIn(was).filter((o) => !kept.has(o)) : [];
+    // (And one pasted in it, Markdown's, whose place went before it was kept.)
+    const gone = was ? [...new Set([...objectsIn(was), ...editor.board.list().filter((i) => i.inDoc === id).map((i) => i.id)])].filter((o) => !kept.has(o)) : [];
     // (Its links moved with what was typed before them, as its styles are: commitText's own remapping
-    // finds the text changed already.)
-    editor.board.update(id, { text, rs, ...(was?.links && { links: remapLinks(was.text ?? '', text, was.links) }) });
+    // finds the text changed already. And those pasted with their addresses, «Markdown полностью».)
+    const moved = was?.links ? remapLinks(was.text ?? '', text, was.links) : undefined;
+    const pasted = urls.filter((u) => !moved?.some((k) => k.s < u.e && k.e > u.s));
+    const links = pasted.length ? [...(moved ?? []), ...pasted] : moved;
+    editor.board.update(id, { text, rs, ...(links && { links }) });
     if (gone.length) editor.board.remove(gone);
     editor.commitText(id, text);
   };
@@ -624,7 +629,13 @@ export function RichEditor({ editor, item }: { editor: Editor; item: Item }) {
         const asIs = plain.current, html = asIs ? '' : e.clipboardData.getData('text/html'), plainText = e.clipboardData.getData('text/plain');
         plain.current = false;
         // (Plain text written in Markdown, «Markdown в документе»: as what it marks, a heading, a list…)
-        const md = !asIs && !html && labOn('docMd') && looksLikeMarkdown(plainText) ? toHtml({ ...fromMarkdown(plainText), fs } as Item) : '';
+        // («Markdown полностью»: its tables ours, put in it, its links kept as links.)
+        let md = '';
+        if (!asIs && !html && labOn('docMd') && looksLikeMarkdown(plainText)) {
+          const parsed = fromMarkdown(plainText), doc = editor.board.get(id);
+          const t = parsed.tables?.length && doc ? placeMdTables(editor, { ...doc, text: parsed.text, rs: parsed.rs, links: parsed.links }, parsed.tables) : parsed;
+          md = toHtml({ id, text: t.text, rs: t.rs, links: t.links, fs } as Item, true);
+        }
         const clean = md || (html && cleanPaste(html, fs)), tpl = document.createElement('div');
         tpl.innerHTML = clean || '';
         const blocks = [...tpl.children] as HTMLElement[];

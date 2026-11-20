@@ -1,8 +1,13 @@
 import { TEXT_COLORS, type Item } from '../model/types';
 import { headingAt, paraAt, setHeading, setPara, setRun, type RunStyle, type TextRun } from '../model/textLinks';
 import { FONTS } from '../canvas/text';
-import { CODE_SIZE, docObjectIn, HEADING_GAP, HEADING_SIZE, LIST_DEPTH, OBJ_GAP } from './docPage';
+import { CODE_SIZE, docObjectIn, HEADING_GAP, HEADING_SIZE, headingUnder, LIST_DEPTH, OBJ_GAP } from './docPage';
 import { objectPicture } from './docObjects';
+import { codeTokens } from './codeColors';
+import { labOn } from './labs';
+import { tableAt, tableKey, type MdTable } from './mdFull';
+import { inline, type Mark } from './mdInline';
+import type { TextLink } from '../model/textLinks';
 
 /**
  * «Документ» typed in as it looks (RichEditor.tsx): its text and the styles on its parts (model/textLinks.ts)
@@ -22,17 +27,20 @@ export const CODE_CSS = `font-family:${FONTS.mono.css.replace(/"/g, "'")};font-s
 export function headingStyle(level: number, fs: number, first: boolean, own?: number, align?: string): string {
   // (Its own size of text, set for it alone, over its level's; its own alignment.)
   const size = own ?? Math.round(fs * HEADING_SIZE[level]), a = align ? `text-align:${align}` : '';
-  return [level ? `font-size:${size}px;font-weight:700;margin-top:${first ? 0 : Math.round(size * HEADING_GAP)}px` : own ? `font-size:${own}px` : '', a].filter(Boolean).join(';');
+  // (And the room under it, «Markdown полностью»: what follows not stuck to it.)
+  const under = level ? headingUnder(size) : 0;
+  return [level ? `font-size:${size}px;font-weight:700;margin-top:${first ? 0 : Math.round(size * HEADING_GAP)}px${under ? `;margin-bottom:${under}px` : ''}` : own ? `font-size:${own}px` : '', a].filter(Boolean).join(';');
 }
 
 /** Its text as the field's HTML: a <div> a paragraph (data-h its level), a <span> a styled piece. */
-export function toHtml(it: Item): string {
+/** (`urls`: its links with their addresses on them, pasted Markdown's, to be kept as links: see fromDom.) */
+export function toHtml(it: Item, urls = false): string {
   const text = it.text ?? '', runs = (it.rs ?? []) as TextRun[], fs = it.fs ?? 16;
   let at = 0;
   // (A table's place where it's first in the text: any other paragraph with it, an empty one.)
   const placed = new Set<string>();
   return text.split('\n').map((para, n) => {
-    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a'), k = paraAt(text, runs, s0, 'k'), d = paraAt(text, runs, s0, 'd');
+    const s0 = at, h = headingAt(text, runs, s0), l = paraAt(text, runs, s0, 'l'), z = paraAt(text, runs, s0, 'z'), a = paraAt(text, runs, s0, 'a'), k = paraAt(text, runs, s0, 'k'), d = paraAt(text, runs, s0, 'd'), g = paraAt(text, runs, s0, 'g');
     at += para.length + 1;
     // A table put in its place («Таблица в документе»): as tall as its room on the sheet, a picture of it
     // there, not typed in (taken out whole, as a letter is).
@@ -44,17 +52,20 @@ export function toHtml(it: Item): string {
     }
     // (Its links blue in it, as on the sheet: marked, their colour not taken for one of the text's.)
     const links = it.links ?? [];
-    const cuts = [...new Set([0, para.length, ...[...runs, ...links].flatMap((r) => [r.s - s0, r.e - s0]).filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
+    // (A line of code coloured by what's in it, «Markdown полностью», as on the sheet: marked, not kept.)
+    const tokens = k === 'code' && labOn('mdFull') ? codeTokens(para) : [];
+    const cuts = [...new Set([0, para.length, ...[...[...runs, ...links].flatMap((r) => [r.s - s0, r.e - s0]), ...tokens.flatMap((t) => [t.s, t.e])].filter((c) => c > 0 && c < para.length)])].sort((a, b) => a - b);
     const inner = k === 'hr' ? '' : cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => !k.h && k.s <= s0 + c && k.e >= s0 + e).reduce((m, k) => ({ ...m, ...k }), {} as RunStyle);
-      const link = links.some((l) => l.s <= s0 + c && l.e >= s0 + e);
+      const link = links.find((l) => l.s <= s0 + c && l.e >= s0 + e), hl = !r.c && !link ? tokens.find((t) => t.s <= c && t.e >= e)?.c : undefined;
       const css = [r.b && 'font-weight:700', r.i && 'font-style:italic', (r.u || r.x) && `text-decoration:${[r.u && 'underline', r.x && 'line-through'].filter(Boolean).join(' ')}`,
-        link ? `color:${TEXT_COLORS.blue}` : r.c && `color:${cssColor(r.c)}`, r.m && k !== 'code' && CODE_CSS].filter(Boolean).join(';');
+        link ? `color:${TEXT_COLORS.blue}` : r.c ? `color:${cssColor(r.c)}` : hl && `color:${cssColor(hl)}`, r.m && k !== 'code' && CODE_CSS].filter(Boolean).join(';');
       const t = esc(para.slice(c, e)), code = r.m && k !== 'code';
       // (Code marked so as well as by its look: a document all in the monospaced font has it too.)
-      return css ? `<span${code ? ' data-code=""' : ''}${link ? ' data-link=""' : ''}${link && r.c ? ` data-c="${esc(r.c)}"` : ''} style="${css}">${t}</span>` : t;
+      // (A link with its address, for it to be kept as one when pasted.)
+      return css ? `<span${code ? ' data-code=""' : ''}${link ? ` data-link=""${urls ? ` data-url="${esc(link.url).replace(/"/g, '&quot;')}"` : ''}` : ''}${link && r.c ? ` data-c="${esc(r.c)}"` : ''}${hl ? ' data-hl=""' : ''} style="${css}">${t}</span>` : t;
     }).join('');
-    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''}${k ? ` data-k="${k}"` : ''}${d ? ` data-d="${d}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
+    return `<div data-h="${h}"${l ? ` data-l="${l}"` : ''}${z ? ` data-z="${z}"` : ''}${a ? ` data-a="${a}"` : ''}${k ? ` data-k="${k}"` : ''}${d ? ` data-d="${d}"` : ''}${g ? ` data-g="${esc(g)}"` : ''} style="${headingStyle(h, fs, n === 0, z, a)}">${inner || '<br>'}</div>`;
   }).join('');
 }
 
@@ -151,9 +162,12 @@ function colorKey(css: string): string {
 }
 
 /** The text and its styles as the field has them now: `ink` the text's own colour (no colour of its own). */
-export function fromDom(root: HTMLElement, ink: string): { text: string; rs: TextRun[] | undefined } {
+export function fromDom(root: HTMLElement, ink: string): { text: string; rs: TextRun[] | undefined; urls: TextLink[] } {
   let text = '';
-  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [], kinds: Array<[number, string]> = [], depths: Array<[number, number]> = [], objs: Array<[number, string]> = [];
+  // (The links shown with their addresses, «Markdown полностью»: where they are now, one after another of
+  // the same address one.)
+  const urls: TextLink[] = [];
+  const marks: Array<{ s: number; e: number; st: RunStyle }> = [], heads: Array<[number, number]> = [], lists: Array<[number, string]> = [], sizes: Array<[number, number]> = [], aligns: Array<[number, string]> = [], kinds: Array<[number, string]> = [], depths: Array<[number, number]> = [], objs: Array<[number, string]> = [], langs: Array<[number, string]> = [];
   const own = colorKey(ink);
   /** The look of a piece of text by the element it's in, up to its paragraph. */
   const look = (el: Element, para: Element, heading: boolean): RunStyle => {
@@ -171,7 +185,9 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     }
     // (A link's blue its own, not the text's: the colour it had under it kept, if any.)
     const link = el.closest('[data-link]') as HTMLElement | null;
-    const c = link && para.contains(link) ? link.dataset.c : colorKey(cs.color);
+    // (Nor code's colours, «Markdown полностью»: they're drawn by what's in it, not kept.)
+    const hl = el.closest('[data-hl]');
+    const c = link && para.contains(link) ? link.dataset.c : hl && para.contains(hl) ? undefined : colorKey(cs.color);
     if (c && c !== own) st.c = c;
     return st;
   };
@@ -194,6 +210,9 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
         if (!bare) return;
         const st = look(node.parentElement ?? para, para, h > 0);
         if (Object.keys(st).length) marks.push({ s: text.length, e: text.length + bare.length, st });
+        const url = (node.parentElement?.closest('[data-url]') as HTMLElement | null)?.dataset.url, last = urls[urls.length - 1];
+        if (url && last?.url === url && last.e === text.length) last.e += bare.length;
+        else if (url) urls.push({ s: text.length, e: text.length + bare.length, url });
         text += bare;
       } else if (node.nodeName === 'BR') {
         // A line break inside a paragraph (Shift+Enter): a paragraph of its own; one at its end, nothing.
@@ -211,6 +230,8 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
     if (k === 'quote' || k === 'hr' || k === 'code') kinds.push([start, k]);
     const d = Number((para as HTMLElement).dataset.d) || 0;
     if (d) depths.push([start, d]);
+    const g = (para as HTMLElement).dataset.g;
+    if (g && k === 'code') langs.push([start, g]);
     const o = (para as HTMLElement).dataset.o;
     if (o && !objs.some(([, x]) => x === o)) objs.push([start, o]);
     const z = Number((para as HTMLElement).dataset.z) || 0;
@@ -226,62 +247,61 @@ export function fromDom(root: HTMLElement, ink: string): { text: string; rs: Tex
   for (const [at, a] of aligns) rs = setPara(text, rs, at, at, 'a', a);
   for (const [at, k] of kinds) rs = setPara(text, rs, at, at, 'k', k);
   for (const [at, d] of depths) rs = setPara(text, rs, at, at, 'd', d);
+  for (const [at, g] of langs) rs = setPara(text, rs, at, at, 'g', g);
   for (const [at, o] of objs) rs = setPara(text, rs, at, at, 'o', o);
-  return { text, rs };
+  return { text, rs, urls };
 }
 
 /** Whether plain text pasted is written in Markdown («Markdown в документе»): a heading, a list, a quote, a
  *  block of code or a divider on a line of its own, or bold or code in a line. */
 export function looksLikeMarkdown(text: string): boolean {
-  return /^(#{1,6}\s|>\s?|\s*[-*+]\s|\s*\d+[.)]\s|\s*```|(-{3,}|\*{3,}|_{3,})\s*$)/m.test(text) || /\*\*[^*\n]+\*\*|`[^`\n]+`/.test(text);
+  return /^(#{1,6}\s|>\s?|\s*[-*+]\s|\s*\d+[.)]\s|\s*```|(-{3,}|\*{3,}|_{3,})\s*$)/m.test(text) || /\*\*[^*\n]+\*\*|`[^`\n]+`/.test(text)
+    // (A table, or a link with its address, «Markdown полностью».)
+    || (labOn('mdFull') && (/^\s*\|?.*\|.*\n\s*\|?\s*:?-+:?\s*\|/m.test(text) || /\[[^\]\n]+\]\([^)\s]+\)/.test(text)));
 }
 
 /** Text in Markdown as a document's: its paragraphs, each a heading (#…######), a list's item (-, *, +,
  *  1.; deeper as it's further in), a checklist's ([ ], [x]), a quote (>), a line of a block of code
  *  (between ```s), a divider (---); in them bold (**…**, __…__), italic (*…*, _…_), struck through (~~…~~)
  *  and code (`…`), a link's text alone ([…](…)). */
-export function fromMarkdown(md: string): { text: string; rs: TextRun[] | undefined } {
+export function fromMarkdown(md: string): { text: string; rs: TextRun[] | undefined; links?: TextLink[]; tables?: MdTable[] } {
+  // («Markdown полностью»: its links kept as links, its tables made tables, see mdFull.ts.)
+  const full = labOn('mdFull');
   const lines = md.replace(/\r/g, '').replace(/\n+$/, '').split('\n');
   // (How far in a list in a list goes: the least any item's in.)
   const ins = lines.map((l) => /^(\s+)(?:[-*+]|\d+[.)])\s/.exec(l)?.[1].replace(/\t/g, '    ').length ?? 0).filter((n) => n > 0);
   const unit = ins.length ? Math.min(...ins) : 2;
-  const paras: Array<{ t: string; keys: Partial<Record<'h' | 'l' | 'k' | 'd', string | number>>; marks: Array<{ s: number; e: number; key: keyof RunStyle }> }> = [];
-  let code = false;
-  for (const raw of lines) {
-    if (/^\s*```/.test(raw)) { code = !code; continue; }
-    if (code) { paras.push({ t: raw, keys: { k: 'code' }, marks: [] }); continue; }
+  type Keys = Partial<Record<'h' | 'l' | 'k' | 'd' | 'o' | 'g', string | number>>;
+  const paras: Array<{ t: string; keys: Keys; marks: Mark[]; links: TextLink[] }> = [], tables: MdTable[] = [];
+  // (A block of code's language, on its first line, «Markdown полностью»: given back when it's saved.)
+  let code = false, lang = '';
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    if (/^\s*```/.test(raw)) { code = !code; lang = code && full ? raw.replace(/^\s*```/, '').trim() : ''; continue; }
+    if (code) { paras.push({ t: raw, keys: { k: 'code', ...(lang && { g: lang }) }, marks: [], links: [] }); lang = ''; continue; }
     // (A blank line between paragraphs only parts them, as Markdown has it: no line of its own.)
     if (!raw.trim()) continue;
-    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(raw)) { paras.push({ t: '', keys: { k: 'hr' }, marks: [] }); continue; }
+    // A table: its place, a paragraph of its own (made one of ours once the document's there, mdFull.ts).
+    const tb = full ? tableAt(lines, i) : null;
+    if (tb) { paras.push({ t: '', keys: { o: tableKey(tables.length) }, marks: [], links: [] }); tables.push(tb.table); i += tb.n - 1; continue; }
+    if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(raw)) { paras.push({ t: '', keys: { k: 'hr' }, marks: [], links: [] }); continue; }
     let line = raw, m: RegExpExecArray | null;
-    const keys: Partial<Record<'h' | 'l' | 'k' | 'd', string | number>> = {};
+    const keys: Keys = {};
     if ((m = /^>\s?(.*)$/.exec(line))) { keys.k = 'quote'; line = m[1]; }
     if ((m = /^(#{1,6})\s+(.*?)\s*#*$/.exec(line))) { keys.h = m[1].length; line = m[2]; }
     else if ((m = /^(\s*)[-*+]\s+\[([ xXх])\]\s+(.*)$/.exec(line))) { keys.l = m[2] === ' ' ? 'todo' : 'done'; keys.d = Math.round(m[1].length / unit); line = m[3]; }
     else if ((m = /^(\s*)[-*+]\s+(.*)$/.exec(line))) { keys.l = 'bullet'; keys.d = Math.round(m[1].length / unit); line = m[2]; }
     else if ((m = /^(\s*)\d+[.)]\s+(.*)$/.exec(line))) { keys.l = 'number'; keys.d = Math.round(m[1].length / unit); line = m[2]; }
     if (keys.d !== undefined) keys.d = Math.min(LIST_DEPTH, Number(keys.d)) || undefined;
-    // In the line: its marks taken out, what they mark kept (by where it comes to stand).
-    let t = '';
-    const marks: Array<{ s: number; e: number; key: keyof RunStyle }> = [];
-    const re = /`([^`]+)`|\*\*([^*]+)\*\*|__([^_]+)__|~~([^~]+)~~|\*([^*\s][^*]*)\*|(?<![\p{L}\d])_([^_\s][^_]*)_(?![\p{L}\d])|\[([^\]]+)\]\([^)]*\)/gu;
-    let at = 0;
-    for (const x of line.matchAll(re)) {
-      t += line.slice(at, x.index);
-      const inner = x[1] ?? x[2] ?? x[3] ?? x[4] ?? x[5] ?? x[6] ?? x[7] ?? '', key: keyof RunStyle | null = x[1] ? 'm' : x[2] || x[3] ? 'b' : x[4] ? 'x' : x[5] || x[6] ? 'i' : null;
-      if (key) marks.push({ s: t.length, e: t.length + inner.length, key });
-      t += inner;
-      at = x.index! + x[0].length;
-    }
-    t += line.slice(at);
-    paras.push({ t, keys, marks });
+    paras.push({ ...inline(line, full), keys });
   }
-  const text = paras.map((p) => p.t).join('\n');
+  const text = paras.map((p) => p.t).join('\n'), links: TextLink[] = [];
   let rs: TextRun[] | undefined, s0 = 0;
   for (const p of paras) {
     for (const mk of p.marks) rs = setRun(rs, s0 + mk.s, s0 + mk.e, mk.key, true);
-    for (const [key, v] of Object.entries(p.keys)) if (v !== undefined) rs = setPara(text, rs, s0, s0, key as 'h' | 'l' | 'k' | 'd', v);
+    for (const [key, v] of Object.entries(p.keys)) if (v !== undefined) rs = setPara(text, rs, s0, s0, key as 'h' | 'l' | 'k' | 'd' | 'o' | 'g', v);
+    for (const l of p.links) links.push({ ...l, s: l.s + s0, e: l.e + s0 });
     s0 += p.t.length + 1;
   }
-  return { text, rs };
+  return { text, rs, ...(links.length && { links }), ...(tables.length && { tables }) };
 }

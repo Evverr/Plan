@@ -50,8 +50,9 @@ export function drawnLinks<T extends { s: number; e: number }>(text: string, lis
 
 /** A style on part of an item's text («Документ», src/labs/docPage.ts): bold, italic, underlined, struck
  *  through, its colour (a key of TEXT_COLORS or '#rrggbb'), code (`m`: monospaced on grey, as Markdown's
- *  `…`). Kept by character as the links are, moving with the text as it's typed in (remapLinks). */
-export interface TextRun { s: number; e: number; b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; h?: number; l?: string; z?: number; a?: string; m?: boolean; k?: string; d?: number; o?: string }
+ *  `…`). Kept by character as the links are, moving with the text as it's typed in (remapLinks). A block of
+ *  code's first line may say its language (`g`, Markdown's ```json, «Markdown полностью»). */
+export interface TextRun { s: number; e: number; b?: boolean; i?: boolean; u?: boolean; x?: boolean; c?: string; h?: number; l?: string; z?: number; a?: string; m?: boolean; k?: string; d?: number; o?: string; g?: string }
 export type RunStyle = Omit<TextRun, 's' | 'e'>;
 
 /** The style on each character of s…e, from the runs. */
@@ -79,7 +80,7 @@ export function setRun(runs: TextRun[] | undefined, s: number, e: number, key: k
   const all = stylesIn(runs, Math.min(s, ...(runs ?? []).map((r) => r.s)), end, [s, e]).map((p) => {
     if (p.e <= s || p.s >= e) return p;
     const st = { ...p.st } as Record<string, unknown>;
-    if (on) st[key] = key === 'c' || key === 'h' || key === 'l' || key === 'z' || key === 'a' || key === 'k' || key === 'd' || key === 'o' ? value : true; else delete st[key];
+    if (on) st[key] = key === 'c' || key === 'h' || key === 'l' || key === 'z' || key === 'a' || key === 'k' || key === 'd' || key === 'o' || key === 'g' ? value : true; else delete st[key];
     return { ...p, st: st as RunStyle };
   });
   // (Styles told apart by what's set in them, whatever the order.)
@@ -102,8 +103,8 @@ const anchorOf = (text: string, at: number) => { const n = text.indexOf('\n', at
  *  list (`l`: 'bullet', 'number', a checklist's 'todo' or ticked 'done'), its own size of text (`z`, px),
  *  its own alignment (`a`), its kind (`k`: a 'quote', 'code' a line of a block of code, or 'hr' a
  *  divider), how deep in a list it is (`d`: 1 a list in a list…) or what's put in its place (`o`: a
- *  table's id, src/labs/docObjects.ts). */
-type ParaKey = 'h' | 'l' | 'z' | 'a' | 'k' | 'd' | 'o';
+ *  table's id, src/labs/docObjects.ts); a block of code's language (`g`, on its first line). */
+type ParaKey = 'h' | 'l' | 'z' | 'a' | 'k' | 'd' | 'o' | 'g';
 /** That of the paragraph a character's in (undefined for none). */
 export function paraAt<K extends ParaKey>(text: string, runs: TextRun[] | undefined, at: number, key: K): TextRun[K] | undefined {
   const a = anchorOf(text, at);

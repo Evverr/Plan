@@ -3,6 +3,8 @@ import type { Point } from '../canvas/geometry';
 import { font, fontOf, LINE_HEIGHT } from '../canvas/text';
 import { drawIcon } from '../icons/icons';
 import type { TextRun } from '../model/textLinks';
+import { labOn } from './labs';
+import { codeTokens } from './codeColors';
 
 /**
  * «Документ» (src/labs): a sheet of A4 on the board, its margins as ГОСТ has them, its text typed in as a
@@ -29,6 +31,10 @@ export const pagesTurned = (): number => turned;
 
 /** A heading's size against the text's own (1…6), and the room over one that isn't a page's first. */
 export const HEADING_SIZE = [1, 1.75, 1.375, 1.125, 1, 0.875, 0.75], HEADING_GAP = 0.6;
+/** The room under a heading, against its size («Markdown полностью»: as Obsidian has it, not stuck to what follows). */
+export const HEADING_UNDER = 0.4;
+/** The room under a heading at `size`, if any (with «Markdown полностью» on). */
+export const headingUnder = (size: number): number => (labOn('mdFull') ? Math.round(size * HEADING_UNDER) : 0);
 /** Its lines 20% further apart than text elsewhere on the board. */
 export const DOC_LINE = LINE_HEIGHT * 1.2;
 
@@ -79,7 +85,7 @@ export function docLines(it: Item): DocLine[] {
   const area = textArea(it);
   // (Its text told apart on its own: the same string as last time (the board's, unchanged) at once, not
   // gone through letter by letter as part of a key, a hundred pages of it, each time it's drawn.)
-  const key = `${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}|${area.w}x${area.h}`, was = laidOut.get(it.id);
+  const key = `${fs}|${st.weight}|${st.family}|${st.italic}|${JSON.stringify(runs)}|${objs}|${area.w}x${area.h}|${labOn('mdFull')}`, was = laidOut.get(it.id);
   if (was?.key === key && was.text === text) return was.lines;
   if (typeof document !== 'undefined') measure ??= document.createElement('canvas').getContext('2d');
   // Its fonts asked for (a font not in yet measured as another: laid out again once it is, see clearDocLines).
@@ -105,8 +111,10 @@ export function docLines(it: Item): DocLine[] {
   let nums: number[] = [];
   // (A table's place where it's first in the text: any other paragraph with it, an empty line.)
   const placed = new Set<string>();
+  // (The room under the paragraph before, a heading's: over this one, as much as its own over it, not both.)
+  let under = 0, carry = 0;
   const put = (s: number, e: number, size: number, h: number, first: boolean, obj?: Item) => {
-    const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = h && first && y > 0 ? size * HEADING_GAP : 0;
+    const tall = obj ? obj.h + OBJ_GAP * 2 : size * DOC_LINE, gap = first && y > 0 ? Math.max(h ? size * HEADING_GAP : 0, under) : 0;
     // (A pixel's grace: a table stretched to the page's bottom, its rows rounded a little over, kept there.)
     if (y + gap + tall > area.h + 1 && y > 0) { page++; y = 0; }
     else y += gap;
@@ -125,6 +133,8 @@ export function docLines(it: Item): DocLine[] {
     const own = (key: 'h' | 'z' | 'l' | 'd') => (block ? undefined : runs.find((r) => r[key] && r.s <= e0 && r.e > e0)?.[key]);
     const h = (own('h') as number | undefined) ?? 0, z = own('z') as number | undefined;
     const size = block ? fs * CODE_SIZE : z ?? Math.round(fs * HEADING_SIZE[h]);
+    under = carry;
+    carry = h ? headingUnder(size) : 0;
     // (Its own alignment, as set for it alone, over the whole of it's.)
     a = block ? undefined : runs.find((r) => r.a && r.s <= e0 && r.e > e0)?.a as TextAlign | undefined;
     const list = own('l') as string | undefined, depth = Math.min(LIST_DEPTH, (own('d') as number | undefined) ?? 0);
@@ -224,9 +234,13 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
       ctx.fillRect(left, top, 3, tall);
       ctx.globalAlpha = alpha * faint;
     }
-    const cuts = [...new Set([l.s, l.e, ...[...runs, ...links].flatMap((r) => [r.s, r.e]).filter((c) => c > l.s && c < l.e)])].sort((a, b) => a - b);
+    // (A line of code coloured by what's in it, «Markdown полностью»: its paragraph's parts, see codeColors.ts.)
+    const ps = block && labOn('mdFull') ? text.lastIndexOf('\n', l.s - 1) + 1 : -1;
+    const tokens = ps < 0 ? [] : codeTokens(text.slice(ps, paraEnd(text, l.s))).map((t) => ({ ...t, s: t.s + ps, e: t.e + ps }));
+    const cuts = [...new Set([l.s, l.e, ...[...runs, ...links, ...tokens].flatMap((r) => [r.s, r.e]).filter((c) => c > l.s && c < l.e)])].sort((a, b) => a - b);
     const pieces = cuts.slice(0, -1).map((c, i) => {
       const e = cuts[i + 1], r = runs.filter((k) => k.s <= c && k.e >= e).reduce((m, k) => ({ ...m, ...k }), {} as Partial<TextRun>);
+      if (!r.c) { const tk = tokens.find((k) => k.s <= c && k.e >= e); if (tk) r.c = tk.c; }
       // (In a block of code, all of it monospaced, at its own size: no grey of its own round code there.)
       if (block) r.m = false;
       const f = font(r.m ? l.size * CODE_SIZE : l.size, l.h || r.b ? 700 : st.weight, r.m || block ? 'mono' : st.family, !!r.i || st.italic);

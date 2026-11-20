@@ -12,6 +12,7 @@ import type { Guide } from './guides';
 import { FOLD_FS, FOLD_PAD, FOLD_TITLE_MAX, frameButtons } from '../model/frame';
 import { COMPONENT_COLOR, firstInstance, instancePlus } from '../model/components';
 import { labOn } from '../labs/labs';
+import { mdCell } from '../labs/mdInline';
 import { aimsOut, drawTabs, ghostNow, tabsFor, towardOffset, type TabAims } from '../labs/sideTabs';
 import { zoomFade, zoomSize } from '../labs/zoomFade';
 import { gripsOn } from '../labs/tableMove';
@@ -397,7 +398,8 @@ function drawText(ctx: CanvasRenderingContext2D, it: Item, pad: number, color: s
       const cuts = [...new Set([0, line.length, ...[...on, ...styled].flatMap((k) => [k.s - at, k.e - at]).filter((c) => c > 0 && c < line.length)])].sort((a, b) => a - b);
       const pieces = cuts.slice(0, -1).map((c, i) => {
         const run = styled.find((k) => k.s - at <= c && k.e - at >= cuts[i + 1]);
-        const pf = run?.b || run?.i ? font(l.size, run.b ? 700 : st.weight, st.family, !!run.i || st.italic) : f;
+        // (Code in it monospaced, a tenth smaller, as in a document.)
+        const pf = run?.m ? font(l.size * 0.9, run.b ? 700 : st.weight, 'mono', !!run.i) : run?.b || run?.i ? font(l.size, run.b ? 700 : st.weight, st.family, !!run.i || st.italic) : f;
         ctx.font = pf;
         const piece = line.slice(c, cuts[i + 1]);
         return { piece, run, pf, w: ctx.measureText(piece).width, link: on.find((k) => k.s - at <= c && k.e - at >= cuts[i + 1]) };
@@ -408,6 +410,15 @@ function drawText(ctx: CanvasRenderingContext2D, it: Item, pad: number, color: s
       for (const p of pieces) {
         const own = p.run?.c && (p.run.c.startsWith('#') ? p.run.c : TEXT_COLORS[p.run.c]);
         const color = p.link ? shade(LINK_INK, s.theme.dim) : own ? shade(own, s.theme.dim) : ink;
+        // (Code on a rounded grey of its own.)
+        if (p.run?.m) {
+          ctx.fillStyle = ink;
+          ctx.globalAlpha = textAlpha * 0.07;
+          ctx.beginPath();
+          ctx.roundRect(px - 2, mid - l.size * 0.65, p.w + 4, l.size * 1.3, 4);
+          ctx.fill();
+          ctx.globalAlpha = textAlpha;
+        }
         ctx.font = p.pf;
         ctx.fillStyle = color;
         ctx.fillText(p.piece, px, base);
@@ -1139,7 +1150,8 @@ function drawTable(ctx: CanvasRenderingContext2D, it: Item, s: Scene, editingCel
   const n = colsOf(it).length * rowsOf(it).length;
   for (let i = 0; i < n; i++) {
     const text = cellText(it, i);
-    if (text && i !== editingCell) drawText(ctx, cellItem(it, i), textPad(it), theme.ink, true, s, textPadY(it));
+    // (Its Markdown drawn as what it marks, «Markdown полностью»: typed in as it is.)
+    if (text && i !== editingCell) drawText(ctx, mdCell(cellItem(it, i)), textPad(it), theme.ink, true, s, textPadY(it));
   }
   ctx.restore();
   // The outer edge, whole, over the clip.

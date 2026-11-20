@@ -1,8 +1,9 @@
 import type { Editor } from '../editor/editor';
 import { PAGE } from '../model/types';
-import { setRun, type RunStyle, type TextRun } from '../model/textLinks';
+import { setRun, type RunStyle, type TextLink, type TextRun } from '../model/textLinks';
 import { docLines } from './docPage';
 import { cleanPaste, fromDom, fromMarkdown } from './richDoc';
+import { placeMdTables, type MdTable } from './mdFull';
 
 /**
  * «Файлы в документ» (src/labs): a text file dropped on the board, a «Документ» of it, to be typed in at
@@ -11,7 +12,8 @@ import { cleanPaste, fromDom, fromMarkdown } from './richDoc';
  * underlined and struck through. Word's (.docx) as ever, a picture of its first page («Документы Word»).
  */
 
-export type DocText = { text: string; rs: TextRun[] | undefined };
+/** (Markdown's links and tables too, «Markdown полностью»: see mdFull.ts.) */
+export type DocText = { text: string; rs: TextRun[] | undefined; links?: TextLink[]; tables?: MdTable[] };
 
 const ext = (f: File) => f.name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] ?? '';
 /** Whether a file is one made a document of. */
@@ -137,9 +139,15 @@ export async function placeTextDocs(ed: Editor, files: File[], at: { x: number; 
   read.forEach((r, k) => {
     if (r.status !== 'fulfilled') return;
     const x = w.x - PAGE.W / 2 + ids.length * (PAGE.W + GAP), y = w.y - PAGE.H / 4;
-    const it = ed.newItem('page', x, y, { text: r.value.text, ...(r.value.rs && { rs: r.value.rs }) });
+    let it = ed.newItem('page', x, y, { text: r.value.text, ...(r.value.rs && { rs: r.value.rs }), ...(r.value.links && { links: r.value.links }) });
     ed.addItem(it);
     ids.push(it.id);
+    // Its tables («Markdown полностью»), ours in its text where they were.
+    if (r.value.tables?.length) {
+      const t = placeMdTables(ed, it, r.value.tables);
+      ed.board.update(it.id, { text: t.text, rs: t.rs, links: t.links });
+      it = ed.board.get(it.id) ?? it;
+    }
     const lines = docLines(it);
     if (lines.length && lines[lines.length - 1].e < r.value.text.length) long.push(files[k].name);
   });

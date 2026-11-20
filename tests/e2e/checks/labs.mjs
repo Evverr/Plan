@@ -1635,6 +1635,43 @@ export const checks = {
     expect(await p.ev(`planx.editor.selection.size`), 'all four picked').toBe(4);
   },
 
+  async '"Markdown полностью": a .md file with tables, links and code opened as a document (tables ours in it, a long one a page at a time), typed in and left as it was, saved back as it came'(p) {
+    const rows = Array.from({ length: 24 }, (_, i) => `| \`f_${i}\` | string | Поле номер ${i}: длинное пояснение, чтобы строка заняла две строки в ячейке таблицы на листе |`).join('\n');
+    const md = `# Заголовок\n\nТекст со [ссылкой](https://example.com/a) и <https://x.y>.\n\n## Таблица\n\n| Поле | Тип | Смысл |\n| --- | :---: | --- |\n${rows}\n\n\`\`\`json\n{\n  "id": "evt_1",\n  "n": 2\n}\n\`\`\`\n\n- [x] готово\n`;
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged();
+      const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(md)}], 'a.md', { type: 'text/markdown' }));
+      document.querySelector('.board-canvas').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: 600, clientY: 400, bubbles: true, cancelable: true })); })()`);
+    await sleep(800);
+    const got = await p.ev(`(() => { const d = planx.board.list().find((i) => i.type === 'page'), t = planx.board.list().filter((i) => i.type === 'table');
+      return { links: (d.links ?? []).map((l) => d.text.slice(l.s, l.e) + '>' + l.url), parts: t.length, inDoc: t.every((x) => x.inDoc === d.id), header: t.every((x) => x.cells[0] === 'Поле'), rows: t.reduce((n, x) => n + x.rows.length - 1, 0) }; })()`);
+    expect(JSON.stringify(got), 'its links, its table ours in it in parts with the header over each').toBe(JSON.stringify({ links: ['ссылкой>https://example.com/a', 'https://x.y>https://x.y'], parts: 2, inDoc: true, header: true, rows: 24 }));
+    const saved = () => p.ev(`(async () => { const { docMarkdown } = await import('/src/labs/docExport.ts'); return docMarkdown(planx.board.list().find((i) => i.type === 'page')); })()`);
+    expect(await saved(), 'saved as it came').toBe(md);
+    // Typed in and left: as it was.
+    const before = await p.ev(`JSON.stringify(planx.board.list().find((i) => i.type === 'page'))`);
+    await p.ev(`planx.editor.startEditing(planx.board.list().find((i) => i.type === 'page').id, null, 'end')`);
+    await sleep(500);
+    await p.key('Escape', 'Escape', 27);
+    await sleep(300);
+    expect(await p.ev(`JSON.stringify(planx.board.list().find((i) => i.type === 'page'))`) === before, 'typed in and left: the same').toBe(true);
+    expect(await saved(), 'and saved the same').toBe(md);
+  },
+
+  async '"Markdown полностью": Markdown pasted in a document as it\'s typed in: its table ours in it, its link a link'(p) {
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
+    await sleep(200);
+    const id = await p.ev(`planx.board.list().find((i) => i.type === 'page').id`);
+    await p.ev(`(() => { planx.board.update('${id}', { text: 'Было' }); planx.editor.startEditing('${id}', null, 'end'); })()`);
+    await sleep(400);
+    const md = 'См. [доку](https://d.e/f)\n\n| A | B |\n| - | - |\n| `x` | 1 |';
+    await p.ev(`(() => { const dt = new DataTransfer(); dt.setData('text/plain', ${JSON.stringify(md)}); document.querySelector('.rich-edit').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); })()`);
+    await sleep(100);
+    await p.ev(`document.querySelector('.rich-edit').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+    await sleep(300);
+    const got = await p.ev(`(() => { const d = planx.board.get('${id}'), t = planx.board.list().find((i) => i.type === 'table'); return { text: d.text, links: d.links, table: t && [t.inDoc === d.id, t.cells, (d.rs ?? []).some((r) => r.o === t.id)] }; })()`);
+    expect(JSON.stringify(got), 'its text, its link, its table in it').toBe(JSON.stringify({ text: 'Было\nСм. доку\n', links: [{ s: 9, e: 13, url: 'https://d.e/f' }], table: [true, ['A', 'B', '`x`', '1'], true] }));
+  },
+
   async '"Поля документа": the margins out by the panel\'s button, the left one dragged by its triangle a whole millimetre at a time, the text and its field narrower'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.6 }; e.camChanged(); e.dropItem('page', { x: 500, y: 420 }); })()`);
     await sleep(200);

@@ -203,7 +203,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   const md = rich && labs.docMd ? rich : null;
   const picked = !rich && item.type === 'page' ? pickedPart(editor, item) : null;
   const runsOf = (p: Part) => remapLinks(item.text ?? '', p.text, item.rs);
-  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'o' && !!rich[key]
+  const partHas = (key: keyof RunStyle, value?: string) => (rich ? key !== 'c' && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'o' && key !== 'g' && !!rich[key]
     : !!picked && runsHave(runsOf(picked), picked.s, picked.e, key, value));
   /** Where the caret is in a document being typed in (or what's picked there). */
   const caretIn = (): Part | null => {
@@ -224,7 +224,7 @@ export function TextPanel({ editor, item, leaving, after, dock, onBack }: { edit
   /** Sets (or takes off) a style on the part picked (as it's picked now); false with none picked (the
    *  whole text's then). */
   const stylePart = (key: keyof RunStyle, value?: string): boolean => {
-    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'k' && key !== 'm' && key !== 'd' && key !== 'o' && richStyle(key, value)) { setMenu(null); return true; }
+    if (rich && key !== 'h' && key !== 'l' && key !== 'z' && key !== 'a' && key !== 'k' && key !== 'm' && key !== 'd' && key !== 'o' && key !== 'g' && richStyle(key, value)) { setMenu(null); return true; }
     const now = item.type === 'page' ? pickedPart(editor, item) : null;
     if (!now) return false;
     const runs = runsOf(now), on = key === 'c' ? value !== undefined : !runsHave(runs, now.s, now.e, key);
