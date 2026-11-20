@@ -593,7 +593,8 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         ed.settle([...ed.selection].map((id) => board.get(id)?.host ?? id));
         // A table let go on a document's sheet, in its text there; off the one it was in, out of it
         // («Таблица в документе», src/labs).
-        if (labOn('docTable')) dropTables(board, g.orig.keys());
+        // (Not one carried along with its document, nor anything not moved at all: where it is in the text, it stays.)
+        if (labOn('docTable') && g.moved) dropTables(board, [...g.orig.keys()].filter((id) => { const t = board.get(id); return !(t?.inDoc && g.orig.has(t.inDoc)); }));
         // A mind map branch let go nearer another family: it hangs from that one now.
         const lead = board.get(g.id);
         if (g.mindTo && lead?.parent && g.mindTo !== lead.parent) hangBranch(ed, g.id, g.mindTo, { x: lead.x + lead.w / 2, y: lead.y + lead.h / 2 });

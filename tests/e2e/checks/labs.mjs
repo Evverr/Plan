@@ -1657,6 +1657,31 @@ export const checks = {
     expect(await saved(), 'and saved the same').toBe(md);
   },
 
+  async '"Таблица в документе": a document with tables on its pages dragged, clicked and paged through: its tables stay where they are in its text'(p) {
+    const table = (k, n) => `| Поле | Смысл |\n| --- | --- |\n${Array.from({ length: n }, (_, i) => `| \`f_${k}_${i}\` | Пояснение ${i}, такое длинное, чтобы перенестись на вторую строку ячейки таблицы |`).join('\n')}`;
+    let md = '# Начало\n\nПервый абзац текста.\n\n';
+    for (let k = 1; k <= 4; k++) md += `## Раздел ${k}\n\nТекст раздела ${k}.\n\n${table(k, 6 + k * 2)}\n\n`;
+    await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged();
+      const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(md)}], 'a.md', { type: 'text/markdown' }));
+      document.querySelector('.board-canvas').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: 600, clientY: 400, bubbles: true, cancelable: true })); })()`);
+    await sleep(800);
+    const places = () => p.ev(`(() => { const d = planx.board.list().find((i) => i.type === 'page'); return JSON.stringify([d.text.length, (d.rs ?? []).filter((r) => r.o).map((r) => r.s)]); })()`);
+    const before = await places();
+    expect(JSON.parse(before)[1].length, 'its tables in it').toBe(4);
+    await p.ev(`planx.editor.setSelection([])`);
+    // Dragged by its margin, clicked there, and paged through by its pager.
+    const margin = await p.ev(`(() => { const d = planx.board.list().find((i) => i.type === 'page'), s = planx.editor.toScreen({ x: d.x + 20, y: d.y + 200 }); return [s.x, s.y]; })()`);
+    await p.drag(margin, [margin[0] + 60, margin[1] + 40]);
+    await sleep(300);
+    await p.click([margin[0] + 60, margin[1] + 40]);
+    await sleep(300);
+    const arrow = (dir) => p.ev(`(async () => { const { pagerAtMid } = await import('/src/labs/docPage.ts'); const d = planx.board.list().find((i) => i.type === 'page'), m = pagerAtMid(d), s = planx.editor.toScreen({ x: m.x + ${dir} * 44, y: m.y }); return [s.x, s.y]; })()`);
+    for (const dir of [1, 1, 1, -1, -1, -1]) { await p.click(await arrow(dir)); await sleep(150); }
+    expect(await places(), 'its tables where they were in its text').toBe(before);
+    expect(await p.ev(`(async () => { const { pageShown } = await import('/src/labs/docPage.ts'), { slotOf } = await import('/src/labs/docObjects.ts'); const d = planx.board.list().find((i) => i.type === 'page');
+      return pageShown(d) + ':' + planx.editor.shown().filter((i) => i.type === 'table').every((t) => slotOf(d, t.id)?.page === 0); })()`), 'its first page: only its own tables on it').toBe('0:true');
+  },
+
   async '"Markdown полностью": Markdown pasted in a document as it\'s typed in: its table ours in it, its link a link'(p) {
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged(); e.dropItem('page', { x: 600, y: 600 }); })()`);
     await sleep(200);
