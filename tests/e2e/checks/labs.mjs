@@ -1727,17 +1727,17 @@ export const checks = {
     expect(JSON.stringify([out.d, out.inDoc, out.place.length]), 'picked: dragged out of it, the document where it was').toBe(JSON.stringify([after.d, false, 0]));
   },
 
-  async '"PDF с текстом": a document printed as its pages are, its text text, its links links, its tables in, in fonts of a file each weight'(p) {
+  async '"PDF с текстом": a document written as a PDF of its pages, its text text (its fonts in it, what its letters stand for), its links links, its name its title'(p) {
     const md = '# Заголовок\n\nТекст со [ссылкой](https://example.com/a).\n\n| Поле | Тип |\n| --- | --- |\n| `event_id` | string |\n\n```json\n{ "a": 1 }\n```\n';
     await p.ev(`(() => { const e = planx.editor; e.cam = { x: 0, y: 0, z: 0.5 }; e.camChanged();
       const dt = new DataTransfer(); dt.items.add(new File([${JSON.stringify(md)}], 'a.md', { type: 'text/markdown' }));
       document.querySelector('.board-canvas').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, clientX: 600, clientY: 400, bubbles: true, cancelable: true })); })()`);
     await sleep(600);
-    const got = await p.ev(`(async () => { const { docPrintHtml } = await import('/src/labs/docPrint.ts'), { pagesOf } = await import('/src/labs/docPage.ts'), d = planx.board.list().find((i) => i.type === 'page');
-      const html = docPrintHtml(planx.editor, d, 'Имя'), doc = new DOMParser().parseFromString(html, 'text/html');
-      return JSON.stringify({ pages: doc.querySelectorAll('section.page').length === pagesOf(d).length, title: doc.title, link: doc.querySelector('a')?.getAttribute('href'),
-        text: doc.body.textContent.includes('Текст со ссылкой.') && doc.body.textContent.includes('event_id'), fonts: /fonts\\/print\\/onest-400\\.ttf/.test(html) && /fonts\\/print\\/jetbrains-mono-400\\.ttf/.test(html) }); })()`);
-    expect(got, 'its pages, its name, its link, its text and tables, its print fonts').toBe(JSON.stringify({ pages: true, title: 'Имя', link: 'https://example.com/a', text: true, fonts: true }));
+    const got = await p.ev(`(async () => { const { docPdfBytes } = await import('/src/labs/docPdf.ts'), { pagesOf } = await import('/src/labs/docPage.ts'), d = planx.board.list().find((i) => i.type === 'page');
+      const bytes = await docPdfBytes(planx.editor, d, 'Имя'); let s = ''; for (const b of bytes) s += String.fromCharCode(b);
+      return JSON.stringify({ pdf: s.startsWith('%PDF-'), pages: (s.match(/\\/Type \\/Page /g) ?? []).length === pagesOf(d).length, title: s.includes('/Title <FEFF0418043C044F>'),
+        link: s.includes('/URI (https://example.com/a)'), fonts: (s.match(/\\/FontFile2/g) ?? []).length >= 2, letters: (s.match(/\\/ToUnicode/g) ?? []).length >= 2 }); })()`);
+    expect(got, 'a PDF of its pages, its name, its link, its fonts and what its letters stand for').toBe(JSON.stringify({ pdf: true, pages: true, title: true, link: true, fonts: true, letters: true }));
     expect(await p.ev(`fetch('/fonts/print/onest-700.ttf').then((r) => r.ok)`), 'the fonts there').toBe(true);
   },
 
