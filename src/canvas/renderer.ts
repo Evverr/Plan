@@ -49,6 +49,8 @@ export interface Theme {
   dim: number;
   /** What's picked: its frame, handle and link dots, in the blue of the tool picked on the rail. */
   pick: string;
+  /** A table's header row made in a document, light or dark with the theme (cells filled 'doc', see docTableLook). */
+  docHead?: string;
 }
 
 export function readTheme(): Theme {
@@ -61,6 +63,7 @@ export function readTheme(): Theme {
     grad: [v('--grad-1'), v('--grad-2'), v('--grad-3')], grid: v('--grid'),
     dim: parseFloat(v('--fill-dim')) || 1,
     pick: v('--fmt-on-ink') || SELECT_COLOR,
+    docHead: v('--doc-head') || '#EEF0F7',
   };
 }
 
@@ -1095,7 +1098,9 @@ function drawTable(ctx: CanvasRenderingContext2D, it: Item, s: Scene, editingCel
     if (typeof bg !== 'string') return;
     const r = cellRect(it, i);
     ctx.globalAlpha = typeof f?.bgo === 'number' ? f.bgo : 1;
-    ctx.fillStyle = shade(bg.startsWith('#') ? bg : FILLS[bg] ?? FILLS.blue, theme.dim);
+    // (A document's header grey, «Таблица в документе», as the theme has it: its own colour in each, not dimmed.
+    // Those made with it before it went with the theme, #EEF0F7, so too.)
+    ctx.fillStyle = bg === 'doc' || bg.toUpperCase() === '#EEF0F7' ? theme.docHead ?? '#EEF0F7' : shade(bg.startsWith('#') ? bg : FILLS[bg] ?? FILLS.blue, theme.dim);
     ctx.fillRect(r.x, r.y, r.w, r.h);
   });
   ctx.globalAlpha = 1;

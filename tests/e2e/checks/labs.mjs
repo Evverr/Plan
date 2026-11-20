@@ -1656,7 +1656,7 @@ export const checks = {
     await sleep(800);
     const got = await p.ev(`(() => { const d = planx.board.list().find((i) => i.type === 'page'), t = planx.board.list().filter((i) => i.type === 'table');
       return { links: (d.links ?? []).map((l) => d.text.slice(l.s, l.e) + '>' + l.url), parts: t.length, inDoc: t.every((x) => x.inDoc === d.id), header: t.every((x) => x.cells[0] === 'Поле'), rows: t.reduce((n, x) => n + x.rows.length - 1, 0), head: t[0].cellFmt[0].bg + '@' + t[0].cellFmt[0].bgo }; })()`);
-    expect(JSON.stringify(got), 'its links, its table ours in it in parts with the header over each (in a document\'s light grey)').toBe(JSON.stringify({ links: ['ссылкой>https://example.com/a', 'https://x.y>https://x.y'], parts: 2, inDoc: true, header: true, rows: 24, head: '#EEF0F7@1' }));
+    expect(JSON.stringify(got), 'its links, its table ours in it in parts with the header over each (in a document\'s grey, light or dark with the theme)').toBe(JSON.stringify({ links: ['ссылкой>https://example.com/a', 'https://x.y>https://x.y'], parts: 2, inDoc: true, header: true, rows: 24, head: 'doc@1' }));
     const saved = () => p.ev(`(async () => { const { docMarkdown } = await import('/src/labs/docExport.ts'); return docMarkdown(planx.board.list().find((i) => i.type === 'page')); })()`);
     expect(await saved(), 'saved as it came').toBe(md);
     // Typed in and left: as it was.

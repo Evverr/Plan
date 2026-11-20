@@ -137,9 +137,9 @@ export function docDropAt(board: Board, it: Item): { doc: Item; after: number; x
 }
 
 /** How a table made in a document looks to begin with (by «Стиль» → «Таблица», or a Markdown file's): as one
- *  drawn on the board, but its header row in a light grey of its own (not the light blue). One dragged in
- *  keeps its own look. */
-export const DOC_TABLE_HEAD = '#EEF0F7';
+ *  drawn on the board, but its header row in a grey of its own (not the light blue): 'doc', #EEF0F7 in the
+ *  light theme, #282D38 in the dark (--doc-head, styles/theme.css). One dragged in keeps its own look. */
+export const DOC_TABLE_HEAD = 'doc';
 export const docTableLook = (n: number): Partial<Item> => {
   const look = tableLook(n);
   return { ...look, cellFmt: look.cellFmt?.map((f) => (f ? { ...f, bg: DOC_TABLE_HEAD, bgo: 1 } : f)) };
