@@ -19,6 +19,17 @@ export const checks = {
     }
   },
 
+  async 'the rail\'s "more" column is as big as the rail at every size'(p) {
+    await p.open(700, 420);
+    for (const size of ['Маленькие', 'Средние', 'Большие']) {
+      await pickSize(p, size);
+      await p.click(await p.at('.tools > button[aria-label="Ещё"]'));
+      const [rail, more] = await p.ev(`[document.querySelector('.tools > [data-key] .pi'), document.querySelector('.tools-more [data-more-key] .pi')].map((e) => Math.round(e.getBoundingClientRect().width))`);
+      expect(more, `${size}: its icons as the rail's`).toBe(rail);
+      await p.click(await p.at('.tools > button[aria-label="Ещё"]'));
+    }
+  },
+
   async 'stuck to the edges, the panels have square corners on that side at every size'(p) {
     await pickSize(p, 'Средние');
     await p.escape();
