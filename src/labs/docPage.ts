@@ -381,9 +381,10 @@ export function showPage(id: string, n: number): number {
   if (n !== was) turned++;
   return was;
 }
-export function turnPage(it: Item, dir: -1 | 1): void {
+/** (`dir` ±2: to its first page, its last.) */
+export function turnPage(it: Item, dir: -2 | -1 | 1 | 2): void {
   const n = pagesOf(it).length;
-  shown.set(it.id, Math.max(0, Math.min(n - 1, pageShown(it, n) + dir)));
+  shown.set(it.id, dir === -2 ? 0 : dir === 2 ? n - 1 : Math.max(0, Math.min(n - 1, pageShown(it, n) + dir)));
   turned++;
 }
 
@@ -406,10 +407,14 @@ export function aboveText(it: Item, p: Point): boolean {
 /** The pager under it: its middle, and its arrows' each side of it. */
 /** (Under its right edge: its right arrow 24 in from it.) */
 const PAGER_Y = 22, ARROW_DX = 44, PAGER_RIGHT = 24 + ARROW_DX + 8;
-const pagerMid = (it: Item): Point => ({ x: it.x + it.w - PAGER_RIGHT, y: it.y + it.h + PAGER_Y });
+/** Of more than JUMP_FROM pages, double arrows past the arrows, JUMP_DX further out: to the first page, to the
+ *  last (the pager moved left by as much, its right end where it was). */
+const JUMP_FROM = 5, JUMP_DX = 28;
+const jumps = (it: Item): boolean => pagerCount(it) > JUMP_FROM;
+const pagerMid = (it: Item): Point => ({ x: it.x + it.w - PAGER_RIGHT - (jumps(it) ? JUMP_DX : 0), y: it.y + it.h + PAGER_Y });
 
-/** A sheet's pager arrow a point's on: the sheet, and which way. */
-export function pagerAt(items: Item[], w: Point): { it: Item; dir: -1 | 0 | 1 } | null {
+/** A sheet's pager arrow a point's on: the sheet, and which way (±2: to its first or last page). */
+export function pagerAt(items: Item[], w: Point): { it: Item; dir: -2 | -1 | 0 | 1 | 2 } | null {
   for (const it of items) {
     // (One of a single page has none.)
     if (it.type !== 'page' || pagerCount(it) < 2) continue;
@@ -417,6 +422,8 @@ export function pagerAt(items: Item[], w: Point): { it: Item; dir: -1 | 0 | 1 } 
     if (Math.abs(w.y - m.y) > 12) continue;
     if (Math.abs(w.x - (m.x - ARROW_DX)) <= 12) return { it, dir: -1 };
     if (Math.abs(w.x - (m.x + ARROW_DX)) <= 12) return { it, dir: 1 };
+    if (jumps(it) && Math.abs(w.x - (m.x - ARROW_DX - JUMP_DX)) <= 12) return { it, dir: -2 };
+    if (jumps(it) && Math.abs(w.x - (m.x + ARROW_DX + JUMP_DX)) <= 12) return { it, dir: 2 };
     // (Its number between them, of several pages: a page to go to, `dir` 0.)
     if (Math.abs(w.x - m.x) <= ARROW_DX - 14 && pagesOf(it).length > 1) return { it, dir: 0 };
   }
@@ -451,11 +458,12 @@ export function drawPager(ctx: CanvasRenderingContext2D, it: Item, n: number, of
   // (Its number lit under the pointer, a page to go to by a click on it.)
   ctx.fillStyle = hot === `pager:${it.id}:0` ? look.ink : look.muted;
   ctx.fillText(`${n + 1} / ${of}`, m.x, m.y);
-  for (const [dir, x, can] of [[-1, m.x - ARROW_DX, n > 0], [1, m.x + ARROW_DX, n < of - 1]] as const) {
-    // (The set's chevrons; under the pointer, 1.4 times as big.)
-    const on = can && hot === `pager:${it.id}:${dir}`, size = on ? 22 : 16;
+  const far = jumps(it) ? [[-2, m.x - ARROW_DX - JUMP_DX, n > 0], [2, m.x + ARROW_DX + JUMP_DX, n < of - 1]] as const : [];
+  for (const [dir, x, can] of [[-1, m.x - ARROW_DX, n > 0], [1, m.x + ARROW_DX, n < of - 1], ...far] as const) {
+    // (The set's chevrons; under the pointer, 1.4 times as big. A double one two of them a third apart.)
+    const on = can && hot === `pager:${it.id}:${dir}`, size = on ? 22 : 16, icon = dir < 0 ? 'chevron-to-the-left-l' : 'chevron-to-the-right-l';
     ctx.globalAlpha = can ? 1 : 0.3;
-    drawIcon(ctx, dir < 0 ? 'chevron-to-the-left-l' : 'chevron-to-the-right-l', x - size / 2, m.y - size / 2, size, on ? look.ink : look.muted);
+    for (const dx of Math.abs(dir) === 2 ? [-size * 0.17, size * 0.17] : [0]) drawIcon(ctx, icon, x + dx - size / 2, m.y - size / 2, size, on ? look.ink : look.muted);
   }
   ctx.restore();
 }
