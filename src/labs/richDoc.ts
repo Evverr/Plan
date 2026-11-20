@@ -155,7 +155,9 @@ function inkLike(css: string): boolean {
 
 /** '#rrggbb' of a CSS colour ('rgb(…)'), a key of TEXT_COLORS when it's one of them. */
 function colorKey(css: string): string {
-  const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css);
+  // (Or as a colour mixed has it, `color(srgb r g b / a)`, 0…1: a ticked item's text, faint, its own colour still.)
+  const s = /color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/.exec(css);
+  const m = s ? [s[0], ...[s[1], s[2], s[3]].map((v) => String(Math.round(parseFloat(v) * 255)))] : /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css);
   if (!m) return css;
   const hex = `#${[m[1], m[2], m[3]].map((v) => (+v).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
   return Object.entries(TEXT_COLORS).find(([, v]) => v.toUpperCase() === hex)?.[0] ?? hex;

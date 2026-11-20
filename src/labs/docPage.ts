@@ -189,8 +189,8 @@ export function docLines(it: Item): DocLine[] {
  *  blue and underlined (`onLink` noting where, to be Cmd+clicked). */
 export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, look: {
   ink: string; link: string; tint: (c: string) => string; onLink?: (r: { x: number; y: number; w: number; h: number; url: string }) => void;
-  /** The sheet's own colour: a ticked box's tick in it (as if cut out), in the dark theme too. */
-  paper?: string;
+  /** The blue of the tool picked on the rail (--fmt-on-ink): a ticked box filled with it. */
+  on?: string;
 }): void {
   const text = it.text ?? '', st = fontOf(it), runs = (it.rs ?? []) as TextRun[], links = it.links ?? [];
   const align = it.ta ?? 'left', alpha = it.to ?? 1, ink = it.tc ? look.tint(it.tc) : look.ink, area = textArea(it);
@@ -261,7 +261,8 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
     // A list's marker in the room on its left (past a quote's bar); a checklist's box there.
     const markX = left + l.indent - LIST_IN + 4;
     if (l.mark) { ctx.fillStyle = ink; ctx.fillText(l.mark, markX, base); }
-    if (l.box) drawBox(ctx, markX, mid, l.size, l.box === 'done', ink, look.paper ?? '#fff');
+    // (A ticked one's box as bright as ever: only its text faint.)
+    if (l.box) { const a = ctx.globalAlpha; if (l.box === 'done') ctx.globalAlpha = alpha; drawBox(ctx, markX, mid, l.size, l.box === 'done', ink, look.on ?? '#0080FF'); ctx.globalAlpha = a; }
     for (const p of pieces) {
       const color = p.link ? look.link : p.r.c ? look.tint(p.r.c) : ink;
       // Code: on a rounded grey of its own.
@@ -318,27 +319,28 @@ export function drawDocSkeleton(ctx: CanvasRenderingContext2D, it: Item, n: numb
 /** Where the paragraph a character's in ends (its line break, or the end of the text). */
 const paraEnd = (text: string, at: number) => { const n = text.indexOf('\n', at); return n < 0 ? text.length : n; };
 
-/** A checklist's box, `size` the text's: its left at x, its middle at y; ticked, filled with a tick in it. */
-function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ticked: boolean, ink: string, paper: string): void {
+/** A checklist's box, `size` the text's: its left at x, its middle at y; ticked, a pixel bigger each side, filled
+ *  in `on` (the blue of the tool picked on the rail) with a white tick in it. */
+function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, ticked: boolean, ink: string, on: string): void {
   const s = Math.round(size * BOX_SIZE), top = y - s / 2;
   ctx.save();
   ctx.beginPath();
-  ctx.roundRect(x + 0.75, top + 0.75, s - 1.5, s - 1.5, 4);
   if (ticked) {
-    ctx.fillStyle = ink;
+    const b = s + 2, bx = x - 1, by = top - 1;
+    ctx.roundRect(bx, by, b, b, 5);
+    ctx.fillStyle = on;
     ctx.fill();
-    // (Its tick in the sheet's colour, as if cut out of it: seen whatever the theme.)
-    ctx.strokeStyle = paper;
-    ctx.globalAlpha = 1;
-    ctx.lineWidth = Math.max(1.5, s / 8);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = Math.max(1.5, b / 8);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(x + s * 0.27, top + s * 0.52);
-    ctx.lineTo(x + s * 0.43, top + s * 0.68);
-    ctx.lineTo(x + s * 0.73, top + s * 0.34);
+    ctx.moveTo(bx + b * 0.27, by + b * 0.52);
+    ctx.lineTo(bx + b * 0.43, by + b * 0.68);
+    ctx.lineTo(bx + b * 0.73, by + b * 0.34);
     ctx.stroke();
   } else {
+    ctx.roundRect(x + 0.75, top + 0.75, s - 1.5, s - 1.5, 4);
     ctx.strokeStyle = ink;
     ctx.globalAlpha *= 0.5;
     ctx.lineWidth = 1.5;

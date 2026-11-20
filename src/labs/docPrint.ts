@@ -66,8 +66,10 @@ function pageHtml(ed: Editor, it: Item, n: number, all: DocLine[]): string {
     if (l.mark) out.push(`<div style="position:absolute;left:${markX}px;top:${top}px;height:${tall}px;white-space:pre;${font};color:${ink};opacity:${alpha}">${esc(l.mark)}</div>`);
     if (l.box) {
       const s = Math.round(l.size * BOX_SIZE), y = top + tall / 2 - s / 2;
+      // (Ticked: a pixel bigger each side, in the blue of the tool picked on the rail, as bright as ever.)
+      const b = s + 2;
       out.push(l.box === 'done'
-        ? `<svg style="position:absolute;left:${markX}px;top:${y}px;opacity:${alpha}" width="${s}" height="${s}"><rect x="0.75" y="0.75" width="${s - 1.5}" height="${s - 1.5}" rx="4" fill="${ink}"/><path d="M${s * 0.27} ${s * 0.52}L${s * 0.43} ${s * 0.68}L${s * 0.73} ${s * 0.34}" stroke="#fff" stroke-width="${Math.max(1.5, s / 8)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+        ? `<svg style="position:absolute;left:${markX - 1}px;top:${y - 1}px;opacity:${it.to ?? 1}" width="${b}" height="${b}"><rect width="${b}" height="${b}" rx="5" fill="${lightTheme().pick}"/><path d="M${b * 0.27} ${b * 0.52}L${b * 0.43} ${b * 0.68}L${b * 0.73} ${b * 0.34}" stroke="#fff" stroke-width="${Math.max(1.5, b / 8)}" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`
         : `<svg style="position:absolute;left:${markX}px;top:${y}px;opacity:${alpha * 0.5}" width="${s}" height="${s}"><rect x="0.75" y="0.75" width="${s - 1.5}" height="${s - 1.5}" rx="4" fill="none" stroke="${ink}" stroke-width="1.5"/></svg>`);
     }
     const ps = block && labOn('mdFull') ? text.lastIndexOf('\n', l.s - 1) + 1 : -1;
