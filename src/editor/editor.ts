@@ -290,7 +290,7 @@ export class Editor {
   mindHover: string | null = null;
   /** Nodes added by a "+" before or after one that stays put (`from`, its buttons under the pointer): the last of
    *  them, to lay its parent's branches out evenly once `from` is picked no more («Ровная ветка после плюсов»). */
-  mindSpread: { from: string; node: string } | null = null;
+  mindSpread: { from: string; node: string; family?: string } | null = null;
   /** The pointer on the picked item's handle (or a little round it). */
   hotHandle = false;
   /** The node whose buttons were last drawn and how far faded in; those going away as they fade out. */
@@ -1179,9 +1179,11 @@ export class Editor {
     if (here) this.compHere = here.id;
     else if (this.compHere && this.board.get(this.compHere)?.stowed !== undefined) this.compHere = null;
     // Nodes added by "+"s before or after one (it staying put, its "+" under the pointer): it picked no more, they
-    // and their cousins one even column centred on their parents, gliding there (see spreadCousins).
+    // and their cousins one even column centred on their parents, gliding there (see spreadCousins). Added by
+    // Enter: once nothing of their family is picked.
     const spread = this.mindSpread;
-    if (spread && !this.selection.has(spread.from)) {
+    const left = spread && (spread.family ? ![...this.selection].some((id) => this.board.get(id)?.parent === spread.family) : !this.selection.has(spread.from));
+    if (spread && left) {
       this.mindSpread = null;
       if (labOn('mindSpread') && this.board.get(spread.node)?.parent) this.glide(spreadCousins(spread.node, this.board.list()));
     }

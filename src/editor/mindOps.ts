@@ -56,6 +56,8 @@ export function addMindNode(ed: Editor, fromId: string, kind: MindAdd, byPlus = 
   // opens for typing at once (and Tab there makes the next, see TextEditor).
   // (Laid out evenly round their parent once it's picked no more, «Ровная ветка после плюсов»: see Editor.mindSpread.)
   if (byPlus && beside) { ed.mindSpread = { from: from.id, node: it.id }; return; }
+  // By Enter, the same once none of that family is picked any more (Enter after Enter keeps in it).
+  if (beside) ed.mindSpread = { from: it.id, node: it.id, family: parent.id };
   ed.setSelection([it.id]);
   // From a "+", once the press is over, or the browser's focus moving on press closes it again.
   if (byPlus) setTimeout(() => ed.startEditing(it.id), 0);

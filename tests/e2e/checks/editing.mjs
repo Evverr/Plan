@@ -256,6 +256,32 @@ export const checks = {
     expect(Math.abs(await off()) <= 1, 'picked no more: even round their parent').toBe(true);
   },
 
+  async '"Ровная ветка после плюсов": nodes added by Enter, laid out the same once none of their family is picked'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.transact(() => {
+        b.add(e.newItem('mind', 100, 300, { id: 'r', w: 100, h: 40, text: 'Центр' }));
+        b.add(e.newItem('mind', 300, 250, { id: 'a', w: 100, h: 40, parent: 'r', text: 'a' }));
+        b.add(e.newItem('mind', 300, 350, { id: 'b', w: 100, h: 40, parent: 'r', text: 'b' }));
+        b.add(e.newItem('mind', 500, 250, { id: 'a0', w: 100, h: 40, parent: 'a', text: 'a0' }));
+        b.add(e.newItem('mind', 500, 350, { id: 'b0', w: 100, h: 40, parent: 'b', text: 'b0' }));
+      }); e.setSelection(['a0']); })()`);
+    await sleep(200);
+    const want = await p.ev(`(async () => { const m = await import('/src/model/mind.ts'), e = planx.editor;
+      for (let k = 0; k < 3; k++) { const at = [...e.selection][0]; e.addMindNode(at, 'below'); e.stopEditing(); }
+      const kids = planx.board.list().filter((i) => i.parent === 'a').map((i) => i.id);
+      e.setSelection([kids[0]]);
+      return Object.fromEntries(m.spreadCousins(kids[kids.length - 1], planx.board.list())); })()`);
+    const ys = () => p.ev(`Object.fromEntries(planx.board.list().filter((i) => i.parent === 'a' || i.parent === 'b').map((i) => [i.id, i.y]))`);
+    const before = await ys();
+    await sleep(500);
+    expect(JSON.stringify(await ys()), 'one of the family picked: as it was').toBe(JSON.stringify(before));
+    await p.ev(`planx.editor.setSelection([])`);
+    await sleep(600);
+    const after = await ys();
+    expect(Object.entries(want).every(([id, pt]) => Math.abs(after[id] - pt.y) <= 1), 'none picked: as "+"s would lay them out').toBe(true);
+    expect(JSON.stringify(after) !== JSON.stringify(before), 'and moved').toBe(true);
+  },
+
   async 'a box over mind map branches picks the nodes they lead to; a central topic folds each way on its own'(p) {
     await p.make('mind', [600, 400]);
     await p.escape();
