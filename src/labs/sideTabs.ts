@@ -2,8 +2,8 @@ import type { Item, Side } from '../model/types';
 import type { Point } from '../canvas/geometry';
 import { linkBox, SIDES, sidePoint } from '../canvas/geometry';
 import type { Editor } from '../editor/editor';
-import { isLocked, labOn, setLab, subscribeLabs } from './labs';
-import { readJSON, readText, writeJSON, writeText } from '../storage';
+import { isLocked, labOn, setLab } from './labs';
+import { writeText } from '../storage';
 
 /**
  * «Полукруги на рамке»: on the selection frame of what's picked alone, at the middle of each side, a ball
@@ -210,24 +210,23 @@ export function towardOffset(item: Item, side: Side, _items: Item[] = []): Point
 
 /** «Предложить создать элемент» (src/labs): after a few copies made by a ball in a visit (SUGGEST_FOR), its copy
  *  shown as the pointer comes to a ball no more: switched off by itself, said so at the bottom (where to switch it
- *  back). For now, on again the next visit (AUTO_KEY: switched off by itself, not by hand). Switched on again by
- *  hand in the same visit, it stays on. */
-const SUGGEST_FOR = 5, AUTO_KEY = 'planx-suggest-auto', OLD_KEY = 'planx-suggest-copies';
+ *  back). For now, on again each time the page is loaded, its count from nought. Switched on again by hand in the
+ *  same visit, it stays on. */
+const SUGGEST_FOR = 5;
 let copies = 0;
 export function copiedByBall(): void {
   if (!labOn('suggestCopy')) return;
   if (++copies !== SUGGEST_FOR) return;
   setLab('suggestCopy', false);
-  writeJSON(AUTO_KEY, true);
   window.dispatchEvent(new CustomEvent('planx:toast', { detail: {
     text: 'Дубли у шариков больше не подсвечиваются. Вернуть: меню доски → «Нововведения» → «Предложить создать элемент»', bottom: true,
   } }));
 }
-// (A visit begun: switched off by itself the last time, on again. Switched on since, by hand: no longer by itself.)
-// (So too where it was switched off by itself before this was so, its count kept for good then: that count gone.)
-if (readText(OLD_KEY) !== null) { writeText(OLD_KEY, null); writeJSON(AUTO_KEY, true); }
-if (readJSON<boolean>(AUTO_KEY)) { writeJSON(AUTO_KEY, false); setLab('suggestCopy', true); }
-subscribeLabs(() => { if (labOn('suggestCopy') && readJSON<boolean>(AUTO_KEY)) writeJSON(AUTO_KEY, false); });
+// (A visit begun, the page loaded again: on again whatever it was, its count from nought, for now. Counts and
+// marks kept before by earlier ways of it, gone.)
+writeText('planx-suggest-copies', null);
+writeText('planx-suggest-auto', null);
+setLab('suggestCopy', true);
 
 /** The side whose ball is out whole (the pointer by it), if any. */
 export const outSide = (aims: TabAims | null): Side | null => (aims ? SIDES.find((s) => aims[s] === ON) ?? null : null);

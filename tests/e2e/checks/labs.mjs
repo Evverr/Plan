@@ -3894,11 +3894,11 @@ export const checks = {
     expect(await seen(), 'another picked: half seen again').toBe('0.5');
   },
 
-  async '"Предложить создать элемент": off by itself after five copies by a ball, said at the bottom; on again the next visit; off by hand, it stays off'(p) {
+  async '"Предложить создать элемент": off by itself after five copies by a ball, said at the bottom; on again, its count from nought, each time the page is loaded'(p) {
     const on = () => p.ev(`(async () => (await import('/src/labs/labs.ts')).labOn('suggestCopy'))()`);
     const set = (v) => p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('suggestCopy', ${v}))()`);
     const copy = () => p.ev(`(async () => { const t = await import('/src/labs/sideTabs.ts'); t.copiedByBall(); return (await import('/src/labs/labs.ts')).labOn('suggestCopy'); })()`);
-    const reload = async () => { await p.cdp('Page.reload'); for (let k = 0; k < 40 && !(await p.ev(`!!document.querySelector('.topbar')`)); k++) await sleep(250); await sleep(300); };
+    const reload = async () => { await p.cdp('Page.reload', { ignoreCache: true }); for (let k = 0; k < 40 && !(await p.ev(`!!document.querySelector('.topbar')`)); k++) await sleep(250); await sleep(300); };
     await set(true);
     const seen = [];
     for (let k = 0; k < 5; k++) seen.push(await copy());
@@ -3906,15 +3906,16 @@ export const checks = {
     await sleep(100);
     expect(await p.ev(`document.querySelector('.toast.bottom')?.textContent ?? ''`), 'said at the bottom').toBe('Дубли у шариков больше не подсвечиваются. Вернуть: меню доски → «Нововведения» → «Предложить создать элемент»');
     await reload();
-    expect(await on(), 'the next visit: on again').toBe(true);
-    // Off by hand: stays off the next visit.
+    expect(await on(), 'loaded again: on again').toBe(true);
+    // Its count from nought: four more, still on; the fifth, off.
+    const again = [];
+    for (let k = 0; k < 5; k++) again.push(await copy());
+    expect(again.join(), 'counted afresh').toBe('true,true,true,true,false');
+    // Off by hand, or by the way of it before (its count kept for good then): on again all the same.
     await set(false);
-    await reload();
-    expect(await on(), 'off by hand: stays off').toBe(false);
-    // Switched off by itself before (its count kept for good then): on again.
     await p.ev(`localStorage.setItem('planx-suggest-copies', '7')`);
     await reload();
-    expect(JSON.stringify([await on(), await p.ev(`localStorage.getItem('planx-suggest-copies')`)]), 'off by itself before: on again, that count gone').toBe('[true,null]');
+    expect(JSON.stringify([await on(), await p.ev(`localStorage.getItem('planx-suggest-copies')`)]), 'loaded again: on, the old count gone').toBe('[true,null]');
   },
 
   async '"Полукруги на рамке": none on what is too small on the screen to aim at them'(p) {
