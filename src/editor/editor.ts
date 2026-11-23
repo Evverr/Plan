@@ -288,6 +288,9 @@ export class Editor {
   /** Shared: the mind map node the pointer is on (or on its buttons); its buttons fade in as a picked
    *  one's do, after the same wait (see hover.ts). */
   mindHover: string | null = null;
+  /** Nodes added by a "+" before or after one that stays put (`from`, its buttons under the pointer): the last of
+   *  them, to lay its parent's branches out evenly once `from` is picked no more («Ровная ветка после плюсов»). */
+  mindSpread: { from: string; node: string } | null = null;
   /** The pointer on the picked item's handle (or a little round it). */
   hotHandle = false;
   /** The node whose buttons were last drawn and how far faded in; those going away as they fade out. */
@@ -1173,6 +1176,13 @@ export class Editor {
     const here = this.pickedComponent(this.board.list().filter((c) => c.comp && !c.stowed));
     if (here) this.compHere = here.id;
     else if (this.compHere && this.board.get(this.compHere)?.stowed !== undefined) this.compHere = null;
+    // Nodes added by "+"s before or after one (it staying put, its "+" under the pointer): it picked no more, its
+    // parent's branches laid out evenly round it, gliding there, as a branch added by its "+" out does them.
+    const spread = this.mindSpread;
+    if (spread && !this.selection.has(spread.from)) {
+      this.mindSpread = null;
+      if (labOn('mindSpread') && this.board.get(spread.node)?.parent) this.glide(addChild(spread.node, this.board.list()));
+    }
     // («Правка главного компонента»: a main component picked anew, how it looks now, see warnComponent.)
     if (!was1 || this.compSeen?.id !== this.mainComponent()?.id) this.noteComponent();
     if (this.cells.length && (this.selection.size !== 1 || !this.selection.has(was[0]))) { this.cells = []; this.cellAnchor = null; }

@@ -236,6 +236,24 @@ export const checks = {
     await p.mouse('mouseReleased', ...to);
   },
 
+  async '"Ровная ветка после плюсов": nodes added by "+" after one, it staying put; it picked no more, its parent\'s branches even round it'(p) {
+    await p.make('mind', [500, 400]);
+    await p.escape();
+    const root = await p.ev(`planx.board.list().find((i) => i.type === 'mind').id`);
+    await p.ev(`(() => { const e = planx.editor; e.addMindNode('${root}', 'child', true); e.stopEditing(); })()`);
+    await sleep(200);
+    const first = await p.ev(`planx.board.list().find((i) => i.parent === '${root}').id`);
+    // (Its middle against its parent's, and the branches' middle against it.)
+    const off = () => p.ev(`(() => { const r = planx.board.get('${root}'), ks = planx.board.list().filter((i) => i.parent === '${root}'); const top = Math.min(...ks.map((k) => k.y)), bottom = Math.max(...ks.map((k) => k.y + k.h)); return Math.round((top + bottom) / 2 - (r.y + r.h / 2)); })()`);
+    const y0 = await p.ev(`planx.board.get('${first}').y`);
+    await p.ev(`(() => { const e = planx.editor; e.setSelection(['${first}']); for (let k = 0; k < 3; k++) e.addMindNode('${first}', 'below', true); })()`);
+    await sleep(100);
+    expect(JSON.stringify([await p.ev(`planx.board.get('${first}').y`) === y0, (await off()) > 20]), 'it stays put, the others under it: not even yet').toBe('[true,true]');
+    await p.ev(`planx.editor.setSelection([])`);
+    await sleep(400);
+    expect(Math.abs(await off()) <= 1, 'picked no more: even round their parent').toBe(true);
+  },
+
   async 'a box over mind map branches picks the nodes they lead to; a central topic folds each way on its own'(p) {
     await p.make('mind', [600, 400]);
     await p.escape();
