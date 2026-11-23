@@ -17,7 +17,7 @@ export type Mark = { s: number; e: number; key: keyof RunStyle };
 export function inline(line: string, links: boolean): { t: string; marks: Mark[]; links: TextLink[] } {
   let t = '';
   const marks: Mark[] = [], found: TextLink[] = [];
-  const re = /`([^`]+)`|\\([\\`*_{}[\]()#+\-.!|~>=<])|!?\[([^\]]*)\]\(<?([^)\s>]*)>?(?:\s+"[^"]*")?\)|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|<(https?:\/\/[^>\s]+)>|<u>(.+?)<\/u>|\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|==(.+?)==|\*([^*\s](?:[^*]*[^*\s])?)\*|(?<![\p{L}\d])_([^_\s](?:[^_]*[^_\s])?)_(?![\p{L}\d])|(https?:\/\/[^\s<>()]*[^\s<>().,;:!?'"»])|<br\s*\/?>/gu;
+  const re = /`([^`]+)`|\\([\\`*_{}[\]()#+\-.!|~>=<])|!?\[([^\]]*)\]\(<?([^)\s>]*)>?(?:\s+"[^"]*")?\)|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|<(https?:\/\/[^>\s]+)>|<u>(.+?)<\/u>|\*\*(.+?)\*\*|__(.+?)__|~~(.+?)~~|==(.+?)==|\*([^*\s](?:[^*]*[^*\s])?)\*|(?<![\p{L}\d])_([^_\s](?:[^_]*[^_\s])?)_(?![\p{L}\d])|(https?:\/\/[^\s<>()]*[^\s<>().,;:!?'"»])|<br\s*\/?>|(<\/?[a-zA-Z][^>]*>)|&(nbsp|amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);/gu;
   let at = 0;
   for (const x of line.matchAll(re)) {
     t += line.slice(at, x.index);
@@ -26,6 +26,9 @@ export function inline(line: string, links: boolean): { t: string; marks: Mark[]
     if (x[1] !== undefined) { t += x[1]; marks.push({ s, e: t.length, key: 'm' }); continue; }
     if (x[2] !== undefined) { t += x[2]; continue; }
     if (/^<br/.test(x[0])) { t += ' '; continue; }
+    // (Any other HTML tag left out, its text kept; a character reference as its letter: as Obsidian shows them.)
+    if (x[16] !== undefined) continue;
+    if (x[17] !== undefined) { const k = x[17].toLowerCase(); t += k === 'nbsp' ? ' ' : k[0] === '#' ? String.fromCodePoint(k[1] === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10)) : ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" } as Record<string, string>)[k]; continue; }
     // (What's marked, its own marks in it too.)
     const nested = (inner: string, key?: keyof RunStyle, url?: string) => {
       const sub = inline(inner, links);
@@ -51,7 +54,7 @@ export function inline(line: string, links: boolean): { t: string; marks: Mark[]
 }
 
 /** Whether a cell's text has any Markdown in it to be drawn (a quick look before the whole of it). */
-const MARKUP = /[`*_~=\\<[]|https?:\/\//;
+const MARKUP = /[`*_~=\\<[&]|https?:\/\//;
 
 /** A text in Markdown (a cell's) as it's shown: its marks taken out, its styles and links on what they mark. */
 export function shownMarkdown(text: string): { text: string; rs: TextRun[]; links: TextLink[] } {

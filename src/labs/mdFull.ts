@@ -15,8 +15,33 @@ import { shownMarkdown } from './mdInline';
  * room under a heading as well as over it. Saved as Markdown, all of it comes back as it was.
  */
 
-/** A table as Markdown has it: its rows of cells (the first its header), each column's alignment. */
-export interface MdTable { rows: string[][]; aligns: Array<'left' | 'center' | 'right' | undefined> }
+/** A table as Markdown has it: its rows of cells (the first its header, but an HTML one's without one, `head`
+ *  false), each column's alignment. */
+export interface MdTable { rows: string[][]; aligns: Array<'left' | 'center' | 'right' | undefined>; head?: boolean }
+
+/** HTML's character references as the letters they stand for (&nbsp; a space, &amp; …, &#NNN;). */
+export const unentity = (s: string): string => s.replace(/&(nbsp|amp|lt|gt|quot|apos|#\d+|#x[\da-f]+);/gi, (_, e: string) => {
+  const k = e.toLowerCase();
+  if (k === 'nbsp') return ' ';
+  if (k[0] === '#') return String.fromCodePoint(k[1] === 'x' ? parseInt(k.slice(2), 16) : parseInt(k.slice(1), 10));
+  return ({ amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" } as Record<string, string>)[k];
+});
+
+/** An HTML table starting at line `i` («<table>…</table>», as Obsidian shows one): its rows' cells' text
+ *  (their tags left out, a <br> a line break), a header if it has one (<th>, <thead>); how many lines it takes. */
+export function htmlTableAt(lines: string[], i: number): { table: MdTable; n: number } | null {
+  if (!/^\s*<table\b/i.test(lines[i])) return null;
+  let n = 1;
+  while (i + n - 1 < lines.length && !/<\/table>/i.test(lines[i + n - 1])) n++;
+  if (i + n - 1 >= lines.length) return null;
+  const html = lines.slice(i, i + n).join('\n'), rows: string[][] = [];
+  const cellText = (c: string) => unentity(c.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')).replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').trim();
+  for (const r of html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) rows.push([...r[1].matchAll(/<t([dh])\b[^>]*>([\s\S]*?)<\/t\1>/gi)].map((c) => cellText(c[2])));
+  const width = Math.max(0, ...rows.map((r) => r.length));
+  if (!width) return null;
+  const head = /<th\b/i.test(html.slice(0, html.search(/<\/tr>/i) + 1)) || /<thead\b/i.test(html);
+  return { table: { rows: rows.map((r) => Array.from({ length: width }, (_, k) => r[k] ?? '')), aligns: [], head }, n };
+}
 
 /** Whether a line is a table's row: a «|» in it (not escaped). */
 const rowLike = (line: string) => /(^|[^\\])\|/.test(line);
@@ -80,8 +105,10 @@ export function tableItems(t: MdTable, w: number, maxH: number, firstH = maxH): 
     ctx.font = font(CELL_FS, bold ? 700 : 400, 'onest');
     return ctx.measureText(s).width * (code ? 1.1 : 1);
   };
-  const least = Array.from({ length: n }, (_, c) => Math.max(...cells.map((r, k) => Math.max(0, ...r[c].shown.split(/\s+/).map((word) => wide(word, k === 0, r[c].code))))) + PAD_X * 2 + 2);
-  const most = Array.from({ length: n }, (_, c) => Math.max(...cells.map((r, k) => Math.max(...r[c].shown.split('\n').map((l) => wide(l, k === 0, r[c].code))))) + PAD_X * 2 + 2);
+  // (A header, its first row, bold: not an HTML table's without one, see htmlTableAt.)
+  const hd = t.head !== false, bold = (k: number) => hd && k === 0;
+  const least = Array.from({ length: n }, (_, c) => Math.max(...cells.map((r, k) => Math.max(0, ...r[c].shown.split(/\s+/).map((word) => wide(word, bold(k), r[c].code))))) + PAD_X * 2 + 2);
+  const most = Array.from({ length: n }, (_, c) => Math.max(...cells.map((r, k) => Math.max(...r[c].shown.split('\n').map((l) => wide(l, bold(k), r[c].code))))) + PAD_X * 2 + 2);
   let cols: number[];
   if (most.reduce((a, b) => a + b, 0) <= w) {
     // (All of it fits: the room left shared alike.)
@@ -94,21 +121,22 @@ export function tableItems(t: MdTable, w: number, maxH: number, firstH = maxH): 
     cols = cols.map((v) => v * k);
   }
   cols = cols.map((v) => Math.floor(v * 10) / 10);
-  const rowH = cells.map((r, k) => Math.max(ROW_H, Math.ceil(Math.max(...r.map((cell, c) => measureTextHeight(cell.shown || ' ', Math.max(1, (cols[c] - PAD_X * 2) / (cell.code ? 1.1 : 1)), CELL_FS, { weight: k === 0 ? 700 : 400 }))) + PAD_Y * 2)));
+  const rowH = cells.map((r, k) => Math.max(ROW_H, Math.ceil(Math.max(...r.map((cell, c) => measureTextHeight(cell.shown || ' ', Math.max(1, (cols[c] - PAD_X * 2) / (cell.code ? 1.1 : 1)), CELL_FS, { weight: bold(k) ? 700 : 400 }))) + PAD_Y * 2)));
   // Parts a page tall at most, each with the header over it; the first as tall as `firstH` (what's left of the
   // page it starts on: no room left empty under what's before it), unless not even a row would fit there.
-  const parts: number[][] = [], first = rowH[0] + (rowH[1] ?? 0) <= firstH ? firstH : maxH;
-  let part: number[] = [], h = rowH[0];
-  for (let k = 1; k < rowH.length; k++) {
-    if (part.length && h + rowH[k] > (parts.length ? maxH : first)) { parts.push(part); part = []; h = rowH[0]; }
+  const headH = hd ? rowH[0] : 0, from = hd ? 1 : 0;
+  const parts: number[][] = [], first = headH + (rowH[from] ?? 0) <= firstH ? firstH : maxH;
+  let part: number[] = [], h = headH;
+  for (let k = from; k < rowH.length; k++) {
+    if (part.length && h + rowH[k] > (parts.length ? maxH : first)) { parts.push(part); part = []; h = headH; }
     part.push(k);
     h += rowH[k];
   }
   parts.push(part);
   return parts.map((ks) => {
-    const rows = [0, ...ks], m = rows.length, look = docTableLook(n);
+    const rows = hd ? [0, ...ks] : ks, m = rows.length, look = hd ? docTableLook(n) : { ...docTableLook(n), cellFmt: undefined };
     const fmt = rows.flatMap((k) => cells[k].map((_, c) => {
-      const f: Record<string, unknown> = k === 0 ? { ...(look.cellFmt?.[c] ?? {}) } : {};
+      const f: Record<string, unknown> = bold(k) ? { ...(look.cellFmt?.[c] ?? {}) } : {};
       if (t.aligns[c]) f.ta = t.aligns[c];
       return Object.keys(f).length ? f : null;
     }));

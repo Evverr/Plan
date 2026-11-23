@@ -5,7 +5,7 @@ import { CODE_SIZE, docObjectIn, HEADING_SIZE, headingOver, headingUnder, LIST_D
 import { objectPicture } from './docObjects';
 import { codeTokens } from './codeColors';
 import { labOn } from './labs';
-import { tableAt, tableKey, type MdTable } from './mdFull';
+import { htmlTableAt, tableAt, tableKey, type MdTable } from './mdFull';
 import { inline, type Mark } from './mdInline';
 import type { TextLink } from '../model/textLinks';
 
@@ -284,7 +284,8 @@ export function fromMarkdown(md: string): { text: string; rs: TextRun[] | undefi
     // (A blank line between paragraphs only parts them, as Markdown has it: no line of its own.)
     if (!raw.trim()) continue;
     // A table: its place, a paragraph of its own (made one of ours once the document's there, mdFull.ts).
-    const tb = full ? tableAt(lines, i) : null;
+    // (Or an HTML one, «<table>…</table>», as Obsidian shows one.)
+    const tb = full ? tableAt(lines, i) ?? htmlTableAt(lines, i) : null;
     if (tb) { paras.push({ t: '', keys: { o: tableKey(tables.length) }, marks: [], links: [] }); tables.push(tb.table); i += tb.n - 1; continue; }
     if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(raw)) { paras.push({ t: '', keys: { k: 'hr' }, marks: [], links: [] }); continue; }
     let line = raw, m: RegExpExecArray | null;

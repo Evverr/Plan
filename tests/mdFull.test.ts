@@ -46,6 +46,18 @@ describe('«Markdown полностью»', () => {
     expect(looksLikeMarkdown('| a | b |\n| - | - |\n| 1 | 2 |')).toBe(true);
   });
 
+  it('takes an HTML table (as Obsidian shows one): its cells\' text, without a header if it has none', () => {
+    const md = 'Иконки\n\n<table>\n<tbody>\n<tr><td><span style="white-space:nowrap">3&nbsp;Persons</span></td><td><span>A&nbsp;Letter</span></td></tr>\n<tr><td>Bold</td><td>Book&nbsp;open &amp; <b>more</b></td></tr>\n</tbody>\n</table>\n\nПосле <span style="x">текст</span>&nbsp;тут';
+    const { text, rs, tables } = fromMarkdown(md);
+    expect(text).toBe('Иконки\n\nПосле текст тут');
+    expect(paraAt(text, rs, 7, 'o')).toBe(tableKey(0));
+    expect(tables?.[0]).toEqual({ rows: [['3 Persons', 'A Letter'], ['Bold', 'Book open & more']], aligns: [], head: false });
+    const parts = tableItems(tables![0], 600, 900);
+    expect([parts.length, parts[0].rows!.length, parts[0].cellFmt ?? null]).toEqual([1, 2, null]);
+    const withHead = fromMarkdown('<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>').tables?.[0];
+    expect(withHead?.head).toBe(true);
+  });
+
   it('makes a long table parts a page tall each, its header over each', () => {
     const rows = [['Метрика', 'Определение'], ...Array.from({ length: 30 }, (_, i) => [`m${i}`, 'длинное определение '.repeat(6)])];
     const parts = tableItems({ rows, aligns: [undefined, undefined] }, 600, 900);
