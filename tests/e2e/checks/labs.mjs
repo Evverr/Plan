@@ -4059,4 +4059,25 @@ export const checks = {
     await p.ev('planx.editor.undo()');
     expect(await p.ev(`(() => { const t = planx.board.get('${ids.t}'); return [t.ts ?? 1, t.w].join(); })()`), 'one undo').toBe([1, 268].join());
   },
+
+  async '«Текст майнд-карты двойным кликом»: a click on a node\'s text picks it, its buttons out; a double click types in it; resting on another shows none'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('mind', 100, 300, { id: 'r', w: 120, h: 48, text: 'Центр' }));
+      b.add(e.newItem('mind', 300, 300, { id: 'a', w: 100, h: 48, text: 'Ветка', parent: 'r' })); e.setSelection([]); })()`);
+    await sleep(200);
+    await p.click([350, 324]);
+    await sleep(150);
+    await p.click([350, 324]);
+    await sleep(700);
+    expect(await p.ev(`[...planx.editor.selection].join() + ' ' + planx.editor.editingId + ' ' + planx.editor.plusNode()?.id`), 'clicked twice apart: picked, its buttons').toBe('a null a');
+    await p.mouse('mouseMoved', 160, 324);
+    await sleep(800);
+    expect(await p.ev('planx.editor.plusNode()?.id'), 'resting on the other: still the picked one\'s only').toBe('a');
+    for (const n of [1, 2]) {
+      await p.cdp('Input.dispatchMouseEvent', { type: 'mousePressed', x: 350, y: 324, button: 'left', buttons: 1, clickCount: n });
+      await p.cdp('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 350, y: 324, button: 'left', buttons: 0, clickCount: n });
+    }
+    await sleep(200);
+    expect(await p.ev('planx.editor.editingId'), 'double click: typing').toBe('a');
+  },
 };

@@ -992,8 +992,10 @@ export class Editor {
   }
 
   /** The mind map node the pointer rests on, when it isn't the one picked alone. (Not with the link dots
-   *  out, "Связи инструментом" in src/labs: it shows its dots instead.) */
+   *  out, "Связи инструментом" in src/labs: it shows its dots instead. Nor with «Текст майнд-карты двойным
+   *  кликом», src/labs: only the picked one's show.) */
   private plusOn(): string | null {
+    if (labOn('mindDblEdit')) return null;
     const it = this.mindHover ? this.board.get(this.mindHover) : undefined;
     if (!it || it.type !== 'mind' || it.host || isLocked(it) || this.gesture) return null;
     return this.selection.size === 1 && this.selection.has(it.id) ? null : it.id;

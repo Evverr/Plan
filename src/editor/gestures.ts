@@ -681,9 +681,10 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       } else if (g.cell) {
         const it = board.get(g.id), i = it ? cellAt(it, g.start) : null;
         if (i !== null) ed.pickCell(i, e.shiftKey ? 'range' : e.metaKey || e.ctrlKey ? 'toggle' : 'one');
-      } else if (board.get(g.id)?.type === 'mind' && ed.selection.size === 1 && !e.shiftKey && onMindText(board.get(g.id)!, g.start)) {
+      } else if (!labOn('mindDblEdit') && board.get(g.id)?.type === 'mind' && ed.selection.size === 1 && !e.shiftKey && onMindText(board.get(g.id)!, g.start)) {
         // A mind map node opens for typing on a single click on its text (inside its padding), the caret
-        // after its text; on its edge, it's only picked (to be deleted, say).
+        // after its text; on its edge, it's only picked (to be deleted, say). («Текст майнд-карты двойным
+        // кликом», src/labs: only picked, typed in on a double click, as anything else.)
         ed.startEditing(g.id, null, 'end');
       }
       return;

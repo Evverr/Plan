@@ -95,7 +95,8 @@ export const checks = {
     expect([await dup(30), await dup(50)].join(), 'a little off: under; more: right').toBe('under,right');
   },
 
-  async 'a mind map node: a click on its edge picks it, on its text opens it; Delete held deletes once'(p) {
+  async 'a mind map node: a click on its edge picks it, on its text opens it (without «Текст майнд-карты двойным кликом»); Delete held deletes once'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('mindDblEdit', false))()`);
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
       b.add(e.newItem('mind', 100, 300, { id: 'r', w: 120, h: 48, text: 'Центр' }));
       b.add(e.newItem('mind', 300, 300, { id: 'a', w: 100, h: 48, text: 'Ветка', parent: 'r' })); e.setSelection([]); })()`);
@@ -125,7 +126,8 @@ export const checks = {
     expect(await p.ev(`planx.board.list().filter((i) => i.parent === 'r').length + ' ' + [...planx.editor.selection].join()`), 'gone, its parent picked').toBe('0 r');
   },
 
-  async 'the pointer rested on a mind map node a moment shows its buttons, nothing picked; its "+" adds a branch'(p) {
+  async 'the pointer rested on a mind map node a moment shows its buttons, nothing picked (without «Текст майнд-карты двойным кликом»); its "+" adds a branch'(p) {
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('mindDblEdit', false))()`);
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
       b.add(e.newItem('mind', 300, 300, { id: 'r', w: 120, h: 40, text: 'Центр' })); e.setSelection([]); })()`);
     await sleep(200);
