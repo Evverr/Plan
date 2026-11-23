@@ -454,3 +454,15 @@ describe('cousins laid out («Ровная ветка после плюсов»)
     expect([moves.has('A'), moves.has('B'), moves.has('r')]).toEqual([false, false, false]);
   });
 });
+
+describe('kin of other branches kept clear («Ровная ветка после плюсов»)', () => {
+  it('moves the next family of that level (another grandparent\'s) twice the gap off', () => {
+    const r = node('r', 0, 0), P1 = node('P1', 160, -100, { parent: 'r' }), P2 = node('P2', 160, 100, { parent: 'r' });
+    const A = node('A', 320, -20, { parent: 'P1' }), B = node('B', 320, 40, { parent: 'P2' });
+    const kids = [node('a1', 480, -60, { parent: 'A' }), node('a2', 480, -4, { parent: 'A' }), node('a3', 480, 52, { parent: 'A' }), node('b1', 480, 40, { parent: 'B' })];
+    const items = [r, P1, P2, A, B, ...kids], moves = spreadCousins('a3', items);
+    const y = (id: string) => moves.get(id)?.y ?? items.find((i) => i.id === id)!.y;
+    // A's three round A (middle 0): -76, -20, 36 (bottom 76); B's one 32 below that.
+    expect([y('a1'), y('a2'), y('a3'), y('b1')]).toEqual([-76, -20, 36, 108]);
+  });
+});

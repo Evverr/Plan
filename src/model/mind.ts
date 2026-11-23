@@ -289,19 +289,50 @@ export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
   // Each on its own parent first.
   for (const f of families) lineUp(f.kids.map(block), a, middle(f.q, a));
   const span = (f: { kids: Item[] }) => { const b = f.kids.flatMap(block); return { lo: lo(b, a), hi: hi(b, a) }; };
-  const crowded = families.some((f, i) => i > 0 && span(families[i - 1]).hi + a.gap > span(f).lo + 0.5);
+  // (Families twice the gap within them apart, at least: closer, crowded.)
+  const apart = a.gap * 2;
+  const crowded = families.some((f, i) => i > 0 && span(families[i - 1]).hi + apart > span(f).lo + 0.5);
   if (crowded) {
     // (One column, the gap between one family and the next twice the one within them.)
     const blocks = families.map((f) => f.kids.map(block)), size = (b: Item[]) => hi(b, a) - lo(b, a);
-    const total = blocks.reduce((t, f) => t + f.reduce((s, b) => s + size(b), 0) + a.gap * (f.length - 1), 0) + a.gap * 2 * (blocks.length - 1);
+    const total = blocks.reduce((t, f) => t + f.reduce((s, b) => s + size(b), 0) + a.gap * (f.length - 1), 0) + apart * (blocks.length - 1);
     // (Centred on the lines going out to them: between the first and last parents with branches, not those without.)
     let at = (middle(families[0].q, a) + middle(families[families.length - 1].q, a)) / 2 - total / 2;
     blocks.forEach((f, i) => {
-      if (i) at += a.gap;
+      if (i) at += apart - a.gap;
       for (const b of f) { shift(b, a, at - lo(b, a)); at += size(b) + a.gap; }
     });
   }
+  // The families of that level elsewhere on that side of the map (of other grandparents) out of their way, as
+  // far off them as cousins are from one another (pushed along, each with what grows from it).
+  clearKin(node, families.flatMap((f) => f.kids), all, byId, block, a, apart);
   return moved(items, byId);
+}
+
+/** Every node of `node`'s level on its side of the map whose parent isn't one of `mine`'s, by its parent's
+ *  family: those past `mine` (with what grows from them) moved on to stand `apart` off them, and off one
+ *  another's families, each way. */
+function clearKin(node: Item, mine: Item[], all: Item[], byId: Map<string, Item>, block: (k: Item) => Item[], a: Axis, apart: number): void {
+  const chain = (n: Item): Item[] => { const out = [n]; for (let c = n; c.parent && out.length < 50;) { const u = byId.get(c.parent); if (!u) break; out.push(u); c = u; } return out; };
+  const here = chain(node), root = here[here.length - 1], level = here.length;
+  const part = (n: Item) => { const c = chain(n); return c.length > 1 && c[c.length - 1] === root ? mindWay(c[c.length - 2], root) : null; };
+  const side = part(node), ours = new Set(mine.map((k) => k.parent));
+  const groups = new Map<string, Item[]>();
+  for (const i of all) if (i.type === 'mind' && i.parent && !ours.has(i.parent) && chain(i).length === level && part(i) === side) groups.set(i.parent, [...(groups.get(i.parent) ?? []), i]);
+  const ourBlocks = mine.flatMap(block), mid = (lo(ourBlocks, a) + hi(ourBlocks, a)) / 2;
+  const fam = [...groups.values()].map((kids) => ({ kids, b: () => kids.flatMap(block) }));
+  let edge = hi(ourBlocks, a);
+  for (const f of fam.filter((f) => middle(byId.get(f.kids[0].parent!)!, a) >= mid).sort((m, n) => lo(m.b(), a) - lo(n.b(), a))) {
+    const need = edge + apart - lo(f.b(), a);
+    if (need > 0) f.kids.forEach((k) => shift(block(k), a, need));
+    edge = Math.max(edge, hi(f.b(), a));
+  }
+  edge = lo(ourBlocks, a);
+  for (const f of fam.filter((f) => middle(byId.get(f.kids[0].parent!)!, a) < mid).sort((m, n) => hi(n.b(), a) - hi(m.b(), a))) {
+    const need = hi(f.b(), a) + apart - edge;
+    if (need > 0) f.kids.forEach((k) => shift(block(k), a, -need));
+    edge = Math.min(edge, lo(f.b(), a));
+  }
 }
 
 /**
@@ -390,8 +421,8 @@ function clearCousins(p: Item, way: Way, all: Item[], byId: Map<string, Item>): 
   // Measured by the nodes of the level alone, not what grows further from them; each moves with it.
   const mine = kids;
   const others = all.filter((i) => i.type === 'mind' && i.parent && i.parent !== p.id && chain(i).length === level + 1 && part(i) === myPart).map((i) => [i]);
-  // Between the branches of different parents, a node's height at least (see cousinGap).
-  const gap = (b: Item[], from: string) => (b[0].parent !== from ? Math.max(a.gap, b[0].h) : a.gap);
+  // Between the branches of different parents, a node's height at least, and twice the gap between siblings.
+  const gap = (b: Item[], from: string) => (b[0].parent !== from ? Math.max(a.gap * 2, b[0].h) : a.gap);
   let edge = hi(mine, a), from = p.id;
   for (const b of others.filter((b) => middle(get(b[0].parent!)!, a) >= middle(p, a)).sort((m, n) => lo(m, a) - lo(n, a))) {
     const need = edge + gap(b, from) - lo(b, a);
