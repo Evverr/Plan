@@ -3911,6 +3911,10 @@ export const checks = {
     await set(false);
     await reload();
     expect(await on(), 'off by hand: stays off').toBe(false);
+    // Switched off by itself before (its count kept for good then): on again.
+    await p.ev(`localStorage.setItem('planx-suggest-copies', '7')`);
+    await reload();
+    expect(JSON.stringify([await on(), await p.ev(`localStorage.getItem('planx-suggest-copies')`)]), 'off by itself before: on again, that count gone').toBe('[true,null]');
   },
 
   async '"Полукруги на рамке": none on what is too small on the screen to aim at them'(p) {

@@ -3,7 +3,7 @@ import type { Point } from '../canvas/geometry';
 import { linkBox, SIDES, sidePoint } from '../canvas/geometry';
 import type { Editor } from '../editor/editor';
 import { isLocked, labOn, setLab, subscribeLabs } from './labs';
-import { readJSON, writeJSON } from '../storage';
+import { readJSON, readText, writeJSON, writeText } from '../storage';
 
 /**
  * «Полукруги на рамке»: on the selection frame of what's picked alone, at the middle of each side, a ball
@@ -212,7 +212,7 @@ export function towardOffset(item: Item, side: Side, _items: Item[] = []): Point
  *  shown as the pointer comes to a ball no more: switched off by itself, said so at the bottom (where to switch it
  *  back). For now, on again the next visit (AUTO_KEY: switched off by itself, not by hand). Switched on again by
  *  hand in the same visit, it stays on. */
-const SUGGEST_FOR = 5, AUTO_KEY = 'planx-suggest-auto';
+const SUGGEST_FOR = 5, AUTO_KEY = 'planx-suggest-auto', OLD_KEY = 'planx-suggest-copies';
 let copies = 0;
 export function copiedByBall(): void {
   if (!labOn('suggestCopy')) return;
@@ -224,6 +224,8 @@ export function copiedByBall(): void {
   } }));
 }
 // (A visit begun: switched off by itself the last time, on again. Switched on since, by hand: no longer by itself.)
+// (So too where it was switched off by itself before this was so, its count kept for good then: that count gone.)
+if (readText(OLD_KEY) !== null) { writeText(OLD_KEY, null); writeJSON(AUTO_KEY, true); }
 if (readJSON<boolean>(AUTO_KEY)) { writeJSON(AUTO_KEY, false); setLab('suggestCopy', true); }
 subscribeLabs(() => { if (labOn('suggestCopy') && readJSON<boolean>(AUTO_KEY)) writeJSON(AUTO_KEY, false); });
 
