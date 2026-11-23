@@ -2919,6 +2919,12 @@ export const checks = {
     const [, a2, c2] = (await xs()).map((s) => s.split(',').map(Number)), kx = (gx + 30) / gx;
     expect(Math.round(a2[0] - r[0] - r[1]), 'first gap out').toBe(Math.round(gx * kx));
     expect(Math.round(c2[0] - a2[0] - a2[1]), 'next gap out, in proportion').toBe(Math.round(gx * kx));
+    // Squeezed far up: no gap along under 4.
+    const g1 = gaps(await ys());
+    const mid2 = await p.ev(`(() => { const a = planx.board.get('a1'), s = planx.editor.toScreen({ x: a.x + a.w / 2, y: a.y + a.h + ${g1[1]} / 2 }); return [s.x, s.y]; })()`);
+    await p.drag(mid2, [mid2[0], mid2[1] - 300]);
+    await sleep(200);
+    expect(gaps(await ys()).map((v) => Math.round(v)).join(), 'squeezed: 4 at least').toBe('4,4,4');
   },
 
   async '"Авторасположение" on a mind map node: the lines are all as long, a quarter of the longest level, whatever the size of the nodes; the ones along a level from the nodes\' left edge'(p) {

@@ -112,6 +112,9 @@ function levels(ed: Editor, way: Way): { way: Way; rows: Item[][] } | null {
   return { way, rows };
 }
 
+/** The least a gap along a level is squeezed to by its handle. */
+const MIN_GAP = 4;
+
 /** How far the gaps of a level are stretched: the first handle's for all, times the level's own. */
 const stretch = (k: number[], level: number) => (k[0] ?? 1) * (level ? k[level] ?? 1 : 1);
 
@@ -136,10 +139,12 @@ function applyWay(ed: Editor, n: Item, w: Way, next: Map<string, Point>): void {
   rows.forEach((row, level) => {
     const ky = stretch(st.ky, level), kx = stretch(st.kx, level);
     const b = row.map(base).sort((p, q) => p[along] - q[along]);
-    // Along: each gap to the one before times ky, the level centred where it was.
+    // Along: each gap to the one before times ky, the level centred where it was; squeezed, none less than
+    // MIN_GAP (one already less stays as it was).
     const lo = b[0][along], hi = b[b.length - 1][along] + b[b.length - 1][size];
     const pos: number[] = [lo];
-    for (let i = 1; i < b.length; i++) pos.push(pos[i - 1] + b[i - 1][size] + (b[i][along] - b[i - 1][along] - b[i - 1][size]) * ky);
+    const gapTo = (g: number) => (ky < 1 ? Math.max(Math.min(MIN_GAP, g), g * ky) : g * ky);
+    for (let i = 1; i < b.length; i++) pos.push(pos[i - 1] + b[i - 1][size] + gapTo(b[i][along] - b[i - 1][along] - b[i - 1][size]));
     const shift = (lo + hi) / 2 - (pos[0] + pos[b.length - 1] + b[b.length - 1][size]) / 2;
     b.forEach((k, i) => {
       // Out: its gap from its parent times kx, from where its parent is now.
@@ -226,7 +231,9 @@ export const mindStretch = (h: MindGap) => (!mt ? 1 : (h.out ? stretches(h.way).
 export function dragMindGap(ed: Editor, h: MindGap, k0: number, d: number): void {
   if (!mt) return;
   const st = stretches(h.way);
-  (h.out ? st.kx : st.ky)[h.level] = k0 * Math.max(0.1, (h.gap + d * h.sign) / Math.max(1, h.gap));
+  // (Out, to a tenth of it at least; along, till its gap is MIN_GAP.)
+  const to = h.gap + d * h.sign;
+  (h.out ? st.kx : st.ky)[h.level] = k0 * (h.out ? Math.max(0.1, to / Math.max(1, h.gap)) : Math.max(MIN_GAP, to) / Math.max(1, h.gap));
   apply(ed);
 }
 
