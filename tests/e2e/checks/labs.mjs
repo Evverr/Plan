@@ -3894,7 +3894,7 @@ export const checks = {
     expect(await seen(), 'another picked: half seen again').toBe('0.5');
   },
 
-  async '"Предложить создать элемент": off by itself after five copies by a ball, said at the bottom; on again, its count from nought, each time the page is loaded'(p) {
+  async '"Предложить создать элемент": off by itself after five copies by a ball, said at the top till «Понятно»; on again, its count from nought, each time the page is loaded'(p) {
     const on = () => p.ev(`(async () => (await import('/src/labs/labs.ts')).labOn('suggestCopy'))()`);
     const set = (v) => p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('suggestCopy', ${v}))()`);
     const copy = () => p.ev(`(async () => { const t = await import('/src/labs/sideTabs.ts'); t.copiedByBall(); return (await import('/src/labs/labs.ts')).labOn('suggestCopy'); })()`);
@@ -3904,10 +3904,13 @@ export const checks = {
     for (let k = 0; k < 5; k++) seen.push(await copy());
     expect(seen.join(), 'on for four, off with the fifth').toBe('true,true,true,true,false');
     await sleep(100);
-    expect(await p.ev(`document.querySelector('.toast.bottom span')?.textContent ?? ''`), 'said at the bottom').toBe('Предпросмотр копии объекта отключён. Включить его снова можно в меню доски: «Нововведения» → «Предложить создать элемент».');
-    await p.click(await p.at('.toast.bottom .btn'));
+    const note = `document.querySelector('.toast.with-btn:not(.bottom) span')?.textContent ?? ''`;
+    expect(await p.ev(note), 'said at the top').toBe('Предпросмотр копии объекта отключён. Включить его снова можно в меню доски: «Нововведения» → «Предложить создать элемент».');
+    await sleep(5500);
+    expect(await p.ev(note) !== '', 'still there after 5 seconds').toBe(true);
+    await p.click(await p.at('.toast.with-btn .btn'));
     await sleep(200);
-    expect(await p.ev(`!!document.querySelector('.toast.bottom')`), '«Понятно»: gone').toBe(false);
+    expect(await p.ev(`!!document.querySelector('.toast.with-btn')`), '«Понятно»: gone').toBe(false);
     await reload();
     expect(await on(), 'loaded again: on again').toBe(true);
     // Its count from nought: four more, still on; the fifth, off.

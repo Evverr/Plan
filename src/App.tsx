@@ -102,8 +102,9 @@ export function App({ boardId }: { boardId: string }) {
   const [dialog, setDialog] = useState<'profile' | 'settings' | null>(null);
   // "Боковая панель" (src/labs, kept on the page: see main.tsx), opened and closed by the logo.
   const sideOpen = useSideOpen();
-  // A note at the bottom with a button (see src/labs/tidyMind.ts), sent as "planx:toast".
-  const [note, setNote] = useState<{ text: string; action: string; run: () => void; at: number } | null>(null);
+  // A note at the bottom with a button (see src/labs/tidyMind.ts), sent as "planx:toast"; `top`: at the top
+  // instead, `stay`: till its button's pressed rather than gone in 5 seconds.
+  const [note, setNote] = useState<{ text: string; action: string; run: () => void; at: number; top?: boolean; stay?: boolean } | null>(null);
   // Something said at the top a moment ("planx:say": «Ссылка скопирована», say).
   useEffect(() => {
     const on = (e: Event) => setToast((e as CustomEvent<{ text: string }>).detail.text);
@@ -116,7 +117,7 @@ export function App({ boardId }: { boardId: string }) {
     return () => window.removeEventListener('planx:toast', on);
   }, []);
   useEffect(() => {
-    if (!note) return;
+    if (!note || note.stay) return;
     const t = setTimeout(() => setNote(null), 5000);
     return () => clearTimeout(t);
   }, [note]);
@@ -700,7 +701,7 @@ export function App({ boardId }: { boardId: string }) {
 
       {toast && <div className="pop toast" role="status">{toast}</div>}
       {note && (
-        <div key={note.at} className="pop toast bottom" role="status">
+        <div key={note.at} className={`pop toast with-btn ${note.top ? '' : 'bottom'}`} role="status">
           <span>{note.text}</span>
           {note.action && <button className="btn" onClick={() => { note.run(); setNote(null); }}>{note.action}</button>}
         </div>

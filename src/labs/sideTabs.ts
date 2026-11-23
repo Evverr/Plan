@@ -209,7 +209,7 @@ export function towardOffset(item: Item, side: Side, _items: Item[] = []): Point
 }
 
 /** «Предложить создать элемент» (src/labs): after a few copies made by a ball in a visit (SUGGEST_FOR), its copy
- *  shown as the pointer comes to a ball no more: switched off by itself, said so at the bottom (where to switch it
+ *  shown as the pointer comes to a ball no more: switched off by itself, said so at the top till «Понятно» (where to switch it
  *  back). For now, on again each time the page is loaded, its count from nought. Switched on again by hand in the
  *  same visit, it stays on. */
 const SUGGEST_FOR = 5;
@@ -219,7 +219,7 @@ export function copiedByBall(): void {
   if (++copies !== SUGGEST_FOR) return;
   setLab('suggestCopy', false);
   window.dispatchEvent(new CustomEvent('planx:toast', { detail: {
-    text: 'Предпросмотр копии объекта отключён. Включить его снова можно в меню доски: «Нововведения» → «Предложить создать элемент».', bottom: true,
+    text: 'Предпросмотр копии объекта отключён. Включить его снова можно в меню доски: «Нововведения» → «Предложить создать элемент».', top: true, stay: true,
     action: 'Понятно', run: () => {},
   } }));
 }
