@@ -447,8 +447,8 @@ describe('cousins laid out («Ровная ветка после плюсов»)
     const items = [r, A, B, ...kids], moves = spreadCousins('a3', items);
     const y = (id: string) => moves.get(id)?.y ?? items.find((i) => i.id === id)!.y;
     const ys = ['a1', 'a2', 'a3', 'b1', 'b2'].map(y);
-    // Even: 40 tall each, 16 apart.
-    expect(ys.slice(1).map((v, i) => v - ys[i])).toEqual([56, 56, 56, 56]);
+    // 40 tall each, 16 apart; between A's and B's, 32.
+    expect(ys.slice(1).map((v, i) => v - ys[i])).toEqual([56, 56, 72, 56]);
     // Its middle the parents' (from A's top to B's bottom: -40…80, so 20).
     expect((ys[0] + ys[4] + 40) / 2).toBe(20);
     expect([moves.has('A'), moves.has('B'), moves.has('r')]).toEqual([false, false, false]);
