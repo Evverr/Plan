@@ -2190,7 +2190,9 @@ export class Editor {
       queueMicrotask(() => {
         if (this.tabStep) { this.tabStep = false; return; }
         this.tabRun = null;
-        if (this.board.get(id)?.parent) this.glide(addChild(id, this.board.list()));
+        // («Ровная ветка после плюсов», src/labs: laid out as they came already, see addMindNode; only what
+        // their text has changed.)
+        if (this.board.get(id)?.parent) this.glide(labOn('mindSpread') ? spreadCousins(id, this.board.list()) : addChild(id, this.board.list()));
       });
     }
     this.emit();

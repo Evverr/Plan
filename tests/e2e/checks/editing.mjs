@@ -278,6 +278,21 @@ export const checks = {
     // (Their gap: twice the usual at least.)
     const gap = await p.ev(`(() => { const ks = planx.board.list().filter((i) => i.parent === 'a'), lo = Math.max(...ks.map((k) => k.y + k.h)); return planx.board.get('b0').y - lo; })()`);
     expect(gap >= 32, 'families apart').toBe(true);
+    // Typed in, Enter after Enter, and the typing over: nothing moves at its end.
+    const last = await p.ev(`(() => { const ks = planx.board.list().filter((i) => i.parent === 'a'); return ks[ks.length - 1].id; })()`);
+    await p.ev(`planx.editor.setSelection(['${last}']); planx.editor.startEditing('${last}', null, 'end')`);
+    await sleep(200);
+    for (const t of ['один', 'два']) {
+      await p.key('Enter', 'Enter', 13);
+      await sleep(200);
+      await p.cdp('Input.insertText', { text: t });
+      await sleep(200);
+    }
+    await sleep(500);
+    const typed = await ys();
+    await p.escape();
+    await sleep(700);
+    expect(JSON.stringify(await ys()), 'Esc: no last move').toBe(JSON.stringify(typed));
   },
 
   async 'a box over mind map branches picks the nodes they lead to; a central topic folds each way on its own'(p) {
