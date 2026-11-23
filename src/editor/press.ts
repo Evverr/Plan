@@ -14,7 +14,7 @@ import { askPage, docBoxAt, pagerAt, turnPage } from '../labs/docPage';
 import { offPad } from '../labs/stickyPad';
 import { paraAt, setPara } from '../model/textLinks';
 import { toggleAudio } from '../canvas/audio';
-import { anyDotAt, dotAt, inFirstHalf, linkHandleAt, foldBadgeAt, frameButtonUnder, offComponent, sideAt, linkEndAt, onHandle, onInstanceGlyph, onRotate, onTopLeft, onBottomLeft, plusAt, ringAt, tickAt, pickedUnder } from './hover';
+import { anyDotAt, dotAt, inFirstHalf, linkHandleAt, foldBadgeAt, frameButtonUnder, offComponent, sideAt, linkEndAt, onHandle, onInstanceGlyph, onRotate, onTopLeft, onBottomLeft, plusAt, rootPlusAt, ringAt, tickAt, pickedUnder } from './hover';
 import { grabbableLine } from './tables';
 import { cancelGesture, eraseAlong } from './gestures';
 import { isPoly } from './tools';
@@ -211,7 +211,9 @@ export function press(ed: Editor, e: PointerEvent): void {
   if (nodeEditing() && e.button === 0 && pressNode(ed, sp, w)) return;
   const single = ed.selection.size === 1 ? board.get([...ed.selection][0]) : undefined;
   // A mind map node's buttons: the picked one's, or those of the one the pointer rests on.
-  const node = ed.editingId && ed.editingId !== single?.id ? undefined : ed.plusNode(), plus = node && plusAt(ed, node, w);
+  let node = ed.editingId && ed.editingId !== single?.id ? undefined : ed.plusNode(), plus = node && plusAt(ed, node, w);
+  // (Or a central topic's, there always: «Плюсы центральной темы всегда», src/labs.)
+  if (!plus && e.button === 0) { const r = rootPlusAt(ed, w); if (r) { node = r.it; plus = r.b; } }
   // The ring where a node's branches leave it one way (nearer than its "+" that way): folds them, nothing
   // left picked, the map to look at.
   const ring = e.button === 0 && !ed.editingId ? ringAt(ed, w) : null;

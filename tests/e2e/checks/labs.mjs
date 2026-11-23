@@ -4066,6 +4066,23 @@ export const checks = {
     expect(await p.ev(`(() => { const t = planx.board.get('${ids.t}'); return [t.ts ?? 1, t.w].join(); })()`), 'one undo').toBe([1, 268].join());
   },
 
+  async '«Плюсы центральной темы всегда»: a central topic\'s "+"s there with nothing picked, a press on one adds a branch'(p) {
+    await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
+      b.add(e.newItem('mind', 300, 300, { id: 'r', w: 120, h: 40, text: 'Центр', mw: ['right', 'left'] })); e.setSelection([]); })()`);
+    await sleep(300);
+    const plus = await p.ev(`(async () => { const m = await import('/src/model/mind.ts'), e = planx.editor, it = planx.board.get('r');
+      return m.mindButtons(it, (id) => planx.board.get(id), e.cam.z).map((b) => b.kind + ':' + Math.round(b.x) + ':' + Math.round(b.y)); })()`);
+    expect(plus.map((s) => s.split(':')[0]).join(), 'both ways').toBe('child,left');
+    expect(await p.ev(`planx.editor.alwaysPlus(planx.board.get('r'))`), 'shown always').toBe(true);
+    const [, x, y] = plus.find((s) => s.startsWith('left')).split(':').map(Number);
+    await p.mouse('mouseMoved', x, y);
+    await sleep(100);
+    expect(await p.ev('planx.editor.hotPlus'), 'lit under the pointer').toBe('root:r:left');
+    await p.click([x, y]);
+    await sleep(200);
+    expect(await p.ev(`planx.board.list().filter((i) => i.parent === 'r').map((i) => i.x < 300).join()`), 'a branch on the left').toBe('true');
+  },
+
   async '«Текст майнд-карты двойным кликом»: a click on a node\'s text picks it, its buttons out; a double click types in it; resting on another shows none'(p) {
     await p.ev(`(() => { const e = planx.editor, b = planx.board; e.cam = { x: 0, y: 0, z: 1 }; e.camChanged();
       b.add(e.newItem('mind', 100, 300, { id: 'r', w: 120, h: 48, text: 'Центр' }));

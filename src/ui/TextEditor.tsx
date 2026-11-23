@@ -13,6 +13,7 @@ import { colsOf, rowsOf } from '../model/table';
 import { linkedTexts } from '../labs/textPush';
 import { addSub, closeTask, setView } from '../model/task';
 import { taskOpen } from '../labs/taskFull';
+import { labOn } from '../labs/labs';
 import { CODE_BOTTOM, CODE_FS, CODE_LEFT, CODE_LINE, CODE_PAD, CODE_TOP, codeScroll, setLiveCode, setLiveScroll } from '../labs/codeBlock';
 
 /**
@@ -290,7 +291,8 @@ export function TextEditor({ editor, item }: { editor: Editor; item: Item }) {
             editor.tabRun = item.parent;
             editor.tabStep = true;
             editor.addMindNode(id, 'below');
-            if (editor.editingId) editor.glide(addChild(editor.editingId, editor.board.list()));
+            // (Laid out already as by «+»s, «Ровная ветка после плюсов»: see addMindNode.)
+            if (editor.editingId && !labOn('mindSpread')) editor.glide(addChild(editor.editingId, editor.board.list()));
             return;
           }
           editor.addMindNode(id, 'child');

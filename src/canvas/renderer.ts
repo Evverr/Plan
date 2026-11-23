@@ -122,6 +122,9 @@ export interface Scene {
   plusFade: number;
   /** A mind map node the pointer has rested on (not the picked one): its buttons show, not the picked one's. */
   plusOn?: string | null;
+  /** «Плюсы центральной темы всегда» (src/labs): the central topics showing their "+"s whatever's picked,
+   *  and how far (their lit one is `root:<id>:<button>` in hotPlus). */
+  rootPlus?: { fade: number; ids: string[] } | null;
   /** A node whose buttons are fading out, and how far they still show. */
   plusLeaving?: { id: string; fade: number } | null;
   /** How many nodes each folded mind map node hides, each way, shown by it. */
@@ -1713,10 +1716,16 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
 
   drawRing(ctx);
   // The buttons of a mind map node the pointer has rested on, in place of the picked one's.
+  const always = (id: string) => !!s.rootPlus?.ids.includes(id);
   const resting = s.plusOn ? s.get(s.plusOn) : undefined;
-  if (resting) drawMindButtons(ctx, resting, s);
+  if (resting && !always(resting.id)) drawMindButtons(ctx, resting, s);
   const leaving = s.plusLeaving && s.get(s.plusLeaving.id);
-  if (leaving) drawMindButtons(ctx, leaving, { ...s, plusFade: s.plusLeaving!.fade, hotPlus: null, chevronless: null });
+  if (leaving && !always(leaving.id)) drawMindButtons(ctx, leaving, { ...s, plusFade: s.plusLeaving!.fade, hotPlus: null, chevronless: null });
+  // Central topics' "+"s, always (picked or not).
+  for (const id of s.rootPlus?.ids ?? []) {
+    const it = s.get(id), hot = s.hotPlus?.startsWith(`root:${id}:`) ? s.hotPlus.slice(`root:${id}:`.length) : null;
+    if (it) drawMindButtons(ctx, it, { ...s, plusFade: s.rootPlus!.fade, hotPlus: hot });
+  }
   if (s.underPicks) { ctx.save(); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); s.underPicks(ctx); ctx.restore(); }
   // Just unpicked: its frame, handle and dots going.
   const now = performance.now();
@@ -1794,7 +1803,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     // A mind map node sizes itself and links by its branches: instead of the handle and dots it
     // gets a "+" beside it for a branch of its own and one under it for a parallel branch.
     if (s.showHandle && it.type === 'mind') {
-      if (!s.plusOn) drawMindButtons(ctx, it, s);
+      if (!s.plusOn && !s.rootPlus?.ids.includes(it.id)) drawMindButtons(ctx, it, s);
     } else if (s.showHandle && s.editingId !== id && it.host) {
       // What's in an instance stays where the instance puts it.
     } else if (s.showHandle && s.editingId !== id && it.inst) {

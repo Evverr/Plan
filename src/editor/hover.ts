@@ -92,7 +92,7 @@ export function linkHandleAt(ed: Editor, w: Point): { id: string; node?: number;
 
 /** Which of a mind map node's buttons is under the point, once they're showing. */
 export function plusAt(ed: Editor, it: Item, w: Point): MindButtonAt | null {
-  if (it.type !== 'mind' || it.host || ed.plusFade() === 0) return null;
+  if (it.type !== 'mind' || it.host || (ed.alwaysPlus(it) ? ed.rootPlusFade() : ed.plusFade()) === 0) return null;
   // The nearest within reach: the "+" for a branch and the chevron past it are close.
   let best: MindButtonAt | null = null, near = Infinity;
   for (const b of mindButtons(it, (id) => ed.board.get(id), ed.cam.z)) {
@@ -100,6 +100,16 @@ export function plusAt(ed: Editor, it: Item, w: Point): MindButtonAt | null {
     if (d <= Math.max(b.r * 1.5, ed.reach(0)) && d < near) { best = b; near = d; }
   }
   return best;
+}
+
+/** «Плюсы центральной темы всегда» (src/labs): the central topic whose "+" is under the point, and that "+". */
+export function rootPlusAt(ed: Editor, w: Point): { it: Item; b: MindButtonAt } | null {
+  for (const it of ed.shown()) {
+    if (!ed.alwaysPlus(it)) continue;
+    const b = plusAt(ed, it, w);
+    if (b) return { it, b };
+  }
+  return null;
 }
 
 /** The ring folding a mind map node's branches growing one way, under the point: where they leave it
@@ -348,12 +358,15 @@ export function updateCursor(ed: Editor, w: Point, alt: boolean): void {
   const mind = rest && (pointInRect(w, rest) || plusAt(ed, rest, w)) ? rest.id : over?.type === 'mind' && !over.host ? over.id : null;
   if (mind !== ed.mindHover) { ed.mindHover = mind; ed.requestRender(); }
   const node = ed.plusNode();
-  const tick = tickAt(ed, w), plus = node ? plusAt(ed, node, w) : null;
+  // (A central topic's, «Плюсы центральной темы всегда», lit by a key of its own: `root:<id>:<button>`.)
+  const nodePlus = node ? plusAt(ed, node, w) : null, root = nodePlus ? null : rootPlusAt(ed, w);
+  const tick = tickAt(ed, w), plus = nodePlus ?? root?.b ?? null;
+  const plusKey = (b: MindButtonAt) => { const id = root?.it.id ?? (ed.alwaysPlus(node) ? node!.id : null); return id ? `root:${id}:${buttonKey(b)}` : buttonKey(b); };
   // A task's arrow under the pointer, darker (see canvas/task.ts).
   const tp = over?.type === 'task' && ed.editingId !== over.id ? taskButtonAt(over, w) : null;
   // The ring where a node's branches leave it, nearer than its "+" that way: lit, to fold them.
   const ring = ringAt(ed, w), ringFirst = ring && (!plus || ring.d < Math.hypot(w.x - plus.x, w.y - plus.y));
-  const hot = ringFirst ? `ring:${ring.id}:${ring.way}` : plus ? buttonKey(plus) : tick ? `tick:${tick.id}` : glyph ?? (tp === 'arrow' || tp === 'more' || tp === 'menu' || tp === 'pin' ? `task:${over!.id}:${tp}` : typeof tp === 'object' && tp ? `task:${over!.id}:${tp.del ? 'del' : 'sub'}:${tp.sub}` : null)
+  const hot = ringFirst ? `ring:${ring.id}:${ring.way}` : plus ? plusKey(plus) : tick ? `tick:${tick.id}` : glyph ?? (tp === 'arrow' || tp === 'more' || tp === 'menu' || tp === 'pin' ? `task:${over!.id}:${tp}` : typeof tp === 'object' && tp ? `task:${over!.id}:${tp.del ? 'del' : 'sub'}:${tp.sub}` : null)
     ?? (over?.code && ed.editingId !== over.id && onCodeCopy(over, w) ? `code:${over.id}` : null)
     ?? (over?.form && onFormButton(over, w) ? `form:${over.id}` : null)
     ?? (over?.poll ? pollHot(over, w) : null)

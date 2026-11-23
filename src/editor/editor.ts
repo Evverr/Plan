@@ -290,7 +290,7 @@ export class Editor {
   mindHover: string | null = null;
   /** Nodes added by a "+" before or after one that stays put (`from`, its buttons under the pointer): the last of
    *  them, to lay its parent's branches out evenly once `from` is picked no more («Ровная ветка после плюсов»). */
-  mindSpread: { from: string; node: string; family?: string } | null = null;
+  mindSpread: { from: string; node: string } | null = null;
   /** The pointer on the picked item's handle (or a little round it). */
   hotHandle = false;
   /** The node whose buttons were last drawn and how far faded in; those going away as they fade out. */
@@ -955,6 +955,7 @@ export class Editor {
       hotPlus: this.hotPlus,
       plusFade,
       plusOn,
+      rootPlus: labOn('rootPlus') ? { fade: this.rootPlusFade(), ids: this.shown().filter((i) => this.alwaysPlus(i)).map((i) => i.id) } : null,
       plusLeaving: leaving > 0 ? { id: l!.id, fade: leaving } : null,
       folded: this.folded(),
       slide: this.slideOut(plusFade),
@@ -1007,6 +1008,18 @@ export class Editor {
     if (on) return this.board.get(on);
     const one = this.selection.size === 1 ? this.board.get([...this.selection][0]) : undefined;
     return one?.type === 'mind' && !isLocked(one) ? one : undefined;
+  }
+
+  /** «Плюсы центральной темы всегда» (src/labs): whether a node is a central topic showing its "+"s always. */
+  alwaysPlus(it: Item | undefined): boolean {
+    return !!it && labOn('rootPlus') && it.type === 'mind' && !it.parent && !it.host && !isLocked(it);
+  }
+
+  /** And how far they show: not while something's moved or typed in (but a mind map node), nor with
+   *  "Авторасположение"'s handles up. */
+  rootPlusFade(): number {
+    const typing = this.editingId && this.board.get(this.editingId)?.type !== 'mind';
+    return this.moving || typing || mindTidyOn(this) ? 0 : 1;
   }
 
   /** Shared: how far the selected mind map node's "+" buttons have faded in, 0…1. */
@@ -1179,11 +1192,9 @@ export class Editor {
     if (here) this.compHere = here.id;
     else if (this.compHere && this.board.get(this.compHere)?.stowed !== undefined) this.compHere = null;
     // Nodes added by "+"s before or after one (it staying put, its "+" under the pointer): it picked no more, they
-    // and their cousins one even column centred on their parents, gliding there (see spreadCousins). Added by
-    // Enter: once nothing of their family is picked.
+    // and their cousins one even column centred on their parents, gliding there (see spreadCousins).
     const spread = this.mindSpread;
-    const left = spread && (spread.family ? ![...this.selection].some((id) => this.board.get(id)?.parent === spread.family) : !this.selection.has(spread.from));
-    if (spread && left) {
+    if (spread && !this.selection.has(spread.from)) {
       this.mindSpread = null;
       if (labOn('mindSpread') && this.board.get(spread.node)?.parent) this.glide(spreadCousins(spread.node, this.board.list()));
     }
