@@ -268,11 +268,12 @@ export function addChild(id: string, items: Item[]): Map<string, Point> {
 }
 
 /**
- * New places (by id) for the cousins of node `id` laid out as one even column («Ровная ветка после плюсов»):
- * the branches growing its way of every branch of its grandparent growing its parent's way (its parent's
- * and theirs), in order, one after another the gap apart (each with what grows from it), the whole of it
- * centred on its parents' (from the first of them to the last), they staying put. A branch of a central
- * topic (no grandparent), its parent's branches centred on it as a new one does them (see addChild).
+ * New places (by id) for node `id`'s family and its cousins' («Ровная ветка после плюсов»): each family (the
+ * branches growing its way of a branch of its grandparent growing its parent's way) centred on its own
+ * parent, one after another the gap apart, each with what grows from it. Where families so come too close
+ * (one's reaching past the gap to the next's), all the cousins instead one even column, in order, centred on
+ * their parents (from the first of them to the last). The parents stay put. A branch of a central topic (no
+ * grandparent), its parent's branches centred on it as a new one does them (see addChild).
  */
 export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
   const { all, byId, block } = working(items);
@@ -282,9 +283,13 @@ export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
   if (!g || axis(mindWay(p, g)).at !== a.at) return addChild(id, items);
   const along = (m: Item, n: Item) => middle(m, a) - middle(n, a);
   const parents = branchesOf(g, mindWay(p, g), all).sort(along);
-  const cousins = parents.flatMap((q) => branchesOf(q, way, all).sort(along));
-  if (!cousins.length) return new Map();
-  lineUp(cousins.map(block), a, (lo(parents, a) + hi(parents, a)) / 2);
+  const families = parents.map((q) => ({ q, kids: branchesOf(q, way, all).sort(along) })).filter((f) => f.kids.length);
+  if (!families.length) return new Map();
+  // Each on its own parent first.
+  for (const f of families) lineUp(f.kids.map(block), a, middle(f.q, a));
+  const span = (f: { kids: Item[] }) => { const b = f.kids.flatMap(block); return { lo: lo(b, a), hi: hi(b, a) }; };
+  const crowded = families.some((f, i) => i > 0 && span(families[i - 1]).hi + a.gap > span(f).lo + 0.5);
+  if (crowded) lineUp(families.flatMap((f) => f.kids).map(block), a, (lo(parents, a) + hi(parents, a)) / 2);
   return moved(items, byId);
 }
 
