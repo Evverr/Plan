@@ -3904,7 +3904,10 @@ export const checks = {
     for (let k = 0; k < 5; k++) seen.push(await copy());
     expect(seen.join(), 'on for four, off with the fifth').toBe('true,true,true,true,false');
     await sleep(100);
-    expect(await p.ev(`document.querySelector('.toast.bottom')?.textContent ?? ''`), 'said at the bottom').toBe('Дубли у шариков больше не подсвечиваются. Вернуть: меню доски → «Нововведения» → «Предложить создать элемент»');
+    expect(await p.ev(`document.querySelector('.toast.bottom span')?.textContent ?? ''`), 'said at the bottom').toBe('Предпросмотр копии объекта отключён. Включить его снова можно в меню доски: «Нововведения» → «Предложить создать элемент».');
+    await p.click(await p.at('.toast.bottom .btn'));
+    await sleep(200);
+    expect(await p.ev(`!!document.querySelector('.toast.bottom')`), '«Понятно»: gone').toBe(false);
     await reload();
     expect(await on(), 'loaded again: on again').toBe(true);
     // Its count from nought: four more, still on; the fifth, off.

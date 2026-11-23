@@ -219,7 +219,8 @@ export function copiedByBall(): void {
   if (++copies !== SUGGEST_FOR) return;
   setLab('suggestCopy', false);
   window.dispatchEvent(new CustomEvent('planx:toast', { detail: {
-    text: 'Дубли у шариков больше не подсвечиваются. Вернуть: меню доски → «Нововведения» → «Предложить создать элемент»', bottom: true,
+    text: 'Предпросмотр копии объекта отключён. Включить его снова можно в меню доски: «Нововведения» → «Предложить создать элемент».', bottom: true,
+    action: 'Понятно', run: () => {},
   } }));
 }
 // (A visit begun, the page loaded again: on again whatever it was, its count from nought, for now. Counts and
