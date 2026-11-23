@@ -935,9 +935,9 @@ function drawMind(ctx: CanvasRenderingContext2D, it: Item, s: Scene, editing: bo
   // their lines (a branch, the line leading to it; the central topic, those going out of it: its first's).
   if (card && labOn('mindOutline') && (!it.parent || !s.get(it.parent)?.parent)) {
     const first = !it.parent ? s.items.find((k) => k.type === 'mind' && k.parent === it.id) : undefined;
-    // 3 wide and a shade darker than its lines (×0.85), so it reads as an edge, not as one of them.
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = shade(it.parent ? branchColor(it, s.get) : first ? branchColor(first, s.get) : levelColor(1), theme.dim * 0.85);
+    // The central topic's twice as thick as its first-level nodes'.
+    ctx.lineWidth = it.parent ? 1.5 : 3;
+    ctx.strokeStyle = shade(it.parent ? branchColor(it, s.get) : first ? branchColor(first, s.get) : levelColor(1), theme.dim);
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
