@@ -10,7 +10,7 @@ import { onPictureLoad, type Picture } from '../canvas/pictures';
 import { freshTable, withCellFormat, withCount, withTableFormat, type TableLine } from '../model/table';
 import type { AudioNote } from '../canvas/audio';
 import { growTimelines } from '../labs/tlGrow';
-import { addChild, descendants, foldedAway, folding, makeRoom, mindDepth, mindRoot, regroup, tidyBranches, type Way } from '../model/mind';
+import { addChild, descendants, foldedAway, folding, makeRoom, mindDepth, mindRoot, regroup, spreadCousins, tidyBranches, type Way } from '../model/mind';
 import { readJSON, writeJSON } from '../storage';
 import { cameraFor, clamp, fittedTo, flyTo, freeArea, minZoomFor, wheelMove, zoomedAt } from './camera';
 import { copiesOf } from './copies';
@@ -1176,12 +1176,12 @@ export class Editor {
     const here = this.pickedComponent(this.board.list().filter((c) => c.comp && !c.stowed));
     if (here) this.compHere = here.id;
     else if (this.compHere && this.board.get(this.compHere)?.stowed !== undefined) this.compHere = null;
-    // Nodes added by "+"s before or after one (it staying put, its "+" under the pointer): it picked no more, its
-    // parent's branches laid out evenly round it, gliding there, as a branch added by its "+" out does them.
+    // Nodes added by "+"s before or after one (it staying put, its "+" under the pointer): it picked no more, they
+    // and their cousins one even column centred on their parents, gliding there (see spreadCousins).
     const spread = this.mindSpread;
     if (spread && !this.selection.has(spread.from)) {
       this.mindSpread = null;
-      if (labOn('mindSpread') && this.board.get(spread.node)?.parent) this.glide(addChild(spread.node, this.board.list()));
+      if (labOn('mindSpread') && this.board.get(spread.node)?.parent) this.glide(spreadCousins(spread.node, this.board.list()));
     }
     // («Правка главного компонента»: a main component picked anew, how it looks now, see warnComponent.)
     if (!was1 || this.compSeen?.id !== this.mainComponent()?.id) this.noteComponent();

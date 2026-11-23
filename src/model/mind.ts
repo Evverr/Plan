@@ -268,6 +268,27 @@ export function addChild(id: string, items: Item[]): Map<string, Point> {
 }
 
 /**
+ * New places (by id) for the cousins of node `id` laid out as one even column («Ровная ветка после плюсов»):
+ * the branches growing its way of every branch of its grandparent growing its parent's way (its parent's
+ * and theirs), in order, one after another the gap apart (each with what grows from it), the whole of it
+ * centred on its parents' (from the first of them to the last), they staying put. A branch of a central
+ * topic (no grandparent), its parent's branches centred on it as a new one does them (see addChild).
+ */
+export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
+  const { all, byId, block } = working(items);
+  const node = byId.get(id), p = node?.parent ? byId.get(node.parent) : undefined, g = p?.parent ? byId.get(p.parent) : undefined;
+  if (!node || !p) return new Map();
+  const way = mindWay(node, p), a = axis(way);
+  if (!g || axis(mindWay(p, g)).at !== a.at) return addChild(id, items);
+  const along = (m: Item, n: Item) => middle(m, a) - middle(n, a);
+  const parents = branchesOf(g, mindWay(p, g), all).sort(along);
+  const cousins = parents.flatMap((q) => branchesOf(q, way, all).sort(along));
+  if (!cousins.length) return new Map();
+  lineUp(cousins.map(block), a, (lo(parents, a) + hi(parents, a)) / 2);
+  return moved(items, byId);
+}
+
+/**
  * New places (by id, the new node's among them) for putting node `id` (already among the items) right
  * before or after node `from`, a branch of the same parent (above or below it beside its parent, to its
  * left or right under it), without `from` moving: the new node goes the gap off `from` itself (whatever

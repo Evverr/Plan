@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addChild, balance, branchCurve, branchBase, buttonKey, canMoveTo, childPlace, descendants, foldBadge, foldedAway, folding, insertBeside, makeRoom, nearestFamily, tidyBranches, mindButtons, mindDepth, moveBranch, siblingOf } from '../src/model/mind';
+import { addChild, balance, branchCurve, spreadCousins, branchBase, buttonKey, canMoveTo, childPlace, descendants, foldBadge, foldedAway, folding, insertBeside, makeRoom, nearestFamily, tidyBranches, mindButtons, mindDepth, moveBranch, siblingOf } from '../src/model/mind';
 import type { Item } from '../src/model/types';
 
 const node = (id: string, x: number, y: number, extra: Partial<Item> = {}): Item =>
@@ -424,5 +424,23 @@ describe('mind map: cousins make way for a new branch by its level alone', () =>
     const moves = addChild('M', items);
     // c is far enough from L itself (L's own branches reaching up past it don't count).
     expect(moves.has('c')).toBe(false);
+  });
+});
+
+describe('cousins laid out as one column («Ровная ветка после плюсов»)', () => {
+  it('lines up all the cousins evenly, the column centred on their parents, the parents staying put', () => {
+    const r = node('r', 0, 0), A = node('A', 160, -100, { parent: 'r' }), B = node('B', 160, 100, { parent: 'r' });
+    const kids = [
+      node('a1', 320, -100, { parent: 'A' }), node('a2', 320, -44, { parent: 'A' }), node('a3', 320, 12, { parent: 'A' }),
+      node('b1', 320, 100, { parent: 'B' }), node('b2', 320, 300, { parent: 'B' }),
+    ];
+    const items = [r, A, B, ...kids], moves = spreadCousins('a3', items);
+    const y = (id: string) => moves.get(id)?.y ?? items.find((i) => i.id === id)!.y;
+    const ys = ['a1', 'a2', 'a3', 'b1', 'b2'].map(y);
+    // Even: 40 tall each, 16 apart.
+    expect(ys.slice(1).map((v, i) => v - ys[i])).toEqual([56, 56, 56, 56]);
+    // Its middle the parents' (from A's top to B's bottom: -100…140, so 20).
+    expect((ys[0] + ys[4] + 40) / 2).toBe(20);
+    expect([moves.has('A'), moves.has('B'), moves.has('r')]).toEqual([false, false, false]);
   });
 });
