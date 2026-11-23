@@ -3894,15 +3894,23 @@ export const checks = {
     expect(await seen(), 'another picked: half seen again').toBe('0.5');
   },
 
-  async '"Предложить создать элемент": switched off by itself after five copies by a ball, once; switched on again by hand, it stays on'(p) {
-    await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('sideTabs', true); l.setLab('suggestCopy', true); })()`);
+  async '"Предложить создать элемент": off by itself after five copies by a ball, said at the bottom; on again the next visit; off by hand, it stays off'(p) {
+    const on = () => p.ev(`(async () => (await import('/src/labs/labs.ts')).labOn('suggestCopy'))()`);
+    const set = (v) => p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('suggestCopy', ${v}))()`);
     const copy = () => p.ev(`(async () => { const t = await import('/src/labs/sideTabs.ts'); t.copiedByBall(); return (await import('/src/labs/labs.ts')).labOn('suggestCopy'); })()`);
+    const reload = async () => { await p.cdp('Page.reload'); for (let k = 0; k < 40 && !(await p.ev(`!!document.querySelector('.topbar')`)); k++) await sleep(250); await sleep(300); };
+    await set(true);
     const seen = [];
     for (let k = 0; k < 5; k++) seen.push(await copy());
     expect(seen.join(), 'on for four, off with the fifth').toBe('true,true,true,true,false');
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('suggestCopy', true))()`);
-    for (let k = 0; k < 6; k++) await copy();
-    expect(await p.ev(`(async () => (await import('/src/labs/labs.ts')).labOn('suggestCopy'))()`), 'on again by hand: stays on').toBe(true);
+    await sleep(100);
+    expect(await p.ev(`document.querySelector('.toast.bottom')?.textContent ?? ''`), 'said at the bottom').toBe('Дубли у шариков больше не подсвечиваются. Вернуть: меню доски → «Нововведения» → «Предложить создать элемент»');
+    await reload();
+    expect(await on(), 'the next visit: on again').toBe(true);
+    // Off by hand: stays off the next visit.
+    await set(false);
+    await reload();
+    expect(await on(), 'off by hand: stays off').toBe(false);
   },
 
   async '"Полукруги на рамке": none on what is too small on the screen to aim at them'(p) {

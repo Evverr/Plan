@@ -2,7 +2,7 @@ import type { Item, Side } from '../model/types';
 import type { Point } from '../canvas/geometry';
 import { linkBox, SIDES, sidePoint } from '../canvas/geometry';
 import type { Editor } from '../editor/editor';
-import { isLocked, labOn, setLab } from './labs';
+import { isLocked, labOn, setLab, subscribeLabs } from './labs';
 import { readJSON, writeJSON } from '../storage';
 
 /**
@@ -208,16 +208,24 @@ export function towardOffset(item: Item, side: Side, _items: Item[] = []): Point
   return side === 'right' ? { x: it.w + TAB_GAP, y: 0 } : side === 'left' ? { x: -it.w - TAB_GAP, y: 0 } : side === 'bottom' ? { x: 0, y: it.h + TAB_GAP } : { x: 0, y: -it.h - TAB_GAP };
 }
 
-/** «Предложить создать элемент» (src/labs): after a few copies made by a ball (SUGGEST_FOR), its copy shown
- *  as the pointer comes to a ball no more (switched off by itself, once): the click known by then. Switched on
- *  again by hand, it stays on. */
-const SUGGEST_FOR = 5, SUGGEST_KEY = 'planx-suggest-copies';
+/** «Предложить создать элемент» (src/labs): after a few copies made by a ball in a visit (SUGGEST_FOR), its copy
+ *  shown as the pointer comes to a ball no more: switched off by itself, said so at the bottom (where to switch it
+ *  back). For now, on again the next visit (AUTO_KEY: switched off by itself, not by hand). Switched on again by
+ *  hand in the same visit, it stays on. */
+const SUGGEST_FOR = 5, AUTO_KEY = 'planx-suggest-auto';
+let copies = 0;
 export function copiedByBall(): void {
   if (!labOn('suggestCopy')) return;
-  const n = (readJSON<number>(SUGGEST_KEY) ?? 0) + 1;
-  writeJSON(SUGGEST_KEY, n);
-  if (n === SUGGEST_FOR) setLab('suggestCopy', false);
+  if (++copies !== SUGGEST_FOR) return;
+  setLab('suggestCopy', false);
+  writeJSON(AUTO_KEY, true);
+  window.dispatchEvent(new CustomEvent('planx:toast', { detail: {
+    text: 'Дубли у шариков больше не подсвечиваются. Вернуть: меню доски → «Нововведения» → «Предложить создать элемент»', bottom: true,
+  } }));
 }
+// (A visit begun: switched off by itself the last time, on again. Switched on since, by hand: no longer by itself.)
+if (readJSON<boolean>(AUTO_KEY)) { writeJSON(AUTO_KEY, false); setLab('suggestCopy', true); }
+subscribeLabs(() => { if (labOn('suggestCopy') && readJSON<boolean>(AUTO_KEY)) writeJSON(AUTO_KEY, false); });
 
 /** The side whose ball is out whole (the pointer by it), if any. */
 export const outSide = (aims: TabAims | null): Side | null => (aims ? SIDES.find((s) => aims[s] === ON) ?? null : null);
