@@ -271,8 +271,9 @@ export function addChild(id: string, items: Item[]): Map<string, Point> {
  * New places (by id) for node `id`'s family and its cousins' («Ровная ветка после плюсов»): each family (the
  * branches growing its way of a branch of its grandparent growing its parent's way) centred on its own
  * parent, one after another the gap apart, each with what grows from it. Where families so come too close
- * (one's reaching past the gap to the next's), all the cousins instead one column, in order, centred on their
- * parents (from the first of them to the last), the gap between families twice theirs. The parents stay put. A branch of a central topic (no
+ * (one's reaching past the gap to the next's), all the cousins instead one column, in order, centred on the
+ * lines going out to them (between the middles of the first and last parents with branches), the gap between
+ * families twice theirs. The parents stay put. A branch of a central topic (no
  * grandparent), its parent's branches centred on it as a new one does them (see addChild).
  */
 export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
@@ -293,7 +294,8 @@ export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
     // (One column, the gap between one family and the next twice the one within them.)
     const blocks = families.map((f) => f.kids.map(block)), size = (b: Item[]) => hi(b, a) - lo(b, a);
     const total = blocks.reduce((t, f) => t + f.reduce((s, b) => s + size(b), 0) + a.gap * (f.length - 1), 0) + a.gap * 2 * (blocks.length - 1);
-    let at = (lo(parents, a) + hi(parents, a)) / 2 - total / 2;
+    // (Centred on the lines going out to them: between the first and last parents with branches, not those without.)
+    let at = (middle(families[0].q, a) + middle(families[families.length - 1].q, a)) / 2 - total / 2;
     blocks.forEach((f, i) => {
       if (i) at += a.gap;
       for (const b of f) { shift(b, a, at - lo(b, a)); at += size(b) + a.gap; }

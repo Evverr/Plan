@@ -438,18 +438,18 @@ describe('cousins laid out («Ровная ветка после плюсов»)
   });
 
   it('crowded: all the cousins one even column, centred on their parents, the parents staying put', () => {
-    // (Parents 40 apart: A's three round A and B's two round B would overlap.)
-    const r = node('r', 0, 0), A = node('A', 160, -40, { parent: 'r' }), B = node('B', 160, 40, { parent: 'r' });
+    // (Parents 40 apart: A's three round A and B's two round B would overlap. C, with no branches, not counted.)
+    const r = node('r', 0, 0), A = node('A', 160, -40, { parent: 'r' }), B = node('B', 160, 40, { parent: 'r' }), C = node('C', 160, 300, { parent: 'r' });
     const kids = [
       node('a1', 320, -100, { parent: 'A' }), node('a2', 320, -44, { parent: 'A' }), node('a3', 320, 12, { parent: 'A' }),
       node('b1', 320, 100, { parent: 'B' }), node('b2', 320, 300, { parent: 'B' }),
     ];
-    const items = [r, A, B, ...kids], moves = spreadCousins('a3', items);
+    const items = [r, A, B, C, ...kids], moves = spreadCousins('a3', items);
     const y = (id: string) => moves.get(id)?.y ?? items.find((i) => i.id === id)!.y;
     const ys = ['a1', 'a2', 'a3', 'b1', 'b2'].map(y);
     // 40 tall each, 16 apart; between A's and B's, 32.
     expect(ys.slice(1).map((v, i) => v - ys[i])).toEqual([56, 56, 72, 56]);
-    // Its middle the parents' (from A's top to B's bottom: -40…80, so 20).
+    // Its middle between the lines going out of A and B (their middles: -20 and 60, so 20), C not counted.
     expect((ys[0] + ys[4] + 40) / 2).toBe(20);
     expect([moves.has('A'), moves.has('B'), moves.has('r')]).toEqual([false, false, false]);
   });
