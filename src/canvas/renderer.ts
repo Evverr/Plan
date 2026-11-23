@@ -931,6 +931,14 @@ function drawMind(ctx: CanvasRenderingContext2D, it: Item, s: Scene, editing: bo
     ctx.fillRect(it.x, it.y, 3, it.h);
     ctx.restore();
   }
+  // «Обводка центра майнд-карты» (src/labs): the central topic and its branches edged 1.5 wide in the colour of
+  // their lines (a branch, the line leading to it; the central topic, those going out of it: its first's).
+  if (card && labOn('mindOutline') && (!it.parent || !s.get(it.parent)?.parent)) {
+    const first = !it.parent ? s.items.find((k) => k.type === 'mind' && k.parent === it.id) : undefined;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = shade(it.parent ? branchColor(it, s.get) : first ? branchColor(first, s.get) : levelColor(1), theme.dim);
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
   // A node a branch is being dragged onto shows it by an edge dashed in its colour, the same dashes
   // as the dragged arrow's, 6px on and off on screen.
