@@ -1010,9 +1010,11 @@ export class Editor {
     return one?.type === 'mind' && !isLocked(one) ? one : undefined;
   }
 
-  /** «Плюсы центральной темы всегда» (src/labs): whether a node is a central topic showing its "+"s always. */
+  /** «Плюсы центральной темы всегда» (src/labs): whether a node is a central topic showing its "+"s always:
+   *  one with no branches yet (with one, they show once it's picked, as anyone's). */
   alwaysPlus(it: Item | undefined): boolean {
-    return !!it && labOn('rootPlus') && it.type === 'mind' && !it.parent && !it.host && !isLocked(it);
+    return !!it && labOn('rootPlus') && it.type === 'mind' && !it.parent && !it.host && !isLocked(it)
+      && !this.board.list().some((k) => k.parent === it.id);
   }
 
   /** And how far they show: not while something's moved or typed in (but a mind map node), nor with
