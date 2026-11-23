@@ -455,6 +455,33 @@ describe('cousins laid out («Ровная ветка после плюсов»)
   });
 });
 
+describe('many branches moved out («Отодвигать многодетные ветки»)', () => {
+  const family = (n: number, side: 1 | -1) => {
+    const r = node('r', 0, 0), A = node('A', side > 0 ? 160 : -260, 0, { parent: 'r' });
+    const kids = Array.from({ length: n }, (_, i) => node(`k${i}`, side > 0 ? 320 : -420, i * 56, { parent: 'A' }));
+    const items = [r, A, ...kids], moves = spreadCousins(`k${n - 1}`, items, true);
+    return (id: string) => moves.get(id)?.x ?? items.find((i) => i.id === id)!.x;
+  };
+  it('a few: the usual 60 off their parent', () => {
+    expect(family(3, 1)('k0')).toBe(320);
+  });
+  it('many: out as far as their lines go 2 along for 1 out (8: the outer ones 196 along, so 98 out)', () => {
+    const x = family(8, 1);
+    expect([x('k0'), x('k7')]).toEqual([358, 358]);
+  });
+  it('so many: 120 out at most', () => {
+    expect(family(20, 1)('k0')).toBe(380);
+  });
+  it('on the left alike, by their left edges', () => {
+    expect(family(8, -1)('k0')).toBe(-260 - 98 - 100);
+  });
+  it('not without the switch', () => {
+    const r = node('r', 0, 0), A = node('A', 160, 0, { parent: 'r' });
+    const kids = Array.from({ length: 8 }, (_, i) => node(`k${i}`, 320, i * 56, { parent: 'A' }));
+    expect(spreadCousins('k7', [r, A, ...kids]).get('k0')?.x ?? 320).toBe(320);
+  });
+});
+
 describe('kin of other branches kept clear («Ровная ветка после плюсов»)', () => {
   it('moves the next family of that level (another grandparent\'s) twice the gap off', () => {
     const r = node('r', 0, 0), P1 = node('P1', 160, -100, { parent: 'r' }), P2 = node('P2', 160, 100, { parent: 'r' });

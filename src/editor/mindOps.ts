@@ -49,12 +49,12 @@ export function addMindNode(ed: Editor, fromId: string, kind: MindAdd, byPlus = 
   if (byPlus && !beside && !branchWays(parent, items).includes(way)) ed.chevronless = `${parent.id}:${way}`;
   if (foldedWays(parent, parent.parent ? board.get(parent.parent) : undefined).includes(way)) board.update(parent.id, folding(parent, way, false));
   board.add(it);
-  const moves = beside ? insertBeside(it.id, from.id, kind, board.list()) : addChild(it.id, board.list());
+  const moves = beside ? insertBeside(it.id, from.id, kind, board.list()) : addChild(it.id, board.list(), labOn('mindOut'));
   board.transact(() => moves.forEach((pt, k) => board.update(k, pt)));
   // By Enter, laid out at once as "+"s before or after are once their node's picked no more («Ровная ветка
   // после плюсов», see spreadCousins).
   const even = beside && !byPlus && labOn('mindSpread');
-  if (even) { const spread = spreadCousins(it.id, board.list()); board.transact(() => spread.forEach((pt, k) => board.update(k, pt))); }
+  if (even) { const spread = spreadCousins(it.id, board.list(), labOn('mindOut'));board.transact(() => spread.forEach((pt, k) => board.update(k, pt))); }
   board.endGesture();
   // From a "+" before or after, the node it was added from stays picked with its buttons under the
   // pointer, so more can be added one click after another; they're typed in later. A branch of its own

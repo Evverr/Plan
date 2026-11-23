@@ -1200,7 +1200,7 @@ export class Editor {
     const spread = this.mindSpread;
     if (spread && !this.selection.has(spread.from)) {
       this.mindSpread = null;
-      if (labOn('mindSpread') && this.board.get(spread.node)?.parent) this.glide(spreadCousins(spread.node, this.board.list()));
+      if (labOn('mindSpread') && this.board.get(spread.node)?.parent) this.glide(spreadCousins(spread.node, this.board.list(), labOn('mindOut')));
     }
     // («Правка главного компонента»: a main component picked anew, how it looks now, see warnComponent.)
     if (!was1 || this.compSeen?.id !== this.mainComponent()?.id) this.noteComponent();
@@ -2192,7 +2192,7 @@ export class Editor {
         this.tabRun = null;
         // («Ровная ветка после плюсов», src/labs: laid out as they came already, see addMindNode; only what
         // their text has changed.)
-        if (this.board.get(id)?.parent) this.glide(labOn('mindSpread') ? spreadCousins(id, this.board.list()) : addChild(id, this.board.list()));
+        if (this.board.get(id)?.parent) this.glide(labOn('mindSpread') ? spreadCousins(id, this.board.list(), labOn('mindOut')) : addChild(id, this.board.list(), labOn('mindOut')));
       });
     }
     this.emit();

@@ -252,9 +252,10 @@ export function balance(id: string, items: Item[]): Map<string, Point> {
  * New places (by id, the new node's among them) for a new branch `id` (already among the items): its
  * parent's branches growing that way re-centre on the parent, with what grows from them; the parent
  * and every node further up the way to the centre stay put, and where that leaves too little room,
- * the branches of the same level from other parents move away (see clearCousins).
+ * the branches of the same level from other parents move away (see clearCousins). `out`: that level as far
+ * out as its lines need (see pushOut).
  */
-export function addChild(id: string, items: Item[]): Map<string, Point> {
+export function addChild(id: string, items: Item[], out = false): Map<string, Point> {
   const { all, byId, block } = working(items);
   const node = byId.get(id), p = node?.parent ? byId.get(node.parent) : undefined;
   if (!node || !p) return new Map();
@@ -264,6 +265,7 @@ export function addChild(id: string, items: Item[]): Map<string, Point> {
   const ways = new Map(all.filter((k) => k.type === 'mind' && k.parent && byId.has(k.parent)).map((k) => [k.id, mindWay(k, byId.get(k.parent!)!)]));
   spreadGroups(p, all, block, ways);
   clearCousins(p, way, all, byId);
+  if (out) pushOut(cousinFamilies(p, way, all, byId), way, all, block);
   return moved(items, byId);
 }
 
@@ -276,12 +278,12 @@ export function addChild(id: string, items: Item[]): Map<string, Point> {
  * families twice theirs. The parents stay put. A branch of a central topic (no
  * grandparent), its parent's branches centred on it as a new one does them (see addChild).
  */
-export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
+export function spreadCousins(id: string, items: Item[], out = false): Map<string, Point> {
   const { all, byId, block } = working(items);
   const node = byId.get(id), p = node?.parent ? byId.get(node.parent) : undefined, g = p?.parent ? byId.get(p.parent) : undefined;
   if (!node || !p) return new Map();
   const way = mindWay(node, p), a = axis(way);
-  if (!g || axis(mindWay(p, g)).at !== a.at) return addChild(id, items);
+  if (!g || axis(mindWay(p, g)).at !== a.at) return addChild(id, items, out);
   const along = (m: Item, n: Item) => middle(m, a) - middle(n, a);
   const parents = branchesOf(g, mindWay(p, g), all).sort(along);
   const families = parents.map((q) => ({ q, kids: branchesOf(q, way, all).sort(along) })).filter((f) => f.kids.length);
@@ -303,10 +305,37 @@ export function spreadCousins(id: string, items: Item[]): Map<string, Point> {
       for (const b of f) { shift(b, a, at - lo(b, a)); at += size(b) + a.gap; }
     });
   }
+  if (out) pushOut(families, way, all, block);
   // The families of that level elsewhere on that side of the map (of other grandparents) out of their way, as
   // far off them as cousins are from one another (pushed along, each with what grows from it).
   clearKin(node, families.flatMap((f) => f.kids), all, byId, block, a, apart);
   return moved(items, byId);
+}
+
+/** The most a level of branches beside their parents is moved out from them (see pushOut). */
+export const MIND_OUT_MAX = MIND_GAP_X * 2;
+
+/** Branches beside their parents (left or right), `families` of a level: as far out from their parents as their
+ *  lines need not to bunch up, no steeper than 2 along for 1 out: MIND_GAP_X, more for a family spread far along
+ *  its parent, MIND_OUT_MAX at most; the same for all of them, each with what grows from it. */
+function pushOut(families: { q: Item; kids: Item[] }[], way: Way, all: Item[], block: (k: Item) => Item[]): void {
+  if (upright(way) || !families.length) return;
+  const a = axis(way), reach = Math.max(0, ...families.flatMap((f) => f.kids.map((k) => Math.abs(middle(k, a) - middle(f.q, a)))));
+  const gap = Math.round(Math.min(MIND_OUT_MAX, Math.max(MIND_GAP_X, reach / 2)));
+  for (const f of families) {
+    const fl = floorOf(f.q, all), wide = Math.max(...f.kids.map((k) => k.w));
+    // (On the left, by their left edges, as the widest of them stands: see alignLeft.)
+    const to = way === 'right' ? fl.x + fl.w + gap : fl.x - gap - wide;
+    for (const k of f.kids) { const d = to - k.x; if (d) block(k).forEach((n) => { n.x += d; }); }
+  }
+}
+
+/** Node `p`'s family growing `way`, and its cousins' (of its grandparent's branches growing its way, if growing
+ *  the same axis), each with its parent. */
+function cousinFamilies(p: Item, way: Way, all: Item[], byId: Map<string, Item>): { q: Item; kids: Item[] }[] {
+  const g = p.parent ? byId.get(p.parent) : undefined;
+  const parents = g && axis(mindWay(p, g)).at === axis(way).at ? branchesOf(g, mindWay(p, g), all) : [p];
+  return parents.map((q) => ({ q, kids: branchesOf(q, way, all) })).filter((f) => f.kids.length);
 }
 
 /** Every node of `node`'s level on its side of the map whose parent isn't one of `mine`'s, by its parent's
