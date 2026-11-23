@@ -1021,7 +1021,9 @@ export class Editor {
    *  "Авторасположение"'s handles up. */
   rootPlusFade(): number {
     const typing = this.editingId && this.board.get(this.editingId)?.type !== 'mind';
-    return this.moving || typing || mindTidyOn(this) ? 0 : 1;
+    // (Dragged as the picked ones' frame is: see Scene.dragging.)
+    const g = this.gesture, dragged = (g?.type === 'drag' && (!!g.fresh || g.moved)) || this.nudged;
+    return this.moving || dragged || typing || mindTidyOn(this) ? 0 : 1;
   }
 
   /** Shared: how far the selected mind map node's "+" buttons have faded in, 0…1. */

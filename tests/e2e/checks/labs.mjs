@@ -4074,6 +4074,14 @@ export const checks = {
       return m.mindButtons(it, (id) => planx.board.get(id), e.cam.z).map((b) => b.kind + ':' + Math.round(b.x) + ':' + Math.round(b.y)); })()`);
     expect(plus.map((s) => s.split(':')[0]).join(), 'both ways').toBe('child,left');
     expect(await p.ev(`planx.editor.alwaysPlus(planx.board.get('r'))`), 'shown always').toBe(true);
+    // Dragged (and back): gone meanwhile.
+    await p.mouse('mouseMoved', 360, 320); await p.mouse('mousePressed', 360, 320);
+    for (const dx of [10, 20, 30]) { await p.mouse('mouseMoved', 360 + dx, 320); await sleep(30); }
+    expect(await p.ev('planx.editor.rootPlusFade()'), 'dragged: none').toBe(0);
+    for (const dx of [20, 10, 0]) { await p.mouse('mouseMoved', 360 + dx, 320); await sleep(30); }
+    await p.mouse('mouseReleased', 360, 320);
+    await sleep(200);
+    expect(await p.ev('planx.editor.rootPlusFade()'), 'let go: back').toBe(1);
     const [, x, y] = plus.find((s) => s.startsWith('left')).split(':').map(Number);
     await p.mouse('mouseMoved', x, y);
     await sleep(100);
