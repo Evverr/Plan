@@ -3886,6 +3886,17 @@ export const checks = {
     expect(await seen(), 'another picked: half seen again').toBe('0.5');
   },
 
+  async '"Предложить создать элемент": switched off by itself after five copies by a ball, once; switched on again by hand, it stays on'(p) {
+    await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('sideTabs', true); l.setLab('suggestCopy', true); })()`);
+    const copy = () => p.ev(`(async () => { const t = await import('/src/labs/sideTabs.ts'); t.copiedByBall(); return (await import('/src/labs/labs.ts')).labOn('suggestCopy'); })()`);
+    const seen = [];
+    for (let k = 0; k < 5; k++) seen.push(await copy());
+    expect(seen.join(), 'on for four, off with the fifth').toBe('true,true,true,true,false');
+    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('suggestCopy', true))()`);
+    for (let k = 0; k < 6; k++) await copy();
+    expect(await p.ev(`(async () => (await import('/src/labs/labs.ts')).labOn('suggestCopy'))()`), 'on again by hand: stays on').toBe(true);
+  },
+
   async '"Полукруги на рамке": none on what is too small on the screen to aim at them'(p) {
     const r = await p.ev(`(async () => { const t = await import('/src/labs/sideTabs.ts'), e = planx.editor;
       const sq = e.newItem('sticky', 0, 0, { w: 160, h: 160 }), long = e.newItem('rect', 0, 0, { w: 200, h: 40 });

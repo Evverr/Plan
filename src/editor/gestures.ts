@@ -13,6 +13,7 @@ import { shapeStyle } from './shapeStyle';
 import { branchCrosses, canMoveTo, foldedWays, folding, mindWay, mindRoot, mindWays, moveBranch, nearestFamily, type Way } from '../model/mind';
 import { clamp, MAX_Z } from './camera';
 import { zoomToBox } from '../labs/zoomBox';
+import { copiedByBall } from '../labs/sideTabs';
 import { showGrips } from '../labs/tableMove';
 import { pullOut } from '../labs/linkJoint';
 import { noteMindMoved } from '../labs/tidyMind';
@@ -837,8 +838,9 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
       ed.requestRender();
       return;
     case 'tab':
-      // Clicked: a copy that way.
+      // Clicked: a copy that way (counted, for «Предложить создать элемент» to go by itself once it's known).
       ed.duplicateToward(g.side);
+      copiedByBall();
       return;
     case 'marquee':
       if (g.zoom) zoomToBox(ed, g.rect);

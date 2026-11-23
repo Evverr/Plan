@@ -916,14 +916,14 @@ export const checks = {
     await p.click(right);
     await sleep(300);
     expect(await p.ev(`(() => { const c = planx.board.list().filter((i) => i.type === 'sticky' && i.id !== 's')[0]; return c ? [c.x, c.y, [...planx.editor.selection].join() === c.id].join() : 'none'; })()`), 'a copy right of it, 72 off, picked').toBe('632,300,true');
-    // Again from it: that place taken, nothing.
+    // Again from it: that place taken, a copy there all the same.
     await p.ev(`planx.editor.setSelection(['s'])`);
     await sleep(200);
     await p.mouse('mouseMoved', ...right);
     await sleep(150);
     await p.click(right);
     await sleep(300);
-    expect(await p.ev(`planx.board.list().filter((i) => i.type === 'sticky' && i.id !== 's').map((c) => c.x).sort((a, b) => a - b).join()`), 'again: nothing, the place taken').toBe('632');
+    expect(await p.ev(`planx.board.list().filter((i) => i.type === 'sticky' && i.id !== 's').map((c) => c.x).sort((a, b) => a - b).join()`), 'again: the place taken, a copy there too').toBe('632,632');
     await p.ev(`planx.editor.setSelection(['s'])`);
     await sleep(200);
     await p.drag(await at(480, 468), await at(980, 380));

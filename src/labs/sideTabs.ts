@@ -2,7 +2,8 @@ import type { Item, Side } from '../model/types';
 import type { Point } from '../canvas/geometry';
 import { linkBox, SIDES, sidePoint } from '../canvas/geometry';
 import type { Editor } from '../editor/editor';
-import { isLocked, labOn } from './labs';
+import { isLocked, labOn, setLab } from './labs';
+import { readJSON, writeJSON } from '../storage';
 
 /**
  * «Полукруги на рамке»: on the selection frame of what's picked alone, at the middle of each side, a ball
@@ -200,14 +201,22 @@ function drawZones(ctx: CanvasRenderingContext2D, it: Item, zoom: number): void 
 /** How far the copy a click makes stands off it that way (see Editor.duplicateToward): room for the
  *  copy's own ball between them, to make another. */
 export const TAB_GAP = 72;
-/** Where the copy goes from it that way, its size and the gap off it; none if something's there already
- *  (a copy made before, say): nothing made that way, nor shown. (`items`: what's on the board.) */
-export function towardOffset(item: Item, side: Side, items: Item[] = []): Point | null {
+/** Where the copy goes from it that way, its size and the gap off it: there whatever's there already (it
+ *  was nothing made where something stood, a copy made before say; no more: made all the same). */
+export function towardOffset(item: Item, side: Side, _items: Item[] = []): Point | null {
   const it = linkBox(item);
-  const d = side === 'right' ? { x: it.w + TAB_GAP, y: 0 } : side === 'left' ? { x: -it.w - TAB_GAP, y: 0 } : side === 'bottom' ? { x: 0, y: it.h + TAB_GAP } : { x: 0, y: -it.h - TAB_GAP };
-  const taken = items.some((o) => o.id !== it.id && !o.host && o.type !== 'frame' && o.type !== 'ink'
-    && o.x < it.x + d.x + it.w && it.x + d.x < o.x + o.w && o.y < it.y + d.y + it.h && it.y + d.y < o.y + o.h);
-  return taken ? null : d;
+  return side === 'right' ? { x: it.w + TAB_GAP, y: 0 } : side === 'left' ? { x: -it.w - TAB_GAP, y: 0 } : side === 'bottom' ? { x: 0, y: it.h + TAB_GAP } : { x: 0, y: -it.h - TAB_GAP };
+}
+
+/** «Предложить создать элемент» (src/labs): after a few copies made by a ball (SUGGEST_FOR), its copy shown
+ *  as the pointer comes to a ball no more (switched off by itself, once): the click known by then. Switched on
+ *  again by hand, it stays on. */
+const SUGGEST_FOR = 5, SUGGEST_KEY = 'planx-suggest-copies';
+export function copiedByBall(): void {
+  if (!labOn('suggestCopy')) return;
+  const n = (readJSON<number>(SUGGEST_KEY) ?? 0) + 1;
+  writeJSON(SUGGEST_KEY, n);
+  if (n === SUGGEST_FOR) setLab('suggestCopy', false);
 }
 
 /** The side whose ball is out whole (the pointer by it), if any. */

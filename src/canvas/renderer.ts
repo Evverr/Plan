@@ -1608,9 +1608,10 @@ export function drawScene(ctx: CanvasRenderingContext2D, s: Scene): void {
     ctx.restore();
   }
 
-  // («Полукруги на рамке», src/labs: the copy a click on the ball out would make, at 40%, easing in and out.)
+  // («Полукруги на рамке», src/labs: the copy a click on the ball out would make, at 40%, easing in and out;
+  // shown while «Предложить создать элемент» is on.)
   const alone = s.selection.size === 1 ? s.get([...s.selection][0]) : undefined;
-  const gh = s.live ? ghostNow(alone && s.ghostTab && tabsFor(alone, s.editingId ?? null, s.cam.z) ? alone.id : null, s.ghostTab ?? null) : null;
+  const gh = s.live ? ghostNow(alone && s.ghostTab && labOn('suggestCopy') && tabsFor(alone, s.editingId ?? null, s.cam.z) ? alone.id : null, s.ghostTab ?? null) : null;
   const ghostOf = gh && s.get(gh.id);
   if (gh && ghostOf) {
     // (Drawn on a layer of its own and laid on at 40%: drawing it sets its own opacities.)
