@@ -222,6 +222,13 @@ export function press(ed: Editor, e: PointerEvent): void {
     if (plus.kind === 'move') ed.gesture = { type: 'mindMove', id: node.id, from: w, to: w, target: null };
     // Folded by its chevron, nothing's left picked: the map to look at.
     else if (plus.kind === 'fold') { ed.setCollapsed(node.id, plus.way!, true); ed.setSelection([]); }
+    // A central topic's, there always: dragged, it takes the topic along; let go, its branch (see endGesture).
+    else if (ed.alwaysPlus(node) && e.button === 0) {
+      const fresh = !ed.selection.has(node.id), was = fresh ? [...ed.selection] : undefined;
+      if (fresh) { ed.setPicking(true); ed.setSelection([node.id]); }
+      ed.lastTap = { id: '', t: 0 };
+      ed.gesture = { type: 'drag', start: w, orig: ed.dragSet(board.list()), moved: false, id: node.id, dbl: false, fresh, was, plus: plus.kind };
+    }
     else ed.addMindNode(node.id, plus.kind, true);
     return;
   }

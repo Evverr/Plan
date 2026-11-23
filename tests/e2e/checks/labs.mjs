@@ -4082,6 +4082,14 @@ export const checks = {
     await p.mouse('mouseReleased', 360, 320);
     await sleep(200);
     expect(await p.ev('planx.editor.rootPlusFade()'), 'let go: back').toBe(1);
+    // Its "+" dragged: the topic goes along, no branch.
+    const [, rx, ry] = plus.find((s) => s.startsWith('child')).split(':').map(Number);
+    const x0 = await p.ev(`planx.board.get('r').x`);
+    await p.drag([rx, ry], [rx + 60, ry]);
+    await sleep(200);
+    expect(await p.ev(`planx.board.get('r').x - ${x0} + ' ' + planx.board.list().filter((i) => i.parent === 'r').length`), 'dragged by its "+"').toBe('60 0');
+    await p.drag([rx + 60, ry], [rx, ry]);
+    await sleep(200);
     const [, x, y] = plus.find((s) => s.startsWith('left')).split(':').map(Number);
     await p.mouse('mouseMoved', x, y);
     await sleep(100);
