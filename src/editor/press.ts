@@ -112,6 +112,8 @@ export function press(ed: Editor, e: PointerEvent): void {
     || !!foldBadgeAt(ed, w) || !!tickAt(ed, w);
   const empty = ed.tool === 'select' && e.button === 0 && !ed.spaceDown && !e.shiftKey && !hit && !link && !onControl
     && !grabbableLine(ed, w, hit, e.pointerType) && !ed.editingId
+    // (Nor a document's pager under it: pressed twice there, two pages turned, not everything shown.)
+    && !(labOn('docPage') && pagerAt(board.list(), w))
     // With Z held ("Зум рамкой"), anywhere is as the empty board.
     || (e.button === 0 && !ed.spaceDown && zoomBoxHeld());
   // Pressed twice on the empty board: everything on it comes into view, as with the "show all" button.

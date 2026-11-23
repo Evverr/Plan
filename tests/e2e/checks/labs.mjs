@@ -1345,6 +1345,14 @@ export const checks = {
     expect(await shown(), '»: its last page').toBe(last);
     await p.click(await jump(-72));
     expect(await shown(), '«: its first').toBe(0);
+    // Its arrow pressed twice quickly: two pages on, the board's zoom as it was (not everything shown).
+    const cam = await p.ev(`JSON.stringify(planx.editor.cam)`), next = await jump(44);
+    await p.mouse('mouseMoved', ...next);
+    await p.mouse('mousePressed', ...next); await p.mouse('mouseReleased', ...next);
+    await sleep(80);
+    await p.mouse('mousePressed', ...next, 0, 2); await p.mouse('mouseReleased', ...next, 0, 2);
+    await sleep(300);
+    expect(JSON.stringify([await shown(), await p.ev(`JSON.stringify(planx.editor.cam)`) === cam]), 'twice: two pages on, the zoom kept').toBe('[2,true]');
     // Of five pages or fewer: none.
     await p.ev(`planx.board.update('${id}', { text: Array.from({ length: 60 }, () => ${JSON.stringify(para)}).join('\\n') })`);
     await sleep(300);
