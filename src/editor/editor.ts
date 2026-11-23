@@ -1017,13 +1017,11 @@ export class Editor {
       && !this.board.list().some((k) => k.parent === it.id);
   }
 
-  /** And how far they show: not while something's moved or typed in (but a mind map node), nor with
-   *  "Авторасположение"'s handles up. */
+  /** And how far they show: dragged too, going along with it; not while something's typed in (but a mind map
+   *  node), nor with "Авторасположение"'s handles up. */
   rootPlusFade(): number {
     const typing = this.editingId && this.board.get(this.editingId)?.type !== 'mind';
-    // (Dragged as the picked ones' frame is: see Scene.dragging.)
-    const g = this.gesture, dragged = (g?.type === 'drag' && (!!g.fresh || g.moved)) || this.nudged;
-    return this.moving || dragged || typing || mindTidyOn(this) ? 0 : 1;
+    return typing || mindTidyOn(this) ? 0 : 1;
   }
 
   /** Shared: how far the selected mind map node's "+" buttons have faded in, 0…1. */

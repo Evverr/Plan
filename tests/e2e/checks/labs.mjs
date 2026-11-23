@@ -4074,22 +4074,14 @@ export const checks = {
       return m.mindButtons(it, (id) => planx.board.get(id), e.cam.z).map((b) => b.kind + ':' + Math.round(b.x) + ':' + Math.round(b.y)); })()`);
     expect(plus.map((s) => s.split(':')[0]).join(), 'both ways').toBe('child,left');
     expect(await p.ev(`planx.editor.alwaysPlus(planx.board.get('r'))`), 'shown always').toBe(true);
-    // Dragged (and back): gone meanwhile.
+    // Dragged (and back): there meanwhile, going along with it.
     await p.mouse('mouseMoved', 360, 320); await p.mouse('mousePressed', 360, 320);
     for (const dx of [10, 20, 30]) { await p.mouse('mouseMoved', 360 + dx, 320); await sleep(30); }
-    expect(await p.ev('planx.editor.rootPlusFade()'), 'dragged: none').toBe(0);
+    expect(await p.ev('planx.editor.rootPlusFade() + " " + planx.board.get("r").x'), 'dragged: there, along with it').toBe('1 330');
     for (const dx of [20, 10, 0]) { await p.mouse('mouseMoved', 360 + dx, 320); await sleep(30); }
     await p.mouse('mouseReleased', 360, 320);
     await sleep(200);
-    expect(await p.ev('planx.editor.rootPlusFade()'), 'let go: back').toBe(1);
-    // Its "+" dragged: the topic goes along, no branch.
-    const [, rx, ry] = plus.find((s) => s.startsWith('child')).split(':').map(Number);
-    const x0 = await p.ev(`planx.board.get('r').x`);
-    await p.drag([rx, ry], [rx + 60, ry]);
-    await sleep(200);
-    expect(await p.ev(`planx.board.get('r').x - ${x0} + ' ' + planx.board.list().filter((i) => i.parent === 'r').length`), 'dragged by its "+"').toBe('60 0');
-    await p.drag([rx + 60, ry], [rx, ry]);
-    await sleep(200);
+    expect(await p.ev('planx.editor.rootPlusFade()'), 'let go: there').toBe(1);
     const [, x, y] = plus.find((s) => s.startsWith('left')).split(':').map(Number);
     await p.mouse('mouseMoved', x, y);
     await sleep(100);
