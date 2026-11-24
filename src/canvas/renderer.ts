@@ -23,6 +23,7 @@ import { DOC_NAME_ICON, drawHeader, drawHeaderSkeleton, MORE_ICON } from '../lab
 import { drawPoll } from '../labs/poll';
 import { drawKanban, drawNewCard, glideOffset, gliding, newCardBox } from '../labs/kanban';
 import { drawDocPage, drawDocSkeleton, drawPager, pagerCount, pageShown } from '../labs/docPage';
+import { pageFlip } from '../labs/pageSwipe';
 import { drawPadHolder, padSticker } from '../labs/stickyPad';
 import { drawTaskCard, TASK_RAD, taskShown } from './task';
 import { dotsAlways, dotsUnder } from '../labs/linkTool';
@@ -762,7 +763,10 @@ function drawItem(ctx: CanvasRenderingContext2D, it: Item, s: Scene) {
       const of = pagerCount(it), n = pageShown(it, of);
       // (Its letters while they come out 4 px at least, 25% at its usual size; smaller, its skeleton.)
       if (!editing && (it.fs ?? 16) * s.cam.z >= DOC_SKELETON) {
-        drawDocPage(ctx, it, n, {
+        // (Its page turned by a swipe, «Листать документ правой кнопкой»: the one before going out, its own coming in.)
+        const flip = pageFlip(it.id);
+        drawDocPage(ctx, it, flip?.page ?? n, {
+          fade: flip?.k,
           ink: theme.ink, on: theme.pick, link: shade(LINK_INK, theme.dim), onLink: it.rot ? undefined : (r) => textLinkRects.push(r),
           tint: (c) => shade(c.startsWith('#') ? c : TEXT_COLORS[c] || theme.ink, theme.dim),
         });

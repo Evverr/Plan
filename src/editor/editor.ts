@@ -45,6 +45,7 @@ import { finishNib, nibPoints } from '../labs/nib';
 import { nodeEditing, shapedBy } from '../labs/paths';
 import { hiddenByLayers, layersVersion, newItemLayer } from '../labs/layers';
 import { clearDocLines, pagesTurned, setDocObjects } from '../labs/docPage';
+import { flipping } from '../labs/pageSwipe';
 import { docDropAt, inDocLimit, offPage, tidyDocObjects } from '../labs/docObjects';
 import { addPad } from '../labs/stickyPad';
 import { zoomsWithKey } from '../labs/wheelZoom';
@@ -912,6 +913,8 @@ export class Editor {
     this.lineFades = this.lineFades.filter((f) => now - f.since < LINE_UNFADE);
     const fadingLines = this.lineFades.filter((f) => !sameLine(f.line, this.hotLine)).map((f) => { const t = (now - f.since) / LINE_UNFADE; return { line: f.line, k: (1 - t) * (1 - t) }; });
     if (fadingLines.length) this.requestRender();
+    // (A sheet's page turning, «Листать документ правой кнопкой»; again till it's done.)
+    if (flipping()) this.requestRender();
     // (Pads' holders darkening or going back; again till they're there.)
     const padGlow = new Map<string, number>();
     for (const [id, f] of this.padGlows) {

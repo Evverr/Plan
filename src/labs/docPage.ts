@@ -193,9 +193,11 @@ export function drawDocPage(ctx: CanvasRenderingContext2D, it: Item, n: number, 
   ink: string; link: string; tint: (c: string) => string; onLink?: (r: { x: number; y: number; w: number; h: number; url: string }) => void;
   /** The blue of the tool picked on the rail (--fmt-on-ink): a ticked box filled with it. */
   on?: string;
+  /** How much of it shows, its page turning (pageSwipe.ts). */
+  fade?: number;
 }): void {
   const text = it.text ?? '', st = fontOf(it), runs = (it.rs ?? []) as TextRun[], links = it.links ?? [];
-  const align = it.ta ?? 'left', alpha = it.to ?? 1, ink = it.tc ? look.tint(it.tc) : look.ink, area = textArea(it);
+  const align = it.ta ?? 'left', alpha = (it.to ?? 1) * (look.fade ?? 1), ink = it.tc ? look.tint(it.tc) : look.ink, area = textArea(it);
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.textBaseline = 'alphabetic';

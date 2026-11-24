@@ -13,6 +13,7 @@ import { ColorPicker } from '../ui/ColorPicker';
 import { Switch } from '../ui/BoardMenu';
 import { copyItemLink } from './itemLink';
 import { labOn } from './labs';
+import { attachPageSwipe, holdMenu } from './pageSwipe';
 import { TL_FONTS, TL_STEPS, tlLeast } from '../canvas/timeline';
 import { startTidy } from './tidy';
 import { startComment } from './comments';
@@ -65,6 +66,8 @@ export function ContextMenu({ editor, onToast }: { editor: Editor; onToast: (tex
       if (!canvas || e.target !== canvas || !labOn('contextMenu')) return;
       e.preventDefault();
       if (editor.looking) return;
+      // Pressed on a «Документ» of several pages: not till the button's let go unswiped («Листать документ правой кнопкой»).
+      if (holdMenu(() => open(e))) return;
       const r = canvas.getBoundingClientRect(), w = editor.toWorld(e.clientX - r.left, e.clientY - r.top);
       const hit = hitItem(editor.shown(), w, editor.cam.z);
       // A link (where no item but a frame is over it, as a press would find it): its own menu.
@@ -107,7 +110,8 @@ export function ContextMenu({ editor, onToast }: { editor: Editor; onToast: (tex
     };
     window.addEventListener('contextmenu', open);
     window.addEventListener('planx:item-menu', fromPanel);
-    return () => { window.removeEventListener('contextmenu', open); window.removeEventListener('planx:item-menu', fromPanel); };
+    const unswipe = attachPageSwipe(editor);
+    return () => { window.removeEventListener('contextmenu', open); window.removeEventListener('planx:item-menu', fromPanel); unswipe(); };
   }, [editor]);
 
   useEffect(() => {
