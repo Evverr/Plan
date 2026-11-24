@@ -143,7 +143,7 @@ export function Toolbar({ editor, tool, pens, zoom, docked, iconsOpen, onToggleI
       const t = toolOf(key);
       // A line picked: dropped on its middle, what's made goes into it ("Узел на линии", src/labs).
       const sel = [...editor.selection], line = labOn('linkJoint') && sel.length === 1 && editor.board.getLink(sel[0]) ? sel[0] : null;
-      if (t === 'sticky') editor.addSticky(DEFAULTS.sticky.color!, at);
+      if (t === 'sticky') editor.addSticky('yellow', at);
       else if (t) editor.dropItem(t, at);
       if (t && line) joinDropped(editor, line, editor.selectedItems()[0]);
       else if (key === 'image') { pictureAt.current = at; filePicker.current?.click(); }

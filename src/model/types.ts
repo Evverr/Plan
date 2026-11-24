@@ -386,7 +386,7 @@ export const ICON_COLORS: Record<string, string> = {
 };
 
 export const DEFAULTS: Record<ItemType, Partial<Item> & { w: number; h: number }> = {
-  sticky: { w: 160, h: 160, color: 'green', fs: 32, text: '' },
+  sticky: { w: 160, h: 160, color: 'yellow', fs: 32, text: '' },
   text: { w: 260, h: 26, fs: 20, text: '' },
   rect: { w: 180, h: 110, color: 'blue', fs: 16, text: '', ta: 'left', va: 'top' },
   // (Shapes but the rectangle: their text from the middle, as a sticker's.)

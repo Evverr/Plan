@@ -21,7 +21,7 @@ export function ToolPreview({ tool, zoom }: { tool: Tool; zoom: number }) {
   const k = Math.min(zoom, MAX_PX / Math.max(d.w!, d.h!)), w = d.w! * k, h = d.h! * k;
   switch (type) {
     case 'sticky':
-      return <i className="tp-sticky" style={{ width: w, height: h, background: FILLS[DEFAULTS.sticky.color!] }} />;
+      return <i className="tp-sticky" style={{ width: w, height: h, background: FILLS.yellow }} />;
     case 'text':
       return <span className="tp-text" style={{ fontSize: Math.max(11, 20 * k) }}>Текст</span>;
     case 'task':
