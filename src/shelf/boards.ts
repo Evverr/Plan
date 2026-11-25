@@ -1,4 +1,5 @@
 import { readJSON, readText, writeJSON, writeText } from '../storage';
+import { FILLS } from '../model/types';
 
 /**
  * The boards and folders on this browser's shelf. The server keeps each board by its id but has no
@@ -18,6 +19,8 @@ export interface BoardEntry {
   /** How many things are on it, as last seen. */
   items: number;
   pinned?: boolean;
+  /** The home card corner, from the sticker fill palette. */
+  color?: string;
 }
 
 export interface FolderEntry {
@@ -40,17 +43,20 @@ export const SORTS: { id: SortBy; label: string }[] = [
 ];
 
 export const FOLDER_COLORS: { color: string; name: string }[] = [
-  { color: '#4A7FC1', name: 'Синяя' },
-  { color: '#3C9A72', name: 'Зелёная' },
-  { color: '#D0693F', name: 'Оранжевая' },
-  { color: '#E0A93A', name: 'Жёлтая' },
-  { color: '#8A68C4', name: 'Фиолетовая' },
-  { color: '#D46A8A', name: 'Розовая' },
-  { color: '#B38B5D', name: 'Крафт' },
-  { color: '#5B6271', name: 'Серая' },
+  { color: '#4786D4', name: 'Синяя' },
+  { color: '#FF6767', name: 'Красная' },
+  { color: '#E6A72D', name: 'Жёлтая' },
+  { color: '#8666BD', name: 'Фиолетовая' },
+  { color: '#3D9A72', name: 'Зелёная' },
+  { color: '#686F7E', name: 'Серая' },
+  { color: '#BC8A4F', name: 'Крафт' },
+  { color: '#E15959', name: 'Коралловая' },
 ];
 
 const KEY = 'planx-boards', FOLDERS = 'planx-folders', THUMB = 'planx-thumb-';
+// Start the ordered palette at green, independently of the earlier random-colour history.
+const LAST_CARD_COLOR = 'planx-last-ordered-card-color';
+const CARD_COLORS = Object.values(FILLS).filter((color) => color !== 'transparent').reverse();
 
 export const randomColor = () => FOLDER_COLORS[Math.floor(Math.random() * FOLDER_COLORS.length)].color;
 
@@ -83,7 +89,15 @@ export function newEntry(id: string, patch: Partial<BoardEntry> = {}, now = Date
 export function updateEntry(id: string, patch: Partial<BoardEntry>): BoardEntry {
   const list = readShelf() ?? [];
   const at = list.findIndex((b) => b.id === id);
-  const next = at < 0 ? newEntry(id, patch) : { ...list[at], ...patch };
+  let next: BoardEntry;
+  if (at < 0) {
+    const previous = readText(LAST_CARD_COLOR);
+    const color = patch.color ?? CARD_COLORS[(CARD_COLORS.indexOf(previous ?? '') + 1) % CARD_COLORS.length];
+    next = newEntry(id, { ...patch, color });
+    if (patch.color === undefined) writeText(LAST_CARD_COLOR, color);
+  } else {
+    next = { ...list[at], ...patch };
+  }
   if (at < 0) list.push(next);
   else list[at] = next;
   writeShelf(list);

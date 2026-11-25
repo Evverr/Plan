@@ -8,33 +8,20 @@ import './styles.css';
 import { keepMenusOnScreen } from './ui/onScreen';
 import { fadeOutPopups } from './ui/leaving';
 import { keepLinksHere } from './route';
-import { useLabs } from './labs/labs';
-import { SideNav, SidePageView, sidePageFromUrl, useSideAway, useSideOpen } from './labs/SideNav';
-import { readText } from './storage';
-import { setSideOffset } from './labs/sideViewport';
+import { homePageFromUrl } from './shelf/Navigation';
 
-/** One page for all (see route.ts): the board in the address, a page of the side's ("Боковая панель",
- *  src/labs), or with neither the shelf of boards, the start page; another board, its own App (the one
- *  before closed, its connection and all). The side, open, stays whatever's beside it, pushing it over. */
+/** The canvas or the home page, with profile, settings and help under the same header. */
 function Root() {
   const [boardId, setBoardId] = useState(boardIdFromUrl);
-  const [page, setPage] = useState(sidePageFromUrl);
+  const [page, setPage] = useState(homePageFromUrl);
   useEffect(() => {
-    const on = () => { setBoardId(boardIdFromUrl()); setPage(sidePageFromUrl()); };
+    const on = () => { setBoardId(boardIdFromUrl()); setPage(homePageFromUrl()); };
     window.addEventListener('popstate', on);
     return () => window.removeEventListener('popstate', on);
   }, []);
-  const labs = useLabs(), sideOn = useSideOpen(), away = useSideAway(), side = labs.sideNav && sideOn;
-  // A board beside the side: pushed over by it (see labs/sideViewport.ts).
-  // (As wide as the side, --side-w in labs.css.)
-  useEffect(() => setSideOffset(side && boardId ? 250 : 0), [side, boardId]);
-  // (A page of the side's, without a board: the theme the board keeps.)
-  useEffect(() => { if (page && !boardId) document.documentElement.dataset.theme = readText('planx-theme') === 'dark' ? 'dark' : 'light'; }, [page, boardId]);
-  const content = boardId ? <App key={boardId} boardId={boardId} /> : page ? <SidePageView page={page} /> : <ShelfPage />;
   return (
-    <div className={`app-shell ${side ? 'side-open' : ''} ${side && away ? 'side-away' : ''} ${boardId ? 'on-board' : ''}`}>
-      {side && <SideNav page={page} board={!!boardId} />}
-      <div className="app-content">{content}</div>
+    <div className={`app-shell ${boardId ? 'on-board' : ''}`}>
+      <div className="app-content">{boardId ? <App key={boardId} boardId={boardId} /> : <ShelfPage page={page} />}</div>
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { isLocked, labOn } from '../labs/labs';
 import { dropTables, roomFor } from '../labs/docObjects';
 import { addPad, padStart, tearOff } from '../labs/stickyPad';
 import { aboveText, belowText } from '../labs/docPage';
+import { marginClick, marginDouble, marginSide } from '../labs/pageSwipe';
 import { columnAt, dropTarget, moveStage, tidyKanbans } from '../labs/kanban';
 import { HEADER_MIN_W, headerHeight, headerPartAt } from '../labs/header';
 import { addCodeAt } from '../labs/codeBlock';
@@ -46,7 +47,7 @@ export type Gesture =
   | { type: 'pinch'; d0: number; z0: number; anchor: Point }
   | { type: 'drag'; start: Point; orig: Map<string, Point>; moved: boolean; id: string; dbl: boolean; fresh?: boolean; was?: string[]; sub?: number; subTo?: number; pulled?: boolean; guides?: Guide[]; cell?: boolean; enter?: boolean; again?: boolean; vias?: Map<string, Point[]>; url?: string; tap?: Point; mindTo?: string | null; mindWay?: Way; torn?: string;
       /** A table in a document's text, not picked, dragged: the whole document going with it (see press.ts). */
-      whole?: boolean }
+      whole?: boolean; pageMargin?: -1 | 0 | 1; pageDouble?: number }
   /** (`scale`: a timeline stretched by its right side or corner with Cmd, its step as it goes: what was on it as it was.) */
   | { type: 'resize'; id: string; start: Point; orig: Item; box?: Rect; only?: 'w' | 'h' | 'l' | 't' | 'tl' | 'bl'; scale?: Item[] }
   | { type: 'rotate'; id: string; c: Point; a0: number; rot0: number; held: Array<{ id: string; c: Point; rot0: number }> }
@@ -616,6 +617,10 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         if (g.fresh) ed.setSelection([]);
         // (One torn off a pad of stickers, «Стопка стикеров», as a sticker dragged without being picked first
         // (\`fresh\`): not picked once let go, no frame, no panel; a click, its panel, a double click, typed in.)
+      } else if (g.pageMargin && !g.dbl) {
+        const it = board.get(g.id), sp = ed.local(e);
+        // A cancelled press or a release outside the margin must not change the page.
+        if (e.type !== 'pointercancel' && it && marginSide(ed, it, ed.toWorld(sp.x, sp.y)) === g.pageMargin) marginClick(ed, it, g.pageMargin);
       } else if (g.url) {
         // A link on a part of its text, clicked ("Ссылка в тексте", src/labs): opened in a new tab (to something
         // on the board, «Ссылка на объект»: there).
@@ -639,6 +644,10 @@ export function endGesture(ed: Editor, g: Gesture, e: PointerEvent): void {
         ed.startEditing(g.id, null, 'end');
       } else if (g.dbl) {
         const it = board.get(g.id);
+        if (it?.type === 'page') {
+          if (e.type === 'pointercancel') return;
+          marginDouble(ed, it.id, g.pageDouble);
+        }
         // A group picked («Группы», src/labs/groups.ts): a level in, the group within it that's double
         // clicked in, or that alone.
         const inner = labOn('groups') && it ? levelIn(board.list(), ed.selection, it) : null;

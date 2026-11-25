@@ -1,10 +1,14 @@
-// "Wishlist" (src/labs/WishlistPage.tsx): by "Мои доски", a wish written in, liked once from a browser.
+// "Wishlist" (src/labs/WishlistPage.tsx): by the home menu, a wish written in, liked once from a browser.
 import { expect, sleep } from '../lib.mjs';
 
 const at = (p, sel) => p.ev(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`);
+const openFeedback = async (p) => {
+  await p.click(await at(p, '.home-menu-button'));
+  await p.click(await p.ev(`(() => { const r = [...document.querySelectorAll('.home-menu .menu-row')].find((b) => b.textContent === 'Фидбек').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; })()`));
+};
 
 export const checks = {
-  async 'wishes are written in, reacted to once each (as items on the board), sorted by reactions or date, hidden, deleted, and "Мои доски" leads back'(p) {
+  async 'wishes are written in, reacted to once each (as items on the board), sorted by reactions or date, hidden, deleted, and the home logo leads back'(p) {
     // Kept to this browser: the sync server (the dev one, if it's running) never sees the test's wishes.
     // (No WebSocket at all: blocking its address isn't enough for Chrome.)
     await p.cdp('Page.enable');
@@ -15,7 +19,7 @@ export const checks = {
     await p.ev(`new Promise((ok) => { const r = indexedDB.deleteDatabase('wishlist-planx'); r.onsuccess = r.onerror = r.onblocked = () => ok(); })`);
     await p.cdp('Page.reload');
     await sleep(1200);
-    await p.click(await at(p, '.shelf-tab'));
+    await openFeedback(p);
     expect(await p.ev('location.search'), 'its own address').toBe('?wishlist');
     expect(await p.ev(`!!document.querySelector('.wish-form textarea')`), 'the form').toBe(true);
     const say = async (text) => {
@@ -56,11 +60,11 @@ export const checks = {
     await p.ev(`(() => { const s = document.querySelector('.wish-head select'); s.value = 'new'; s.dispatchEvent(new Event('change', { bubbles: true })); })()`);
     await sleep(100);
     expect((await texts())[0], 'by date, the newest first').toBe('Экспорт в Figma');
-    await p.click(await at(p, '.shelf-brand h1 a'));
+    await p.click(await at(p, '.home-logo'));
     expect(await p.ev(`!!document.querySelector('.wishlist')`), 'back on the shelf').toBe(false);
     expect(await p.ev('location.search'), 'its address').toBe('');
     // More than 25: in pages.
-    await p.click(await at(p, '.shelf-tab'));
+    await openFeedback(p);
     for (let i = 0; i < 25; i++) {
       await p.ev(`(() => { const t = document.querySelector('.wish-form textarea'); Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(t, 'Пожелание ${'${i}'}'); t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
       await sleep(10);

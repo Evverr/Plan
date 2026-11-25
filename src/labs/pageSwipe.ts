@@ -1,6 +1,7 @@
 import type { Editor } from '../editor/editor';
-import { hitItem } from '../canvas/geometry';
-import { pagesOf, pageShown, turnPage } from './docPage';
+import type { Item } from '../model/types';
+import { hitItem, type Point } from '../canvas/geometry';
+import { pagesOf, pageShown, showPage, textArea, turnPage } from './docPage';
 import { labOn } from './labs';
 
 /**
@@ -8,6 +9,8 @@ import { labOn } from './labs';
  * pointer swiped to one side, its page turns (to the left, the next; to the right, the one before): its
  * text goes out quickly and the other page's comes in. A right click with no swipe opens the menu as
  * ever (on a Mac it comes on the press: there it waits for the button to be let go).
+ * A click on the side margin of a sheet already picked turns it too: on the left, to the page before; on
+ * the right, to the next.
  */
 
 /** How far on the screen it's swiped for the page to turn, px; how long its text goes out, and comes in, ms. */
@@ -39,6 +42,38 @@ export function holdMenu(show: () => void): boolean {
   return performance.now() - swipedAt < 400;
 }
 
+/** Turns a sheet's page one way, its text going out and the other page's coming in. */
+function turnFading(editor: Editor, it: Item, dir: -1 | 1): void {
+  const from = pageShown(it);
+  turnPage(it, dir);
+  if (pageShown(it) !== from) flips.set(it.id, { from, since: performance.now() });
+  editor.requestRender();
+}
+
+/** The side margin of the one sheet picked (of several pages) a press is in: -1 its left (the page
+ *  before), 1 its right (the next); 0, none (or not so). Clicked there, not dragged, its page turns
+ *  (`marginClick`); pressed twice, as ever (the turn undone, `marginDouble`). */
+export function marginSide(ed: Editor, it: Item, w: Point): -1 | 0 | 1 {
+  if (it.type !== 'page' || it.rot || !labOn('pageSwipe') || ed.selection.size !== 1 || !ed.selection.has(it.id) || ed.editingId === it.id || pagesOf(it).length < 2) return 0;
+  if (w.y < it.y || w.y > it.y + it.h) return 0;
+  const a = textArea(it);
+  return w.x >= it.x && w.x < it.x + a.x ? -1 : w.x > it.x + a.x + a.w && w.x <= it.x + it.w ? 1 : 0;
+}
+/** The last margin turn, tied to its press so holding the second press cannot expire it. */
+let clicked: { id: string; from: number; tap: number } | null = null;
+export function marginClick(ed: Editor, it: Item, dir: -1 | 1): void {
+  clicked = { id: it.id, from: pageShown(it), tap: ed.lastTap.t };
+  turnFading(ed, it, dir);
+}
+/** Pressed twice on it: the page the first press turned back as it was. */
+export function marginDouble(ed: Editor, id: string, firstTap: number | undefined): void {
+  if (!clicked || clicked.id !== id || clicked.tap !== firstTap) return;
+  showPage(id, clicked.from);
+  flips.delete(id);
+  clicked = null;
+  ed.requestRender();
+}
+
 export function attachPageSwipe(editor: Editor): () => void {
   const down = (e: PointerEvent) => {
     const canvas = editor.canvas;
@@ -52,11 +87,7 @@ export function attachPageSwipe(editor: Editor): () => void {
     if (Math.abs(dx) < SWIPE || Math.abs(dx) < Math.abs(dy)) return;
     press.swiped = true;
     const it = editor.board.get(press.id);
-    if (!it) return;
-    const from = pageShown(it);
-    turnPage(it, dx < 0 ? 1 : -1);
-    if (pageShown(it) !== from) flips.set(it.id, { from, since: performance.now() });
-    editor.requestRender();
+    if (it) turnFading(editor, it, dx < 0 ? 1 : -1);
   };
   const up = (e: PointerEvent) => {
     if (!press || e.button !== 2) return;
@@ -66,14 +97,21 @@ export function attachPageSwipe(editor: Editor): () => void {
     else p.menu?.();
   };
   const cancel = () => { press = null; };
+  // Pointer events always have detail 0 here; mousedown carries the system double-click count.
+  const systemDouble = (e: MouseEvent) => {
+    const g = editor.gesture;
+    if (e.detail >= 2 && g?.type === 'drag' && g.pageMargin && g.pageDouble !== undefined) g.dbl = true;
+  };
   window.addEventListener('pointerdown', down, true);
   window.addEventListener('pointermove', move, true);
   window.addEventListener('pointerup', up, true);
   window.addEventListener('pointercancel', cancel, true);
+  window.addEventListener('mousedown', systemDouble, true);
   return () => {
     window.removeEventListener('pointerdown', down, true);
     window.removeEventListener('pointermove', move, true);
     window.removeEventListener('pointerup', up, true);
     window.removeEventListener('pointercancel', cancel, true);
+    window.removeEventListener('mousedown', systemDouble, true);
   };
 }

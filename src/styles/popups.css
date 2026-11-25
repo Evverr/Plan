@@ -1,32 +1,22 @@
-/* Popups, as the Figma "Clear the board" one: 20px in from every edge, a 12px corner, a soft
-   shadow, Inter 13 on 21px lines; buttons 28px under the text, 9px apart, at the right. */
-.pop { position: fixed; z-index: 6; background: var(--surface); box-shadow: 0 6px 12px rgba(0, 0, 0, .15); border-radius: var(--s12); padding: var(--s20);
+/* Popups, as the Figma "Clear the board" one: 20px in from every edge, a 16px corner, a soft
+   shadow, Inter 13 on 21px lines; buttons 28px under the text, 10px apart, at the right. */
+.pop { position: fixed; z-index: 6; background: var(--surface); box-shadow: 0 6px 12px rgba(0, 0, 0, .15); border-radius: var(--popup-radius); padding: var(--s20);
   font: 400 var(--s13)/var(--s21) "Inter", var(--ui); color: var(--menu-ink); }
 .pop p { margin: 0 0 var(--s10); }
 .pop p:has(+ .row) { margin-bottom: 0; }
-.pop .row { display: flex; gap: var(--s9); justify-content: flex-end; margin-top: var(--s18); }
+.pop .row { display: flex; gap: var(--s10); justify-content: flex-end; margin-top: var(--s18); }
 .pop p + .row { margin-top: var(--s28); }
-/* Buttons: 32px tall, 7px corners, Inter Semi Bold 12. The plain one has only a faint edge inside;
-   the main one is the blue gradient, both at 90%. */
-.btn { position: relative; isolation: isolate; height: var(--e32); box-sizing: border-box; padding: 0 var(--s14); border: 0; border-radius: var(--s7); background: none;
-  font: 600 var(--s12)/var(--s32) "Inter", var(--ui); color: var(--btn-ink); white-space: nowrap; cursor: pointer; }
-.btn::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; opacity: .9; box-shadow: inset 0 0 0 1px var(--btn-line); transition: filter .12s ease-out; }
-.btn:hover::before { background: var(--fmt-hover); }
-.btn.primary { color: #fff; }
-.btn.primary::before { box-shadow: none; background: linear-gradient(#549BFF, #005FE3); }
-.btn.primary:hover::before { filter: brightness(1.08); }
-
 /* Audio note recorder beside the tool rail. */
 .recorder { left: calc(24px + var(--rail-w) + env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); width: 303px; max-width: calc(100vw - var(--e96)); box-sizing: border-box;
-  display: flex; flex-direction: column; align-items: center; gap: var(--s20); text-align: center; padding: var(--s16) var(--s18) var(--s19); box-shadow: 0 6px 6px rgba(0, 0, 0, .15); }
-/* As in Figma: the title at the top left in Inter Bold 13, the grey cross 11px in from the top right
+  display: flex; flex-direction: column; align-items: center; gap: var(--s20); text-align: center; padding: 12px 16px 17px; }
+/* As in Figma: the title at the top left in Inter Bold 14, the grey cross 11px in from the top right
    corner, the microphone in its pale blue circle 7px under the title, the button 20px under it. */
 .recorder-head { align-self: stretch; display: flex; align-items: center; margin: 0; }
-.recorder-head h3 { margin: 0; font: 700 var(--s13)/var(--s21) "Inter", var(--ui); color: var(--menu-ink); }
-.rec-close { position: absolute; top: var(--s11); right: var(--s11); width: var(--e24); height: var(--e24); padding: 0; border: 0; background: none; cursor: pointer; }
+.recorder-head h3 { margin: 0; font: 700 var(--s14)/var(--s21) "Inter", var(--ui); color: var(--menu-ink); }
+.rec-close { position: absolute; top: 12px; right: 12px; width: var(--e24); height: var(--e24); padding: 0; border: 0; background: none; cursor: pointer; }
 .rec-close img { display: block; opacity: .3; transition: opacity .12s ease-out; }
 .rec-close:hover img { opacity: .6; }
-.rec-mic { margin-top: round(calc(-13px * var(--k)), 1px); width: var(--e88); height: var(--e88); padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: transform .15s ease; }
+.rec-mic { margin-top: -7px; width: 89px; height: 89px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: transform .15s ease; }
 .rec-mic img { display: block; }
 .rec-mic:hover:not(:disabled) { transform: scale(1.04); }
 .recorder p { margin: 0; }

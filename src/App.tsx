@@ -11,7 +11,7 @@ import { MIXED, TextPanel } from './ui/FormatPanel';
 import { goToItem } from './labs/itemLink';
 import { cellAnchor } from './ui/cellAnchor';
 import { TaskKeepPop, TaskMenu, TaskPop, TaskTipBubble } from './ui/TaskPop';
-import { noteBoard, setSideOpen, takeSideAway, useSideOpen } from './labs/SideNav';
+import { noteBoard } from './shelf/Navigation';
 import { navigate } from './route';
 import { Discussion } from './labs/Discussion';
 import { CallButton } from './labs/CallButton';
@@ -49,7 +49,7 @@ import { joinDropped } from './labs/linkJoint';
 import { HelpPop } from './ui/HelpPop';
 import { useFollowing } from './labs/presence';
 import { readJSON, readText, writeJSON, writeText } from './storage';
-import { shelfUrlFor, useShelfTracking } from './shelf/track';
+import { useShelfTracking } from './shelf/track';
 
 /** Where a board copied into a new tab waits for it, followed by the new board's id. */
 const COPY_KEY = 'planx-copy:';
@@ -77,19 +77,18 @@ export function App({ boardId }: { boardId: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => editor.mount(canvas.current!), [editor]);
   // The board keeps its place on the start page's shelf (src/shelf) up to date, and is the one «Работа»
-  // goes back to ("Боковая панель", src/labs).
+  // goes back to from the home menu.
   useShelfTracking(boardId, board);
   useEffect(() => noteBoard(boardId), [boardId]);
-  // Loaded (what's kept here, drawn): the side slid away, if «Работа» led here.
+  // Open an item link once the locally saved board has been drawn.
   useEffect(() => { void conn.local.whenSynced.then(() => requestAnimationFrame(() => requestAnimationFrame(() => {
-    takeSideAway();
     // Opened by a link to something on it («Ссылка на объект», src/labs): there.
     const item = new URLSearchParams(location.search).get('item');
     if (item && labOn('itemLinks')) goToItem(editor, item);
   }))); }, [conn]); // eslint-disable-line react-hooks/exhaustive-deps
   const toShelf = () => {
     window.dispatchEvent(new Event('planx:leave'));
-    navigate(shelfUrlFor(boardId));
+    navigate(location.pathname);
   };
 
   const ui = useSyncExternalStore(editor.subscribeUI, editor.getUI);
@@ -100,8 +99,6 @@ export function App({ boardId }: { boardId: string }) {
   const [toast, setToast] = useState<string | null>(null);
   // "Профиль" or "Настройки", open over the board.
   const [dialog, setDialog] = useState<'profile' | 'settings' | null>(null);
-  // "Боковая панель" (src/labs, kept on the page: see main.tsx), opened and closed by the logo.
-  const sideOpen = useSideOpen();
   // A note at the bottom with a button (see src/labs/tidyMind.ts), sent as "planx:toast"; `top`: at the top
   // instead, `stay`: till its button's pressed rather than gone in 5 seconds.
   const [note, setNote] = useState<{ text: string; action: string; run: () => void; at: number; top?: boolean; stay?: boolean } | null>(null);
@@ -501,11 +498,7 @@ export function App({ boardId }: { boardId: string }) {
         onPointerMove={(e) => { if (!topSort.sorting) topBar.grip.onPointerMove(e); topSort.container.onPointerMove(e); }}
         onPointerLeave={topBar.grip.onPointerLeave}>
         {topSort.renderFit({
-          // The logo leads back to the shelf, to the folder this board is in.
-          // ("Боковая панель", src/labs: there too, the side opened by it, a chevron before it under the pointer.)
-          logo: labs.sideNav
-            ? <button className={`logo to-shelf side-nav-logo-btn ${sideOpen ? "open" : ""}`} title="К доскам" aria-label="К доскам" onClick={() => { setSideOpen(true); toShelf(); }}>Plan</button>
-            : <button className="logo to-shelf" title="К папке с досками" aria-label="К папке с досками" onClick={toShelf}>Plan</button>,
+          logo: <button className="logo to-shelf" title="На главную" aria-label="На главную" onClick={toShelf}>Plan</button>,
           sep: <div className="sep" />,
           // The field is as wide as its text (the copy in data-text sizes it), up to 30 characters.
           title: (

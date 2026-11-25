@@ -121,48 +121,30 @@ export const checks = {
     expect([await p.ev(`!!planx.board.get('c')`), await p.ev('planx.editor.editingId')].join(), 'pressed: gone, nothing typed in').toBe('false,');
   },
 
-  async '"Боковая панель": the board\'s logo opens a dark side on the left with the boards beside it, kept open; its rows go to pages beside it, the help at its foot; its logo the start, its cross by the boards puts it away'(p) {
-    const go = async (label) => p.click(await p.ev(`(() => { const b = [...document.querySelectorAll('.side-nav-row, .side-nav-help')].find((b) => (b.getAttribute('aria-label') ?? b.textContent) === '${label}').getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; })()`));
+  async 'the home menu: the board logo opens the shelf; work returns to the same board; settings, help and profile are pages under the same header'(p) {
+    const first = await p.ev('planx.conn.boardId ?? new URLSearchParams(location.search).get("board")');
+    const openMenu = async () => { if (!(await p.rect('.home-menu'))) await p.click(await p.at('.home-menu-button')); };
+    const go = async (label) => { await openMenu(); await p.click(await p.ev(`(() => { const b = [...document.querySelectorAll('.home-menu .menu-row')].find((b) => b.textContent === '${label}').getBoundingClientRect(); return [b.x + b.width / 2, b.y + b.height / 2]; })()`)); };
     await p.click(await p.at('.topbar .logo'));
-    await sleep(400);
-    const r = await p.rect('.side-nav');
-    expect([r.l, r.t, r.w, r.h].join(), 'down the left edge').toBe('0,0,250,800');
-    expect(await p.ev(`[...document.querySelectorAll('.side-nav-row span')].map((s) => s.textContent).join()`), 'what\'s in it').toBe('Работа,Доски,Профиль,Настройки');
-    // The board's logo leads to the boards beside it; «Работа» back to the board.
-    await sleep(400);
-    expect(!!(await p.rect('.shelf-page')), 'the boards').toBe(true);
-    await go('Работа');
     await sleep(800);
-    expect([await p.ev('location.search').then((q) => q.startsWith('?board=')), !!(await p.rect('.side-nav'))].join(), '«Работа»: the board, the side put away').toBe('true,false');
-    await p.ev(`(async () => (await import('/src/labs/SideNav.tsx')).setSideOpen(true))()`);
-    await sleep(400);
-    // The board pushed over by it: its area right of the side, as wide as what's left of the window.
-    expect([await p.ev(`document.querySelector('.app-content').offsetLeft`), await p.ev('innerWidth'), await p.ev(`document.querySelector('.board-canvas').clientWidth`)].join(), 'the board beside it').toBe('250,950,950');
+    expect([await p.ev('location.search'), !!(await p.rect('.shelf-page')), !!(await p.rect('.side-nav'))].join(), 'the shelf fills the page').toBe(',true,false');
     await go('Настройки');
     await sleep(400);
-    const page = await p.rect('.page-view');
-    expect([await p.ev('location.search'), !!(await p.rect('.side-nav')), await p.ev(`!!document.querySelector(".modal")`), page.l >= 250].join(), 'the settings a page beside it, the side kept')
-      .toBe('?page=settings,true,false,true');
+    expect([await p.ev('location.search'), !!(await p.rect('.page-view.settings')), await p.ev(`!!document.querySelector(".modal")`)].join(), 'the settings are a page, not a popup').toBe('?page=settings,true,false');
     await go('Помощь');
     await sleep(300);
-    expect(await p.ev(`document.querySelector('.page-view h1')?.textContent`), 'the help').toBe('Помощь');
-    await go('Доски');
-    await sleep(500);
-    expect([await p.ev('location.search'), !!(await p.rect('.shelf-page')), !!(await p.rect('.side-nav'))].join(), 'the boards').toBe(',true,true');
-    await go('Работа');
+    expect([await p.ev('location.search'), await p.ev(`document.querySelector('.page-view h1')?.textContent`)].join(), 'the help').toBe('?page=help,Помощь');
+    await go('В работе');
     await sleep(800);
-    expect([await p.ev('location.search').then((q) => q.startsWith('?board=')), await p.ev(`!!document.querySelector('.board-canvas')`)].join(), '«Работа»: the board again').toBe('true,true');
-    await p.ev(`(async () => (await import('/src/labs/SideNav.tsx')).setSideOpen(true))()`);
-    await sleep(300);
-    // Its logo: the start, a hero; no cross there, by the boards one.
-    await p.click(await p.at('.side-nav .side-nav-logo'));
-    await sleep(300);
-    expect([await p.ev('location.search'), await p.ev(`!!document.querySelector('.hero h1')`), !!(await p.rect('.side-nav-close'))].join(), 'the start').toBe('?page=home,true,false');
-    await go('Доски');
+    expect([await p.ev('location.search'), await p.ev(`!!document.querySelector('.board-canvas')`)].join(), 'work returns to the same board').toBe(`?board=${first},true`);
+    await p.click(await p.at('.topbar .logo'));
     await sleep(500);
-    await p.click(await p.at('.side-nav-close'));
-    await sleep(200);
-    expect([!!(await p.rect('.side-nav')), (await p.rect('.shelf-page')).l].join(), 'its cross: the boards fill the window').toBe('false,0');
+    await go('Профиль');
+    await sleep(300);
+    expect([await p.ev('location.search'), !!(await p.rect('.page-view.profile')), !!(await p.rect('.shelf-head'))].join(), 'the profile keeps the home header').toBe('?page=profile,true,true');
+    await p.click(await p.at('.home-logo'));
+    await sleep(400);
+    expect([await p.ev('location.search'), !!(await p.rect('.shelf-page .shelf-main')), !!(await p.rect('.page-view'))].join(), 'the logo returns to the shelf').toBe(',true,false');
   },
 
   async '"Обсуждение": the left rail\'s chat button opens it on the right, between the others\' pictures and the zoom bar, over the right rail; the comments on the zoom bar'(p) {
@@ -566,7 +548,7 @@ export const checks = {
   },
 
   async '"Связи инструментом": no dots on what\'s picked; «Связи» on the zoom bar (or C): the picked one\'s dots as ever, the pointer on a line or on something with lines lights them and frames what they join'(p) {
-    await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('linkTool', true))()`);
+    await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('linkTool', true); l.setLab('mindDblEdit', false); })()`);
     await p.ev(`(async () => (await import('/src/labs/labs.ts')).setLab('sideTabs', false))()`);
     await sleep(100);
     const { a, c } = await stickers(p);
@@ -618,7 +600,7 @@ export const checks = {
     expect(await p.ev(`planx.editor.plusNode()?.id ?? 'no buttons'`), 'the node\'s buttons').toBe('m');
     await p.key('c', 'KeyC', 67);
     await sleep(50);
-    await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('linkTool', false); l.setLab('sideTabs', true); })()`);
+    await p.ev(`(async () => { const l = await import('/src/labs/labs.ts'); l.setLab('linkTool', false); l.setLab('sideTabs', true); l.setLab('mindDblEdit', true); })()`);
   },
 
   async 'the dark theme in "Настройки", not on the zoom bar; the link dots\' switch there instead'(p) {

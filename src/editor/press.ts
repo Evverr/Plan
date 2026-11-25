@@ -11,6 +11,7 @@ import { pollPartAt, pressPoll } from '../labs/poll';
 import { addStage, headerAt, newCardAt } from '../labs/kanban';
 import { headerPartAt } from '../labs/header';
 import { askPage, docBoxAt, pagerAt, turnPage } from '../labs/docPage';
+import { marginSide } from '../labs/pageSwipe';
 import { offPad } from '../labs/stickyPad';
 import { paraAt, setPara } from '../model/textLinks';
 import { toggleAudio } from '../canvas/audio';
@@ -37,6 +38,7 @@ export function press(ed: Editor, e: PointerEvent): void {
   ed.linesWarm = null;
   // (Typing in a table's cell, one of its lines taken too: done with the typing, its lines alone moved then,
   // see Editor.linesOnly.)
+  const wasEditing = ed.editingId;
   ed.stopEditing();
   // (Moved by the arrow keys till now: a press, and it's as picked again, see Editor.nudged.)
   ed.setNudged(false);
@@ -383,9 +385,12 @@ export function press(ed: Editor, e: PointerEvent): void {
     const enter = entering && ed.lastTap.id === hit.host && !!swapKind(hit);
     // (Or as the system counts a double click, however slow it's set to be.)
     const dbl = (ed.lastTap.id === hit.id || enter) && (now - ed.lastTap.t < 380 || e.detail >= 2) && !e.shiftKey;
+    const pageDouble = hit.type === 'page' && ed.lastTap.id === hit.id ? ed.lastTap.t : undefined;
     ed.lastTap = { id: hit.id, t: now };
     // A slow click on the one item picked: let go without dragging, it may pick what's under it.
     const again = !dbl && !entering && !e.shiftKey && ed.selection.size === 1 && ed.selection.has(hit.id);
+    // Only a sheet already selected takes margin clicks; a drag still moves it normally.
+    const pageMargin = !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey && wasEditing !== hit.id ? marginSide(ed, hit, w) : 0;
     // A click on a cell of the table already selected picks that cell (on letting go, if not dragged).
     const cell = hit.type === 'table' && ed.selection.size === 1 && ed.selection.has(hit.id);
     // (Picked by this press: its frame shows once it's let go without being dragged, see Scene.dragging.)
@@ -406,7 +411,7 @@ export function press(ed: Editor, e: PointerEvent): void {
     // document goes (the table in its place in it); only picked first, it's taken out of it.
     const doc = fresh && hit.type === 'table' && hit.inDoc && labOn('docTable') ? ed.board.get(hit.inDoc) : undefined;
     const orig = doc && !isLocked(doc) ? ed.dragSet(items, new Set([doc.id])) : ed.dragSet(items);
-    ed.gesture = { type: 'drag', start: w, orig, moved: false, id: hit.id, dbl, cell, enter, again, url, tap, sub, fresh, was, ...(doc && orig.has(doc.id) && { whole: true }) };
+    ed.gesture = { type: 'drag', start: w, orig, moved: false, id: hit.id, dbl, cell, enter, again, url, tap, sub, fresh, was, pageMargin, pageDouble, ...(doc && orig.has(doc.id) && { whole: true }) };
     return;
   }
   ed.lastTap = { id: '', t: 0 };

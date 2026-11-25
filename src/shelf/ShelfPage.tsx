@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { ColorChoices } from '../ui/ColorChoices';
 import { newBoardId } from '../collab/connection';
-import { PanelIcon } from '../ui/PanelIcon';
 import { readText, writeText } from '../storage';
-import { Folder } from './Folder';
+import { Folder, FolderPlaceholder, folderColor } from './Folder';
+import { FolderShelf } from './FolderShelf';
+import { PagePreview, PagePlaceholder, PAGE_COLORS, PAGE_COLOR_NAMES, pageColor } from './Page';
+import { HomeHeader } from './HomeHeader';
+import { HomePageView, PAGE_TITLES, type HomePage } from './Navigation';
+import moreIcon from './assets/more.svg';
+import arrowIcon from './assets/arrow-right.svg';
 import {
-  FOLDER_COLORS, SORTS, addFolder, ago, arrange, boardUrl, boardsInside, folderUrl, nameOf, pathTo, placeOf, plural,
+  FOLDER_COLORS, SORTS, addFolder, arrange, boardUrl, boardsInside, folderUrl, nameOf, pathTo, placeOf, plural,
   randomColor, readFolders, readShelf, readThumb, removeEntry, removeFolder, updateEntry, updateFolder, withInside, writeFolders, writeShelf,
   type BoardEntry, type FolderEntry, type SortBy,
 } from './boards';
@@ -12,9 +18,9 @@ import { loadShelf, refreshPreviews, renameBoard } from './docs';
 import { openBoardFile } from '../collab/boardFile';
 import { boardIdIn, bringsFiles } from '../labs/boardImport';
 import { labOn, useLabs } from '../labs/labs';
+import { useShelfSelection } from '../labs/useShelfSelection';
 import { WishlistPage } from '../labs/WishlistPage';
 import { navigate } from '../route';
-import { setSideOpen, useSideOpen } from '../labs/SideNav';
 import './shelf.css';
 
 type Thing = { kind: 'board'; id: string } | { kind: 'folder'; id: string };
@@ -23,6 +29,7 @@ type Dialog =
   | { kind: 'new-board' }
   | { kind: 'folder'; folder?: FolderEntry }
   | { kind: 'rename'; board: BoardEntry }
+  | { kind: 'color'; board: BoardEntry }
   | { kind: 'move'; what: Thing }
   | { kind: 'remove'; board: BoardEntry }
   | { kind: 'delete-folder'; folder: FolderEntry }
@@ -31,19 +38,21 @@ type Dialog =
 interface Toast { text: string; undo?: () => void }
 
 const SORT_KEY = 'planx-shelf-sort';
+const MAX_FOLDERS = 5;
 const UNTITLED_FOLDER = 'Без названия';
+const cardDate = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long' });
 
 const folderFromUrl = () => new URLSearchParams(location.search).get('folder');
 /** "Wishlist" (src/labs) is open: ?wishlist in the address. */
 const wishFromUrl = () => labOn('wishlist') && new URLSearchParams(location.search).has('wishlist');
 
 /**
- * The start page. Folders stand on shelves; inside a folder are its boards, as square tiles showing
+ * The start page. Folders stand on shelves; inside a folder are its boards, as cards showing
  * everything on them, and the folders inside it. From here boards and folders are made, found, sorted,
  * renamed, moved (by the menu or by dragging onto a folder), starred and taken off the shelf.
  */
-export function ShelfPage() {
-  const side = useLabs().sideNav, sideOn = useSideOpen();
+export function ShelfPage({ page }: { page: HomePage | null }) {
+  const labs = useLabs();
   const [boards, setBoards] = useState<BoardEntry[] | null>(null);
   const [folders, setFolders] = useState<FolderEntry[]>(readFolders);
   const [here, setHere] = useState<string | null>(folderFromUrl);
@@ -56,6 +65,7 @@ export function ShelfPage() {
   // Bumped as the tiles' pictures are drawn afresh, to show them.
   const [, pictured] = useReducer((n: number) => n + 1, 0);
   const search = useRef<HTMLInputElement>(null);
+  const selection = useShelfSelection(labs.shelfSelection && !page && !wish && !dialog, `${here ?? ''}|${query}|${sort}|${page ?? ''}|${wish}`);
 
   const reread = () => { setBoards(readShelf() ?? []); setFolders(readFolders()); };
 
@@ -67,7 +77,10 @@ export function ShelfPage() {
     });
     // Another tab (a board open next to this page) changes the shelf: show it here too.
     const storage = (e: StorageEvent) => { if (e.key === 'planx-boards' || e.key === 'planx-folders') reread(); };
-    const back = () => { setHere(folderFromUrl()); setWish(wishFromUrl()); };
+    const back = () => {
+      setHere(folderFromUrl()); setWish(wishFromUrl()); setMenu(null); setDialog(null);
+      document.querySelector('.shelf-page')?.scrollTo(0, 0);
+    };
     window.addEventListener('planx:shelf', reread);
     window.addEventListener('storage', storage);
     window.addEventListener('focus', reread);
@@ -116,21 +129,12 @@ export function ShelfPage() {
   // A folder that's gone (deleted in another tab) leaves you at the top.
   const current = folders.find((f) => f.id === here) ?? null;
   const path = useMemo(() => pathTo(current?.id ?? null, folders), [current, folders]);
-  useEffect(() => { document.title = wish ? 'Wishlist · PlanX' : current ? `${nameOf(current, UNTITLED_FOLDER)} · PlanX` : 'Мои доски · PlanX'; }, [current, wish]);
-  const openWish = () => {
-    setMenu(null);
-    history.pushState(null, '', `${location.pathname}?wishlist`);
-    setWish(true);
-    document.querySelector('.shelf-page')?.scrollTo(0, 0);
-  };
-
+  useEffect(() => { document.title = page ? `${PAGE_TITLES[page]} · PlanX` : wish ? 'Фидбек · PlanX' : current ? `${nameOf(current, UNTITLED_FOLDER)} · PlanX` : 'Мои доски · PlanX'; }, [current, wish, page]);
   const go = (id: string | null) => {
     setMenu(null);
     setQuery('');
     if (id) updateFolder(id, { opened: Date.now() });
-    history.pushState(null, '', folderUrl(id));
-    setHere(id);
-    setWish(false);
+    navigate(folderUrl(id));
     document.querySelector('.shelf-page')?.scrollTo(0, 0);
   };
 
@@ -144,8 +148,10 @@ export function ShelfPage() {
 
   const searching = query.trim() !== '';
   const shownFolders = arrange(searching ? folders : folders.filter((f) => parentOf(f) === (current?.id ?? null)), query, sort, folderTime);
-  const shownBoards = arrange(searching ? all : all.filter((b) => where(b) === (current?.id ?? null)), query, sort, boardTime);
-  const pinned = !current && !searching ? arrange(all.filter((b) => b.pinned), '', sort, boardTime) : [];
+  const scopeBoards = current ? all.filter((b) => where(b) === current.id) : all;
+  const shownBoards = arrange(searching ? all : scopeBoards, query, sort, boardTime);
+  const recentBoards = arrange(scopeBoards, '', 'opened', boardTime).slice(0, 4);
+  const folderLimit = () => setToast({ text: 'На одном уровне можно разместить не больше пяти папок' });
 
   const placeName = (id: string | null) => (id ? nameOf(folders.find((f) => f.id === id) ?? { title: '' }, UNTITLED_FOLDER) : 'Мои доски');
   const pathText = (id: string | null) => ['Мои доски', ...pathTo(id, folders).map((f) => nameOf(f, UNTITLED_FOLDER))].join(' › ');
@@ -181,6 +187,9 @@ export function ShelfPage() {
   const move = (what: Thing, to: string | null) => {
     if (what.kind === 'folder') {
       if (to && withInside(what.id, folders).has(to)) return;
+      const fs = readFolders();
+      if (fs.some((f) => f.id === what.id && placeOf(f.parent, fs) !== to)
+        && fs.filter((f) => placeOf(f.parent, fs) === to).length >= MAX_FOLDERS) { folderLimit(); return; }
       updateFolder(what.id, { parent: to });
     } else {
       updateEntry(what.id, { folder: to });
@@ -213,29 +222,98 @@ export function ShelfPage() {
     setToast({ text: `Папка «${nameOf(f, UNTITLED_FOLDER)}» удалена`, undo: () => { writeShelf(beforeBoards); writeFolders(beforeFolders); reread(); setToast(null); } });
   };
 
-  // Dragging a board or folder onto a folder (or onto a step of the path above) moves it there.
-  const dragging = useRef<Thing | null>(null);
+  // Move the selected roots together; their descendants travel inside them, not beside them.
+  const dragging = useRef<Thing[]>([]);
+  const [dragKeys, setDragKeys] = useState<Set<string>>(new Set());
+  const dragImage = useRef<HTMLElement | null>(null);
   const [dropOn, setDropOn] = useState<string | null>(null);
+  useEffect(() => () => dragImage.current?.remove(), []);
+  const keyOf = (what: Thing) => `${what.kind}:${what.id}`;
   const canDrop = (to: string | null) => {
-    const d = dragging.current;
-    if (!d) return false;
-    if (d.kind === 'folder') return !(to && withInside(d.id, folders).has(to)) && to !== parentOf(folders.find((f) => f.id === d.id)!);
-    return to !== where(all.find((b) => b.id === d.id)!);
+    const items = dragging.current;
+    if (!items.length || (to && !folders.some((f) => f.id === to))) return false;
+    if (items.some((d) => d.kind === 'folder' && to && withInside(d.id, folders).has(to))) return false;
+    return items.some((d) => d.kind === 'folder'
+      ? folders.some((f) => f.id === d.id && parentOf(f) !== to)
+      : all.some((b) => b.id === d.id && where(b) !== to));
+  };
+  const moveGroup = (to: string | null) => {
+    const fs = readFolders(), bs = readShelf() ?? [], items = dragging.current;
+    if (to && !fs.some((f) => f.id === to)) return;
+    if (items.some((d) => d.kind === 'folder' && to && withInside(d.id, fs).has(to))) return;
+    const folderIds = new Set(items.filter((d) => d.kind === 'folder').map((d) => d.id));
+    const boardIds = new Set(items.filter((d) => d.kind === 'board').map((d) => d.id));
+    // Re-read before committing so a change in another tab is not overwritten.
+    const carried = (parent: string | null | undefined) => pathTo(placeOf(parent, fs), fs).some((f) => folderIds.has(f.id));
+    let moved = 0;
+    const nextFolders = fs.map((f) => {
+      if (!folderIds.has(f.id) || carried(f.parent) || placeOf(f.parent, fs) === to) return f;
+      moved++; return { ...f, parent: to };
+    });
+    const nextBoards = bs.map((b) => {
+      if (!boardIds.has(b.id) || carried(b.folder) || placeOf(b.folder, fs) === to) return b;
+      moved++; return { ...b, folder: to };
+    });
+    if (nextFolders.some((f, i) => f !== fs[i]) && nextFolders.filter((f) => placeOf(f.parent, nextFolders) === to).length > MAX_FOLDERS) {
+      folderLimit(); return;
+    }
+    if (nextFolders.some((f, i) => f !== fs[i])) writeFolders(nextFolders);
+    if (nextBoards.some((b, i) => b !== bs[i])) writeShelf(nextBoards);
+    if (moved) { selection.clear(); setToast({ text: `Перемещено в «${placeName(to)}»` }); }
+  };
+  const endDrag = () => {
+    dragging.current = []; setDragKeys(new Set()); setDropOn(null);
+    dragImage.current?.remove(); dragImage.current = null;
+    selection.afterDrag();
   };
   const dragFrom = (what: Thing) => ({
     draggable: true,
-    onDragStart: (e: React.DragEvent) => { dragging.current = what; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', what.id); setMenu(null); },
-    onDragEnd: () => { dragging.current = null; setDropOn(null); },
+    onDragStart: (e: React.DragEvent<HTMLAnchorElement>) => {
+      const keys = new Set(selection.take(keyOf(what)));
+      const items: Thing[] = [
+        ...folders.filter((f) => keys.has(`folder:${f.id}`)).map((f): Thing => ({ kind: 'folder', id: f.id })),
+        ...all.filter((b) => keys.has(`board:${b.id}`)).map((b): Thing => ({ kind: 'board', id: b.id })),
+      ];
+      const selectedFolders = new Set(items.filter((d) => d.kind === 'folder').map((d) => d.id));
+      dragging.current = items.filter((d) => {
+        const parent = d.kind === 'folder' ? folders.find((f) => f.id === d.id)?.parent : all.find((b) => b.id === d.id)?.folder;
+        return !pathTo(placeOf(parent, folders), folders).some((f) => selectedFolders.has(f.id));
+      });
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', what.id);
+      // The cursor carries an opaque copy while every source remains on its shelf at 50%.
+      const preview = document.createElement('div');
+      preview.className = 'shelf-drag-preview';
+      const copy = e.currentTarget.cloneNode(true) as HTMLElement;
+      copy.removeAttribute('data-shelf-item'); copy.removeAttribute('href');
+      preview.append(copy);
+      if (items.length > 1) {
+        const count = document.createElement('span'); count.className = 'shelf-drag-count'; count.textContent = String(items.length); preview.append(count);
+      }
+      selection.root.current?.append(preview);
+      dragImage.current = preview;
+      e.dataTransfer.setDragImage(preview, 35, 35);
+      setDragKeys(keys); setMenu(null);
+    },
+    onDragEnd: endDrag,
   });
   const dropInto = (to: string | null) => ({
-    onDragOver: (e: React.DragEvent) => { if (canDrop(to)) { e.preventDefault(); setDropOn(to ?? 'top'); } },
-    onDragLeave: () => setDropOn((cur) => (cur === (to ?? 'top') ? null : cur)),
-    onDrop: (e: React.DragEvent) => { e.preventDefault(); if (dragging.current && canDrop(to)) move(dragging.current, to); dragging.current = null; setDropOn(null); },
+    onDragOver: (e: React.DragEvent) => { if (canDrop(to)) { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; setDropOn(to ?? 'top'); } },
+    onDragLeave: (e: React.DragEvent) => {
+      if (e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget)) return;
+      setDropOn((cur) => cur === (to ?? 'top') ? null : cur);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!dragging.current.length) return;
+      e.preventDefault(); e.stopPropagation();
+      if (canDrop(to)) moveGroup(to);
+      endDrag();
+    },
   });
 
   const moreButton = (key: string) => (
     <button className={`tile-more ${menu === key ? 'on' : ''}`} title="Действия" aria-label="Действия" aria-expanded={menu === key}
-      onClick={(e) => { e.preventDefault(); setMenu(menu === key ? null : key); }}><PanelIcon name="more" /></button>
+      onClick={(e) => { e.preventDefault(); setMenu(menu === key ? null : key); }}><img src={moreIcon} alt="" /></button>
   );
 
   const folderTile = (f: FolderEntry) => {
@@ -246,13 +324,13 @@ export function ShelfPage() {
       inner.folders.length ? `${inner.folders.length} ${plural(inner.folders.length, 'папка', 'папки', 'папок')}` : '',
     ].filter(Boolean);
     return (
-      <div className={`book ${dropOn === f.id ? 'drop' : ''}`} key={key} {...dropInto(f.id)}>
-        <a className="book-cover" href={folderUrl(f.id)} title={`Открыть папку «${nameOf(f, UNTITLED_FOLDER)}»`} {...dragFrom({ kind: 'folder', id: f.id })}
-          onClick={(e) => { if (!e.metaKey && !e.ctrlKey) { e.preventDefault(); go(f.id); } }}>
-          <Folder color={f.color} sheets={sheets.length ? sheets : []} count={parts.join(', ') || 'пустая'} />
+      <div className={`book ${dropOn === f.id ? 'drop' : ''} ${selection.selected.has(key) ? 'selected' : ''} ${dragKeys.has(key) ? 'is-dragging' : ''}`} key={key} {...dropInto(f.id)}>
+        <a className="book-cover" data-shelf-item={key} href={folderUrl(f.id)} title={`Открыть папку «${nameOf(f, UNTITLED_FOLDER)}»: ${parts.join(", ") || "пустая"}`} {...dragFrom({ kind: 'folder', id: f.id })}
+          onClick={(e) => { if (selection.itemClick(key, e)) return; if (!e.metaKey && !e.ctrlKey) { e.preventDefault(); go(f.id); } }}
+          onDoubleClick={(e) => { if (selection.selected.has(key) && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); go(f.id); } }}>
+          <Folder color={f.color} sheets={sheets} count={nameOf(f, UNTITLED_FOLDER)} />
         </a>
-        <div className="book-name" title={nameOf(f, UNTITLED_FOLDER)}>{nameOf(f, UNTITLED_FOLDER)}</div>
-        <div className="book-meta">{searching ? pathText(parentOf(f)) : `открыта ${ago(f.opened)}`}</div>
+        {searching && <div className="folder-location">{pathText(parentOf(f))}</div>}
         {moreButton(key)}
         {menu === key && (
           <div className="tile-menu" role="menu">
@@ -268,22 +346,23 @@ export function ShelfPage() {
     );
   };
 
-  // A pinned board shows twice at the top; its menu opens where it was asked.
+  // Recent boards also appear in the full list; each menu opens on its own tile.
   const boardTile = (shelf: string) => (b: BoardEntry) => {
-    const key = `${shelf}:${b.id}`, thumb = readThumb(b.id);
+    const key = `${shelf}:${b.id}`, itemKey = `board:${b.id}`, thumb = readThumb(b.id);
     return (
-      <div className="card" key={key}>
-        <a className="card-cover" href={boardUrl(b.id)} title={`Открыть «${nameOf(b)}»`} {...dragFrom({ kind: 'board', id: b.id })}>
-          {thumb ? <img src={thumb} alt="" draggable={false} /> : <span className="card-empty">{b.items ? 'Откройте доску, чтобы увидеть' : 'Пустая доска'}</span>}
+      <div className={`card ${selection.selected.has(itemKey) ? 'selected' : ''} ${dragKeys.has(itemKey) ? 'is-dragging' : ''}`} key={key}>
+        <a className="card-cover" data-shelf-item={itemKey} onClick={(e) => selection.itemClick(itemKey, e)}
+          onDoubleClick={(e) => { if (selection.selected.has(itemKey) && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); navigate(boardUrl(b.id)); } }} href={boardUrl(b.id)} title={`Открыть «${nameOf(b)}»`} {...dragFrom({ kind: 'board', id: b.id })}>
+          <PagePreview color={b.color} thumb={thumb} />
           {b.pinned && <span className="card-star" title="В избранном">★</span>}
+          <span className="book-name" title={nameOf(b)}>{nameOf(b)}</span>
+          <span className="book-meta">
+            {searching ? pathText(where(b)) : <>
+              {b.edited || b.created || b.opened ? `${cardDate.format(b.edited || b.created || b.opened)} · ` : ''}
+              {`${b.items} ${plural(b.items, 'элемент', 'элемента', 'элементов')}`}
+            </>}
+          </span>
         </a>
-        <div className="book-name" title={nameOf(b)}>{nameOf(b)}</div>
-        <div className="book-meta">
-          {searching ? pathText(where(b)) : <>
-            {b.opened ? ago(sort === 'edited' ? b.edited : sort === 'created' ? b.created : b.opened) : 'открыта раньше'}
-            {b.items > 0 && ` · ${b.items} ${plural(b.items, 'элемент', 'элемента', 'элементов')}`}
-          </>}
-        </div>
         {moreButton(key)}
         {menu === key && (
           <div className="tile-menu" role="menu">
@@ -291,6 +370,7 @@ export function ShelfPage() {
             <a role="menuitem" href={boardUrl(b.id)} target="_blank" rel="noreferrer" onClick={() => setMenu(null)}>Открыть в новой вкладке</a>
             <hr />
             <button role="menuitem" onClick={() => { setMenu(null); setDialog({ kind: 'rename', board: b }); }}>Переименовать</button>
+            <button role="menuitem" onClick={() => { setMenu(null); setDialog({ kind: 'color', board: b }); }}>Цвет уголка…</button>
             <button role="menuitem" onClick={() => { setMenu(null); setDialog({ kind: 'move', what: { kind: 'board', id: b.id } }); }}>Переместить…</button>
             <button role="menuitem" onClick={() => { setMenu(null); changeBoard(b.id, { pinned: !b.pinned }); }}>{b.pinned ? 'Убрать из избранного' : 'В избранное'}</button>
             <button role="menuitem" onClick={() => { setMenu(null); void copyLink(b); }}>Скопировать ссылку</button>
@@ -304,127 +384,66 @@ export function ShelfPage() {
 
   const newFolderTile = (
     <div className="book" key="new-folder">
-      <button className="book-cover" onClick={() => setDialog({ kind: 'folder' })} title="Новая папка">
-        <span className="fd fd-new"><PanelIcon name="plus" /></span>
-      </button>
-      <div className="book-name">Новая папка</div>
-      <div className="book-meta">для досок по теме</div>
+      <button className="book-cover" onClick={() => setDialog({ kind: 'folder' })} aria-label="Новая папка" title="Новая папка"><FolderPlaceholder /></button>
     </div>
   );
-
   const newBoardTile = (
-    <div className="card" key="new-board">
-      <button className="card-cover card-new" onClick={() => setDialog({ kind: 'new-board' })} title="Новая доска"><PanelIcon name="plus" /></button>
-      <div className="book-name">Новая доска</div>
-      <div className="book-meta">{current ? `в папке «${nameOf(current, UNTITLED_FOLDER)}»` : 'с чистого листа'}</div>
+    <div className="card card-placeholder" key="new-board">
+      <button className="card-cover card-new" onClick={() => setDialog({ kind: 'new-board' })} aria-label="Новая доска" title="Новая доска"><PagePlaceholder /></button>
     </div>
   );
-
-  const nothingAtAll = boards !== null && all.length === 0 && folders.length === 0;
 
   return (
-    <div className="shelf-page" {...dropZone}>
+    <div ref={selection.root} className={`shelf-page ${selection.marquee ? 'is-selecting' : ''}`} {...dropZone} {...selection.handlers}>
+      {selection.marquee && <div className="shelf-marquee" aria-hidden="true" style={{ left: selection.marquee.x, top: selection.marquee.y, width: selection.marquee.width, height: selection.marquee.height }} />}
       {dropping && <div className="shelf-drop" aria-hidden="true"><span>Отпустите, чтобы открыть доску</span></div>}
-      <header className="shelf-head">
-        <div className={`shelf-brand ${wish ? 'wish-on' : ''}`}>
-          {/* ("Боковая панель", src/labs: the logo in its place, opening the side, a chevron under the pointer.) */}
-          {side && <button className={`logo side-nav-logo-btn shelf-logo ${sideOn ? 'open' : ''}`} title="Боковая панель" aria-label="Боковая панель" aria-expanded={sideOn}
-            onClick={() => setSideOpen(!sideOn)}>Plan</button>}
-          {/* From the wishlist, "Мои доски" leads back to the top of the shelf. */}
-          {(!side || wish) && <h1><a href={folderUrl(null)} onClick={(e) => { e.preventDefault(); go(null); }}>Мои доски</a></h1>}
-          {labOn('wishlist') && (
-            <a className="shelf-tab" href="?wishlist" aria-current={wish ? 'page' : undefined} onClick={(e) => { e.preventDefault(); openWish(); }}>Wishlist</a>
-          )}
-        </div>
-        <div className="shelf-tools">
-          {!wish && <>
-            <label className="shelf-search">
-              <PanelIcon name="search" />
-              <input ref={search} type="search" placeholder="Найти доску или папку" aria-label="Найти доску или папку" value={query} onChange={(e) => setQuery(e.target.value)} />
-            </label>
-            <select className="shelf-sort" aria-label="Порядок" value={sort} onChange={(e) => setSort(e.target.value as SortBy)}>
-              {SORTS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </select>
-          </>}
-          <button className="ib" title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'} aria-label={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
-            onClick={toggleTheme}><PanelIcon name={theme === 'dark' ? 'sun' : 'moon'} /></button>
-          {/* On a phone they're just "+ Папка" and "+ Доска". */}
-          <button className="btn" onClick={() => setDialog({ kind: 'folder' })}><span className="wide-only">Новая папка</span><span className="narrow-only">+ Папка</span></button>
-          <button className="btn primary" onClick={() => setDialog({ kind: 'new-board' })}><span className="wide-only">Новая доска</span><span className="narrow-only">+ Доска</span></button>
-        </div>
-      </header>
-
-      {wish ? <main className="shelf-main"><WishlistPage /></main> : <main className="shelf-main">
-        {/* Where you are: each step leads back up, and takes what's dropped on it. */}
-        {current && !searching && (
-          <nav className="crumbs" aria-label="Путь">
-            <a href={folderUrl(null)} className={dropOn === 'top' ? 'drop' : ''} onClick={(e) => { e.preventDefault(); go(null); }} {...dropInto(null)}>Мои доски</a>
-            {path.map((f, i) => (
-              <span key={f.id}>
-                <span className="crumb-sep">›</span>
-                {i === path.length - 1
-                  ? <b><i className="crumb-dot" style={{ background: f.color }} />{nameOf(f, UNTITLED_FOLDER)}</b>
-                  : <a href={folderUrl(f.id)} className={dropOn === f.id ? 'drop' : ''} onClick={(e) => { e.preventDefault(); go(f.id); }} {...dropInto(f.id)}>{nameOf(f, UNTITLED_FOLDER)}</a>}
-              </span>
-            ))}
-          </nav>
-        )}
-
-        {boards === null ? null : nothingAtAll ? (
-          <div className="shelf-empty">
-            <div className="shelf solo">{newFolderTile}</div>
-            <h2>Здесь будут ваши папки и доски</h2>
-            <p>Папки стоят на полках, как ежедневники. Внутри папки лежат доски и другие папки.</p>
-            <div className="row">
-              <a className="btn" href={boardUrl('demo')}>Открыть демо-доску</a>
-              <button className="btn" onClick={() => setDialog({ kind: 'new-board' })}>Создать доску</button>
-              <button className="btn primary" onClick={() => setDialog({ kind: 'folder' })}>Создать папку</button>
-            </div>
-          </div>
-        ) : searching ? (
-          <>
-            {!shownFolders.length && !shownBoards.length && <p className="shelf-none">Ничего не нашлось по «{query.trim()}»</p>}
-            {shownFolders.length > 0 && (
-              <section>
-                <h2 className="shelf-title">Папки: {shownFolders.length}</h2>
-                <div className="shelf">{shownFolders.map(folderTile)}</div>
-              </section>
-            )}
-            {shownBoards.length > 0 && (
-              <section>
-                <h2 className="shelf-title">Доски: {shownBoards.length}</h2>
-                <div className="cards">{shownBoards.map(boardTile('found'))}</div>
-              </section>
-            )}
-          </>
-        ) : (
-          <>
-            {pinned.length > 0 && (
-              <section>
-                <h2 className="shelf-title">Избранное</h2>
-                <div className="cards">{pinned.map(boardTile('pinned'))}</div>
-              </section>
-            )}
-            {(!current || shownFolders.length > 0) && (
-              <section>
-                <h2 className="shelf-title">Папки</h2>
-                <div className="shelf">{shownFolders.map(folderTile)}{newFolderTile}</div>
-              </section>
-            )}
+      <HomeHeader query={query} searchRef={search} onHome={() => go(null)} dark={theme === 'dark'} onDark={toggleTheme} feedback={labs.wishlist}
+        sort={sort} onSort={setSort}
+        onQuery={(value) => { setQuery(value); if (page || wish) navigate(location.pathname); }} />
+      {page ? <HomePageView page={page} dark={theme === 'dark'} onDark={toggleTheme} />
+        : wish ? <main className="shelf-main"><h1 className="home-page-title">Фидбек</h1><WishlistPage /></main>
+        : <main className="shelf-main" aria-label="Мои доски">
+          {searching ? <>
+            <div className="shelf-section-head"><h1 className="shelf-title">Результаты поиска</h1></div>
+            {boards !== null && !shownFolders.length && !shownBoards.length && <p className="shelf-none">Ничего не нашлось по «{query.trim()}»</p>}
+            {shownFolders.length > 0 && <section><h2 className="shelf-title">Папки: {shownFolders.length}</h2><FolderShelf>{shownFolders.map(folderTile)}</FolderShelf></section>}
+            {shownBoards.length > 0 && <section><h2 className="shelf-title">Доски: {shownBoards.length}</h2><div className="cards">{shownBoards.map(boardTile('found'))}</div></section>}
+          </> : <>
             <section>
-              <h2 className="shelf-title">{current ? 'Доски' : 'Доски без папки'}</h2>
-              <div className="cards">{newBoardTile}{shownBoards.map(boardTile('here'))}</div>
+              <nav className="crumbs" aria-label="Путь к папке">
+                <a href={folderUrl(null)} className={dropOn === 'top' ? 'drop' : ''} onClick={(e) => { e.preventDefault(); go(null); }} {...dropInto(null)}>Папки</a>
+                {path.map((f, i) => <span key={f.id}>
+                  <img src={arrowIcon} alt="" />
+                  {i === path.length - 1 ? <b aria-current="page">{nameOf(f, UNTITLED_FOLDER)}</b>
+                    : <a href={folderUrl(f.id)} className={dropOn === f.id ? 'drop' : ''} onClick={(e) => { e.preventDefault(); go(f.id); }} {...dropInto(f.id)}>{nameOf(f, UNTITLED_FOLDER)}</a>}
+                </span>)}
+              </nav>
+              <FolderShelf>{shownFolders.map(folderTile)}{shownFolders.length < MAX_FOLDERS && newFolderTile}</FolderShelf>
             </section>
-          </>
-        )}
-      </main>}
+            <section className="shelf-recent">
+              <h2 className="shelf-title">Недавние</h2>
+              {boards === null ? <p className="shelf-none" role="status">Загружаем доски…</p>
+                : <div className="cards">{recentBoards.map(boardTile('recent'))}{newBoardTile}</div>}
+            </section>
+            <section className="shelf-all-boards">
+              <h2 className="shelf-title">Все доски</h2>
+              <div className="cards">{shownBoards.map(boardTile('here'))}</div>
+            </section>
+          </>}
+        </main>}
 
-      {dialog?.kind === 'new-board' && <NameDialog heading={current ? `Новая доска в «${nameOf(current, UNTITLED_FOLDER)}»` : 'Новая доска'}
-        placeholder="Название, например «План на неделю»" action="Создать" onClose={() => setDialog(null)} onSave={createBoard}
+      {dialog?.kind === 'new-board' && <NameDialog heading={current ? `Доска в «${nameOf(current, UNTITLED_FOLDER)}»` : 'Доска'}
+        placeholder="Название, например «Работа»" action="Создать" onClose={() => setDialog(null)} onSave={createBoard}
         more={labOn('boardImport') ? <FromElsewhere onFile={(f) => void loadFile(f)} /> : undefined} />}
       {dialog?.kind === 'folder' && <FolderDialog folder={dialog.folder} inside={dialog.folder ? undefined : current} onClose={() => setDialog(null)} onSave={(title, color) => {
         if (dialog.folder) updateFolder(dialog.folder.id, { title, color });
-        else addFolder(newBoardId(), { title, color, parent: current?.id ?? null });
+        else {
+          const fs = readFolders(), parent = current?.id ?? null;
+          if (fs.filter((f) => placeOf(f.parent, fs) === parent).length >= MAX_FOLDERS) {
+            reread(); setDialog(null); folderLimit(); return;
+          }
+          addFolder(newBoardId(), { title, color, parent });
+        }
         reread();
         setDialog(null);
       }} />}
@@ -434,6 +453,12 @@ export function ShelfPage() {
           setDialog(null);
           void renameBoard(dialog.board.id, title).catch(() => setToast({ text: 'Не удалось переименовать саму доску, только на полке' }));
         }} />}
+      {dialog?.kind === 'color' && <Modal label="Цвет уголка доски" onClose={() => setDialog(null)}>
+        <h3>Цвет уголка доски</h3>
+        <ColorChoices choices={PAGE_COLORS.map(([id, color]) => ({ color, name: PAGE_COLOR_NAMES[id] }))} value={pageColor(dialog.board.color)}
+          label="Цвет уголка" onChange={(color) => { changeBoard(dialog.board.id, { color }); setDialog({ ...dialog, board: { ...dialog.board, color } }); }} />
+        <div className="row"><button className="btn primary" onClick={() => setDialog(null)}>Готово</button></div>
+      </Modal>}
       {dialog?.kind === 'move' && <MoveDialog what={dialog.what} folders={folders}
         from={dialog.what.kind === 'board' ? where(all.find((b) => b.id === dialog.what.id)!) : parentOf(folders.find((f) => f.id === dialog.what.id)!)}
         onClose={() => setDialog(null)} onMove={(to) => { move(dialog.what, to); setDialog(null); }} />}
@@ -468,10 +493,10 @@ export function ShelfPage() {
   );
 }
 
-function Modal({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
+function Modal({ label, onClose, children, className = '' }: { label: string; onClose: () => void; children: React.ReactNode; className?: string }) {
   return (
     <div className="shelf-backdrop" onPointerDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="shelf-dialog" role="dialog" aria-modal="true" aria-label={label}>{children}</div>
+      <div className={`shelf-dialog ${className}`} role="dialog" aria-modal="true" aria-label={label}>{children}</div>
     </div>
   );
 }
@@ -480,7 +505,7 @@ function NameDialog({ heading, initial = '', placeholder, action, onClose, onSav
   { heading: string; initial?: string; placeholder: string; action: string; onClose: () => void; onSave: (title: string) => void; more?: React.ReactNode }) {
   const [title, setTitle] = useState(initial);
   return (
-    <Modal label={heading} onClose={onClose}>
+    <Modal label={heading} onClose={onClose} className="name-dialog">
       <form onSubmit={(e) => { e.preventDefault(); onSave(title.trim()); }}>
         <h3>{heading}</h3>
         <input className="shelf-input" autoFocus placeholder={placeholder} aria-label="Название" maxLength={30}
@@ -529,29 +554,24 @@ function FromElsewhere({ onFile }: { onFile: (f: File) => void }) {
 /** A new folder, or a folder's name and colour, next to the folder as it'll look. */
 function FolderDialog({ folder, inside, onClose, onSave }: { folder?: FolderEntry; inside?: FolderEntry | null; onClose: () => void; onSave: (title: string, color: string) => void }) {
   const [title, setTitle] = useState(folder?.title ?? '');
-  const [color, setColor] = useState(folder?.color ?? randomColor);
+  const [color, setColor] = useState(() => folder?.color ? folderColor(folder.color) : randomColor());
   const heading = folder ? 'Папка' : inside ? `Новая папка в «${nameOf(inside, UNTITLED_FOLDER)}»` : 'Новая папка';
   return (
-    <Modal label={heading} onClose={onClose}>
+    <Modal label={heading} onClose={onClose} className="folder-dialog">
       <form onSubmit={(e) => { e.preventDefault(); onSave(title.trim(), color); }}>
         <h3>{heading}</h3>
+        <input className="shelf-input" autoFocus placeholder="Название, например «Работа»" aria-label="Название папки" maxLength={30}
+          value={title} onChange={(e) => setTitle(e.target.value)} onFocus={(e) => e.currentTarget.select()} />
         <div className="folder-edit">
-          <div className="folder-preview"><Folder color={color} sheets={[]} count={title.trim() || UNTITLED_FOLDER} /></div>
+          <div className="folder-preview"><Folder color={color} sheets={[]} count={title.trim() || 'Пустая'} /></div>
           <div className="folder-fields">
-            <input className="shelf-input" autoFocus placeholder="Название, например «Работа»" aria-label="Название папки" maxLength={30}
-              value={title} onChange={(e) => setTitle(e.target.value)} onFocus={(e) => e.currentTarget.select()} />
             <div className="cover-label">Цвет</div>
-            <div className="cover-colors">
-              {FOLDER_COLORS.map((c) => (
-                <button key={c.color} type="button" className={`swatch ${color === c.color ? 'on' : ''}`} style={{ background: c.color }}
-                  title={c.name} aria-label={c.name} aria-pressed={color === c.color} onClick={() => setColor(c.color)} />
-              ))}
-            </div>
+            <ColorChoices choices={FOLDER_COLORS} value={color} onChange={setColor} />
           </div>
-        </div>
-        <div className="row">
-          <button type="button" className="btn" onClick={onClose}>Отмена</button>
-          <button type="submit" className="btn primary">{folder ? 'Сохранить' : 'Создать'}</button>
+          <div className="row">
+            <button type="button" className="btn" onClick={onClose}>Отмена</button>
+            <button type="submit" className="btn primary">{folder ? 'Сохранить' : 'Создать'}</button>
+          </div>
         </div>
       </form>
     </Modal>

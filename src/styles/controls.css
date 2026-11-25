@@ -1,0 +1,66 @@
+/* Shared Figma atoms: Button Primary 166:7628, Button 166:7630,
+   Input 166:7666, Popup background 166:7626, Color 166:8554. */
+:root {
+  --popup-radius: 16px;
+  --popup-shadow: 0 6px 12px rgba(0, 0, 0, .15);
+  --field-border: #bec5ce;
+  --field-ink: #333;
+  --field-placeholder: rgba(51, 51, 51, .2);
+  --button-border: rgba(0, 0, 0, .12);
+}
+:root[data-theme="dark"] {
+  --field-border: #555d6a; --field-ink: var(--ink); --field-placeholder: rgba(231, 234, 240, .4);
+  --button-border: rgba(255, 255, 255, .16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --field-border: #555d6a; --field-ink: var(--ink); --field-placeholder: rgba(231, 234, 240, .4);
+    --button-border: rgba(255, 255, 255, .16);
+  }
+}
+
+.btn { position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center;
+  box-sizing: border-box; height: 33px; padding: 9px 14px 9px; border: 0; border-radius: 7px; background: none;
+  font: 600 12px/15px Inter, var(--ui); color: var(--btn-ink); opacity: .9; white-space: nowrap; text-decoration: none; cursor: pointer; }
+.btn::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--button-border); transition: filter .12s ease-out, background-color .12s ease-out; }
+.btn:hover:not(:disabled)::before { background-color: var(--fmt-hover); }
+.btn.primary { border-radius: 8px; color: #fff; }
+.btn.primary::before { box-shadow: none; background: linear-gradient(to bottom, #4191ff, #0066f5); }
+.btn.primary:hover:not(:disabled)::before { filter: brightness(1.08); }
+.btn:active:not(:disabled)::before { filter: brightness(.96); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary.danger::before { background: var(--danger); }
+
+/* Shared surfaces; panel-specific placement, sizing and animations stay with their components. */
+.pop, .modal, .shelf-dialog, .tile-menu, .board-menu, .more-pop, .comment-menu, .color-picker, .tf-menu {
+  border-radius: var(--popup-radius); background-color: var(--surface); box-shadow: var(--popup-shadow);
+}
+
+/* Standard form fields only: toolbar editors, sliders, checkboxes and inline layer names keep their geometry. */
+:is(.shelf-input, .form-grid input, .form-grid select, .form-grid textarea,
+  .namepop input, .icon-pick input, .confirm .confirm-input, .swap-pop input,
+  .comment-writer textarea, .wish-form textarea, .labs-pop input:not([type="range"], [type="checkbox"], [type="radio"], .layer-name)) {
+  width: 100%; box-sizing: border-box; height: 40px; padding: 8px 14px;
+  border: 1px solid var(--field-border); border-radius: 8px; background: var(--surface); color: var(--field-ink);
+  font: 400 14px/21px Inter, var(--ui); box-shadow: none; outline: none;
+}
+:is(.shelf-input, .form-grid input, .form-grid textarea, .namepop input, .icon-pick input,
+  .confirm .confirm-input, .swap-pop input, .comment-writer textarea, .wish-form textarea,
+  .labs-pop input:not([type="range"], [type="checkbox"], [type="radio"], .layer-name))::placeholder { color: var(--field-placeholder); opacity: 1; }
+:is(.shelf-input, .form-grid input, .form-grid select, .form-grid textarea,
+  .namepop input, .icon-pick input, .confirm .confirm-input, .swap-pop input,
+  .comment-writer textarea, .wish-form textarea, .labs-pop input:not([type="range"], [type="checkbox"], [type="radio"], .layer-name)):focus {
+  border-color: color-mix(in srgb, var(--field-border) 80%, #333); box-shadow: none; outline: none;
+}
+.form-grid textarea, .comment-writer textarea, .wish-form textarea { height: auto; min-height: 84px; resize: vertical; }
+.search-pop .search-field input { padding-left: var(--s34); }
+
+.color-choices { display: flex; flex-wrap: wrap; gap: 0; }
+.color-choice { position: relative; display: grid; place-items: center; width: 36px; height: 36px; flex: none;
+  border: 0; border-radius: 10px; padding: 0; background: transparent; cursor: pointer; }
+.color-choice > img { position: absolute; inset: 0; pointer-events: none; }
+.color-choice > span { position: relative; width: 22px; height: 22px; border-radius: 50%; pointer-events: none; }
+.color-choice:hover { background: var(--fmt-hover); }
+.color-choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

@@ -20,6 +20,7 @@
 .menu-row.light { color: var(--fmt-ink); }
 .menu-row img { flex: none; display: block; }
 .menu-icon { flex: none; width: var(--e24); height: var(--e24); color: var(--icon-faint); }
+.pi.menu-icon { background: currentColor; }
 .menu-row { box-sizing: border-box; min-height: var(--e38); padding: var(--s7) 0; }
 /* A menu without icons sits 4px further in; in one with some, a row without lines its text up with
    theirs (an icon's 24px and the 11px after it). */

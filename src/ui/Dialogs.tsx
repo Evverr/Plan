@@ -16,7 +16,7 @@ function Modal({ title, onClose, children, className = '', page }: { title: stri
     window.addEventListener('keydown', key, true);
     return () => window.removeEventListener('keydown', key, true);
   }, [onClose, page]);
-  // ("Боковая панель", src/labs: a page of its own beside it, not over the board.)
+  // (On the home page: a section of its own, not a dialog over the board.)
   if (page) return (
     <section className={`page-view ${className}`} aria-label={title}>
       <h1>{title}</h1>

@@ -34,12 +34,12 @@
    in the middle of the screen, from the side beside a rail or a menu. (The slide is added to their own
    place, so those centred by a transform keep it.) Anything new that pops up goes in this list. */
 :is(.pop, .board-menu, .more-pop, .op-pop, .color-picker, .tf-menu, .tools-more, .draw-panel, .tfmt:not(.leaving), .comment-menu, .tile-menu,
-  .minimap, .modal, .peek, .comment-card, .labs-pill, .ink-style, .panel-over) {
+  .minimap, .modal, .shelf-dialog, .peek, .comment-card, .labs-pill, .ink-style, .panel-over) {
   --in-x: 0px; --in-y: calc(-1 * var(--slide));
   animation: fade-in .16s ease-out, come-in .16s ease-out; animation-composition: replace, add; }
 @keyframes come-in { from { transform: translate(var(--in-x), var(--in-y)); } }
 /* Rising: from the bottom (or the bars there), and in the middle of the screen. */
-:is(.op-pop, .color-picker, .tfmt, .panel-over:not(.opens-down), .more-pop.above, .minimap, .help, .namepop, .toast.bottom, .shelf-toast, .modal, .peek) { --in-y: var(--slide); }
+:is(.op-pop, .color-picker, .tfmt, .panel-over:not(.opens-down), .more-pop.above, .minimap, .help, .namepop, .toast.bottom, .shelf-toast, .modal, .shelf-dialog, .peek) { --in-y: var(--slide); }
 :root[data-topbar="low"] :is(.board-menu:not(.sub, .context-menu, .objects-menu, .shape-menu), .confirm) { --in-y: var(--slide); }
 :root[data-zoom="high"] :is(.minimap, .help, .namepop) { --in-y: calc(-1 * var(--slide)); }
 /* From the side. */

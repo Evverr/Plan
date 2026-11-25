@@ -7,7 +7,7 @@ import { hiddenIn, linksIn, stacked } from '../editor/frames';
 const SIZE = 360, PAD = 22;
 
 /**
- * Everything on the board, fitted into a square on the panels' colour: what the board's tile shows,
+ * Everything on the board, fitted into a transparent square: what the board's tile shows,
  * so it can be told from the others at a glance. Null for an empty board.
  */
 export function previewOf(board: Board): string | null {
@@ -20,8 +20,6 @@ export function previewOf(board: Board): string | null {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   const theme = readTheme();
-  ctx.fillStyle = theme.surface || '#fff';
-  ctx.fillRect(0, 0, SIZE, SIZE);
   // Small boards aren't blown up past their real size.
   const z = Math.min((SIZE - PAD * 2) / Math.max(b.w, 1), (SIZE - PAD * 2) / Math.max(b.h, 1), 1);
   drawScene(ctx, {
