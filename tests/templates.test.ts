@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { kanban, projectPlan, retro, TEMPLATES } from '../src/shelf/templates';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { addTemplates, TEMPLATES, kanban, projectPlan, retro } from '../src/shelf/templates';
+import { readFolders, readShelf } from '../src/shelf/boards';
 import { DEFAULTS } from '../src/model/types';
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('the ready-made boards', () => {
   it('are three, each named and made only of what boards have', () => {
@@ -33,5 +36,28 @@ describe('the ready-made boards', () => {
     const roots = nodes.filter((n) => !n.parent);
     expect(roots).toHaveLength(1);
     for (const n of nodes) if (n.parent) expect(nodes.some((p) => p.id === n.parent)).toBe(true);
+  });
+});
+
+describe('the default shelf', () => {
+  it('has four empty folders with distinct colours only once', () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => { values.set(key, value); },
+      removeItem: (key: string) => { values.delete(key); },
+    });
+    vi.stubGlobal('window', { dispatchEvent: () => true });
+    addTemplates(123);
+    const folders = readFolders();
+    expect(folders.map((f) => f.title)).toEqual(['Папка 1', 'Папка 2', 'Папка 3', 'Папка 4']);
+    expect(folders.map((f) => f.color)).toEqual(['#4786D4', '#FF6767', '#E6A72D', '#3D9A72']);
+    expect(folders.map((f) => f.parent)).toEqual([null, null, null, null]);
+    expect(folders.map((f) => f.created)).toEqual([123, 123, 123, 123]);
+    expect(folders.map((f) => f.opened)).toEqual([123, 123, 123, 123]);
+    expect(new Set(folders.map((f) => f.id)).size).toBe(4);
+    expect(readShelf() ?? []).toEqual([]);
+    addTemplates(456);
+    expect(readFolders()).toEqual(folders);
   });
 });

@@ -54,4 +54,18 @@ export const checks = {
     expect(await p.ev(`planx.board.list().map((i) => i.text).join()`), 'with what was in it').toBe('Из файла');
     await p.cdp('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   },
+
+  async 'inside a folder, creation is unavailable but a board and a folder moved there are visible'(p) {
+    await p.ev(`(async () => { const s = await import('/src/shelf/boards.ts');
+      s.addFolder('parent-folder', { title: 'Сюда', color: '#4786D4', parent: null });
+      s.addFolder('child-folder', { title: 'Перемещённая папка', color: '#FF6767', parent: 'parent-folder' });
+      s.updateEntry('moved-board', { title: 'Перемещённая доска', folder: 'parent-folder' });
+    })()`);
+    await p.cdp('Page.navigate', { url: 'http://localhost:5199/?folder=parent-folder' });
+    await sleep(1000);
+    expect(!!(await p.rect('.card-cover[href*="moved-board"]')), 'the moved board is shown').toBe(true);
+    expect(!!(await p.rect('.book-cover[href*="child-folder"]')), 'the moved folder is shown').toBe(true);
+    expect(!!(await p.rect('.shelf-recent .card-new')), 'no board creation inside').toBe(false);
+    expect(await p.ev(`!!document.querySelector('[aria-label="Новая папка"]')`), 'no folder creation inside').toBe(false);
+  },
 };

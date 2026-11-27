@@ -418,12 +418,12 @@ export function ShelfPage({ page }: { page: HomePage | null }) {
                     : <a href={folderUrl(f.id)} className={dropOn === f.id ? 'drop' : ''} onClick={(e) => { e.preventDefault(); go(f.id); }} {...dropInto(f.id)}>{nameOf(f, UNTITLED_FOLDER)}</a>}
                 </span>)}
               </nav>
-              <FolderShelf>{shownFolders.map(folderTile)}{shownFolders.length < MAX_FOLDERS && newFolderTile}</FolderShelf>
+              <FolderShelf>{shownFolders.map(folderTile)}{!current && shownFolders.length < MAX_FOLDERS && newFolderTile}</FolderShelf>
             </section>
             <section className="shelf-recent">
               <h2 className="shelf-title">Недавние</h2>
               {boards === null ? <p className="shelf-none" role="status">Загружаем доски…</p>
-                : <div className="cards">{recentBoards.map(boardTile('recent'))}{newBoardTile}</div>}
+                : <div className="cards">{recentBoards.map(boardTile('recent'))}{!current && newBoardTile}</div>}
             </section>
             <section className="shelf-all-boards">
               <h2 className="shelf-title">Все доски</h2>

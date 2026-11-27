@@ -1,27 +1,17 @@
-import * as Y from 'yjs';
-import { Board } from '../model/board';
 import { addChild, childPlace, type Toward } from '../model/mind';
 import { newTable } from '../model/table';
 import { DEFAULTS, uid, type Item, type ItemType, type Link } from '../model/types';
 import { fitHeight, mindSize } from '../canvas/text';
 import { newBoardId } from '../collab/connection';
-import { readText, writeJSON, writeText } from '../storage';
-import { FOLDER_COLORS, addFolder, readShelf, newEntry, writeShelf, writeThumb } from './boards';
-import { previewOf } from './preview';
+import { readText, writeText } from '../storage';
+import { FOLDER_COLORS, addFolder } from './boards';
 
 /**
- * Ready-made boards in a green "Шаблоны" folder, put on the shelf once, the first time it opens after
- * they came in (deleted, they don't come back). Each is made only of what boards already have:
- * frames, stickers, tasks, text, icons, a mind map and a table. What's on a board is handed to it the
- * way a copy of a board is (App.tsx, "planx-copy:"): kept in the browser's storage, and taken by the
- * board the first time it's opened.
+ * Ready-made boards built from ordinary board objects, plus a one-time set of empty default folders.
  */
 export interface Template { title: string; items: Item[]; links: Link[] }
 
 const DONE_KEY = 'planx-templates';
-const COPY_KEY = 'planx-copy:';
-export const TEMPLATES_FOLDER = 'Шаблоны';
-const GREEN = FOLDER_COLORS.find((c) => c.name === 'Зелёная')!.color;
 
 /** Makes items one above another, in the order they're made. */
 function maker() {
@@ -142,30 +132,18 @@ export function projectPlan(): Template {
 
 export const TEMPLATES = [kanban, retro, projectPlan];
 
-/** A picture for a template's tile, drawn from a board made of it in memory. */
-function pictureOf(t: Template): string | null {
-  const doc = new Y.Doc();
-  try {
-    const board = new Board(doc);
-    board.replaceAll(t.items, t.links, t.title);
-    return previewOf(board);
-  } catch {
-    return null;
-  } finally {
-    doc.destroy();
-  }
-}
+const DEFAULT_FOLDERS = [
+  ['Папка 1', 'Синяя'],
+  ['Папка 2', 'Красная'],
+  ['Папка 3', 'Жёлтая'],
+  ['Папка 4', 'Зелёная'],
+] as const;
 
-/** Puts the green "Шаблоны" folder with the ready-made boards on the shelf, once per browser. */
+/** Puts four empty folders on a new shelf once, without touching its boards. */
 export function addTemplates(now = Date.now()): void {
   if (readText(DONE_KEY)) return;
   writeText(DONE_KEY, '1');
-  const folder = addFolder(newBoardId(), { title: TEMPLATES_FOLDER, color: GREEN }, now);
-  const made = TEMPLATES.map((make) => {
-    const t = make(), id = newBoardId();
-    writeJSON(`${COPY_KEY}${id}`, { items: t.items, links: t.links, title: t.title });
-    if (typeof document !== 'undefined') writeThumb(id, pictureOf(t));
-    return newEntry(id, { title: t.title, folder: folder.id, items: t.items.length }, now);
-  });
-  writeShelf([...(readShelf() ?? []), ...made]);
+  for (const [title, color] of DEFAULT_FOLDERS) {
+    addFolder(newBoardId(), { title, color: FOLDER_COLORS.find((c) => c.name === color)!.color }, now);
+  }
 }
